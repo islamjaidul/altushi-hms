@@ -2,7 +2,23 @@
 
 Hospital Management System ERP for the **Bangladesh** private-hospital market (50–300 beds, private hospitals · clinics · diagnostic centres).
 
-**Status:** requirements complete, awaiting architecture. No implementation yet.
+**Status:** architecture approved (19 ADRs) · S1–S7 implementation pass done · **live at [hms.specshipper.com](https://hms.specshipper.com)**. Remaining work is tracked per sprint in `docs/specs/` (UI screen pass, printer-hardware spikes, S6 load measurement, S7 rehearsals).
+
+## Live demo & test credentials
+
+Production demo: **https://hms.specshipper.com** — password for every account is `Demo#1234`. Each account shows only its role's modules (nav = permissions ∩ entitlements, enforced server-side).
+
+| Username | Name | Role | Sees |
+|---|---|---|---|
+| `jashim` | Jashim Uddin | Receptionist | Registration, Appointments |
+| `rasel` | Rasel Ahmed | Billing Operator | Billing (invoice, dues, day-close), Diagnostics order, patient directory |
+| `ripon` | Ripon Das | Lab Technologist | LIS work board, sample collection, result entry |
+| `farhana` | Dr. Farhana Rahman | Pathologist | LIS work board, result verification |
+| `shahid` | Shahid Alam | Billing Supervisor | Billing + approvals inbox (discount/refund decisions) |
+| `admin` | System Admin | Admin | Users & roles, audit viewer, approvals, masters, SMS tray |
+| `md` | Dr. Chairman | MD | MD dashboard, approvals, audit viewer |
+
+Demo data only — do not enter real patient information. Local run: `cd deploy && HMS_ENV=Development HMS_SEED=true docker compose up -d` → http://localhost:8080 (same accounts).
 
 ## Reading order
 
@@ -20,8 +36,10 @@ New here? Read in this order — don't start with the PRD, it's 1,350 lines.
 |---|---|---|
 | `docs/project_manager.md` | Project Manager | **The PRD** (v1.1) — requirements, 22 modules, personas, data flows, state machines, permissions, volumetrics. Single source of truth for *what* and *why*. |
 | `docs/architect_prompt.md` | Project Manager | Handoff brief for the Principal Software Architect. |
-| `docs/architecture/` | Architect | All technical decisions: ADRs, domain/data model, deployment. **Empty — awaiting architect.** |
-| `docs/specs/` | Everyone | Spec archive — one directory per change (`spec.md`, `plan.md`, `tasks.md`). |
+| `docs/architecture/` | Architect | All technical decisions: 19 ADRs, domain/data model, UI architecture, deployment, demo kit, build plan. |
+| `docs/specs/` | Everyone | Spec archive — one directory per change (`spec.md`, `plan.md`, `tasks.md`). Specs 0005–0011 are the S1–S7 build records. |
+| `src/`, `tests/` | Engineer | .NET 10 modular monolith (kernel + 8 module assemblies) and the four test projects (unit, architecture, integration on real Postgres, print-golden). |
+| `deploy/`, `demo/`, `eng/` | Engineer | Compose stack + Dockerfile + runbook · demo-reset/snapshot kit · CI guard scripts. |
 | `CLAUDE.md` | Everyone | Working rules for AI agents on this repo. Read it before contributing. |
 | `.claude/` | Everyone | Agent tooling: skills, the `spec-auditor` agent, and the spec-integrity hook. |
 
@@ -41,6 +59,15 @@ An integrated hospital ERP whose differentiator is not its feature list — comp
 
 Spec-driven. Every non-trivial change gets a spec in `docs/specs/` **before** it is built, and the approved plan is archived alongside it. See `CLAUDE.md` Rule 0. A `Stop` hook checks archive integrity automatically; the `spec-auditor` agent audits on demand.
 
-## First task for the architect
+## Building & testing
 
-Read `docs/architect_prompt.md`, then reply with the four-part first response it asks for (restated mission + top risks, preliminary stack with RAM costs, top 10 questions for the PM, deliverable sequence). **Stop after the ADRs for PM review** — do not begin implementation before the stack, offline, and concurrency decisions are approved.
+Requires the .NET 10 SDK and Docker (integration tests run against real PostgreSQL via Testcontainers — SQLite proves nothing for the money paths and is banned for them).
+
+```sh
+dotnet build hms-erp.slnx                 # 0 warnings tolerated
+dotnet test tests/Hms.Kernel.Tests        # fast unit
+dotnet test tests/Hms.Architecture.Tests  # module-boundary rules (ADR-0003)
+dotnet test tests/Hms.Integration.Tests   # money invariants, concurrency races, state machines
+dotnet test tests/Hms.PrintGolden.Tests   # Bangla PDF rendering
+sh eng/check-no-external-hosts.sh src && sh eng/check-ui-tokens.sh src && sh eng/check-fkeys.sh src
+```
