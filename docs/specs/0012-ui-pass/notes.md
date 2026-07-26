@@ -97,6 +97,14 @@ depth; §11 Invoice, Discount request, Counter session (less Reopened), Test Ord
 (now including rejection), Result/Report (less Amended), SMS; §7 U1, U2, U3, U5 (partial — see
 type-ahead below), U7, U8, U9, U10 (less PDF), U11, U12, U13, U15.
 
+## Coverage claim corrected (append, 2026-07-26)
+
+0012 delivered what it set out to: every route in the nav registry renders a working screen.
+It did **not** establish that every MVP requirement has a screen — the nav registry was never
+derived from the PRD, so "every menu works" was never the same claim as "§9A.2 is covered".
+A later audit of §5/§5A found ~25 `[M]`/`Must` items inside the eight MVP modules with no UI.
+**Spec 0013** carries the traceability matrix that should have existed here and closes them.
+
 ## Known gaps left open
 
 - **Type-ahead is not yet wired to a search endpoint.** `typeahead.js` exists and the patient

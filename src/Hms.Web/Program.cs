@@ -88,6 +88,7 @@ builder.Services.AddSingleton<Hms.Billing.DayCloseService>();
 builder.Services.AddSingleton<Hms.Lis.LisService>();
 builder.Services.AddSingleton<ApprovalEngine>();
 builder.Services.AddSingleton<Hms.Admin.RateResolver>();
+builder.Services.AddSingleton<Hms.Admin.CatalogImportService>();
 builder.Services.AddSingleton<Hms.Appointments.AppointmentsService>();
 builder.Services.AddSingleton(Hms.Notifications.SmsOptions.From(
     builder.Configuration["HMS_SMS_MODE"]));                                 // edge 3: simulation default

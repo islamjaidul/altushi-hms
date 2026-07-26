@@ -5,110 +5,166 @@
     ViewData["Crumb"] = "Administration";
 }
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
 <div class="row" style="margin-bottom:14px">
-    <span class="card-hint" style="max-width:640px">
-        Services and tests with the price version in force on @Ui.DateLong(Model.Today).
-        Changing a price creates a new version from a future date — every past invoice keeps
-        reproducing the price it was actually billed at.
+    <span class="card-hint" style="max-width:620px">
+        Prices in force on @Ui.DateLong(Model.Today). A price change starts on a date you choose —
+        the old price stays on record, so past invoices keep reproducing what was actually billed.
     </span>
     <span class="spacer"></span>
     @if (Model.UnpricedCount > 0)
     {
-        <span class="pill warn">@Model.UnpricedCount item(s) not sellable today</span>
+        <span class="pill warn">@Model.UnpricedCount provisional</span>
     }
+    <a class="btn btn-primary" href="/admin/import">
+        <span class="icon icon-sm" aria-hidden="true">download</span> Bulk import
+    </a>
 </div>
 
-@if (Model.UnpricedCount > 0)
+@if (Model.HistoryFor is not null)
 {
-    <div class="alert warn">
-        <span class="icon icon-sm" aria-hidden="true">warning</span>
-        <span>
-            An item with no effective price is deliberately absent from the billing catalogue
-            rather than sellable at zero — load its price before go-live.
-        </span>
+    <div class="card card-clip" style="margin-bottom:14px">
+        <div class="card-head">
+            Price history — @Model.HistoryFor
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/admin/masters">Close</a>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>From</th><th>Until</th><th class="num">Price ৳</th><th>Changed by</th></tr></thead>
+                <tbody>
+                @foreach (var h in Model.History)
+                {
+                    <tr>
+                        <td class="tabular">@Ui.DateLong(h.From)</td>
+                        <td class="tabular">@(h.To is { } t ? Ui.DateLong(t) : "current")</td>
+                        <td class="num">@Ui.Group(h.Price)</td>
+                        <td>@h.Author</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 
-<div class="card card-clip">
-    <div class="card-head">
-        Test catalog
-        <span class="spacer"></span>
-        <span class="card-hint">@Model.Tests.Count test(s)</span>
-    </div>
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
-            <tr>
-                <th style="width:110px">Code</th><th>Test</th><th style="width:130px">Department</th>
-                <th style="width:190px">Sample · turnaround</th>
-                <th class="num" style="width:110px">Price ৳</th>
-                <th style="width:150px">Effective from</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var r in Model.Tests)
-            {
-                <tr>
-                    <td class="id-cell">@r.Code</td>
-                    <td><b>@r.Name</b></td>
-                    <td>@r.Dept</td>
-                    <td class="text-muted">@r.Extra</td>
-                    <td class="num">
-                        @if (r.Price is { } p)
+<div class="grid grid-main-side">
+    <div class="stack">
+        @foreach (var (title, rows, kind) in new[]
+        {
+            ("Test catalog", Model.Tests, "test"),
+            ("Services", Model.Services, "service"),
+        })
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    @title
+                    <span class="spacer"></span>
+                    <span class="card-hint">@rows.Count item(s)</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th style="width:100px">Code</th><th>Name</th><th style="width:120px">Department</th>
+                            <th style="width:150px">Detail</th>
+                            <th class="num" style="width:100px">Price ৳</th>
+                            <th style="width:300px">Change price</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in rows)
                         {
-                            @Ui.Group(p)
+                            <tr>
+                                <td class="id-cell">@r.Code</td>
+                                <td>
+                                    <b>@r.Name</b>
+                                    @if (r.Provisional)
+                                    {
+                                        <span class="pill warn" style="margin-left:6px">Provisional</span>
+                                    }
+                                </td>
+                                <td>@r.Dept</td>
+                                <td class="text-muted">@r.Extra</td>
+                                <td class="num">
+                                    @if (r.Price is { } p)
+                                    {
+                                        <a href="/admin/masters?history=@r.Id&historyKind=@r.Kind">@Ui.Group(p)</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="pill warn">No price</span>
+                                    }
+                                </td>
+                                <td>
+                                    <form method="post" asp-page-handler="Reprice" class="row" style="gap:6px">
+                                        <input type="hidden" name="TargetId" value="@r.Id" />
+                                        <input type="hidden" name="TargetKind" value="@r.Kind" />
+                                        <label class="sr-only" for="np-@r.Kind-@r.Id">New price</label>
+                                        <input id="np-@r.Kind-@r.Id" name="NewPrice" class="input input-sm input-num"
+                                               style="width:88px" inputmode="numeric" placeholder="৳" />
+                                        <label class="sr-only" for="ef-@r.Kind-@r.Id">Effective from</label>
+                                        <input id="ef-@r.Kind-@r.Id" name="EffectiveFrom" type="date"
+                                               value="@Model.Today.AddDays(1).ToString("yyyy-MM-dd")"
+                                               min="@Model.Today.ToString("yyyy-MM-dd")"
+                                               class="input input-sm" style="width:140px" />
+                                        <button type="submit" class="btn-tint">Apply</button>
+                                    </form>
+                                </td>
+                            </tr>
                         }
-                        else
-                        {
-                            <span class="pill warn">No price</span>
-                        }
-                    </td>
-                    <td class="tabular text-muted">@(r.From is { } f ? Ui.DateLong(f) : "—")</td>
-                </tr>
-            }
-            </tbody>
-        </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
     </div>
-</div>
 
-<div class="card card-clip" style="margin-top:14px">
-    <div class="card-head">
-        Services
-        <span class="spacer"></span>
-        <span class="card-hint">@Model.Services.Count service(s)</span>
-    </div>
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
-            <tr>
-                <th style="width:110px">Code</th><th>Service</th><th style="width:130px">Department</th>
-                <th style="width:190px">Kind</th>
-                <th class="num" style="width:110px">Price ৳</th>
-                <th style="width:150px">Effective from</th>
-            </tr>
-            </thead>
-            <tbody>
-            @foreach (var r in Model.Services)
-            {
-                <tr>
-                    <td class="id-cell">@r.Code</td>
-                    <td><b>@r.Name</b></td>
-                    <td>@r.Dept</td>
-                    <td class="text-muted">@r.Extra</td>
-                    <td class="num">
-                        @if (r.Price is { } p)
-                        {
-                            @Ui.Group(p)
-                        }
-                        else
-                        {
-                            <span class="pill warn">No price</span>
-                        }
-                    </td>
-                    <td class="tabular text-muted">@(r.From is { } f ? Ui.DateLong(f) : "—")</td>
-                </tr>
-            }
-            </tbody>
-        </table>
-    </div>
+    <form method="post" asp-page-handler="Create" class="card">
+        <div class="card-head">Add a catalog item</div>
+        <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Type</span>
+                <select class="select" asp-for="Kind">
+                    <option value="test">Test (diagnostics)</option>
+                    <option value="service">Service (consultation, procedure)</option>
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Code <span class="req">*</span></span>
+                <input class="input" asp-for="Code" placeholder="e.g. HBA1C" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Name <span class="req">*</span></span>
+                <input class="input" asp-for="Name" placeholder="e.g. HbA1c" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Department</span>
+                <input class="input" asp-for="Dept" placeholder="e.g. Biochemistry" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Sample type</span>
+                <input class="input" asp-for="SampleType" placeholder="e.g. Serum — blank for imaging" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Turnaround (minutes)</span>
+                <input class="input input-num" asp-for="TatMinutes" inputmode="numeric" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Price (৳)</span>
+                <input class="input input-num" asp-for="Price" inputmode="numeric" data-advance />
+                <span class="help-text">Leave 0 to add it now and price it later — it stays provisional until then.</span>
+            </label>
+            <button type="submit" class="btn btn-primary btn-cta btn-block">
+                <span class="icon icon-sm" aria-hidden="true">add</span> Add to catalog
+            </button>
+        </div>
+    </form>
 </div>

@@ -1,0 +1,122 @@
+@page "/admin/import"
+@model Hms.Web.Pages.Admin.ImportModel
+@{
+    ViewData["Title"] = "Price List & Catalog Import";
+    ViewData["Crumb"] = "Administration";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.Result is { Committed: true } r)
+{
+    <div class="alert good">
+        <span class="icon icon-sm" aria-hidden="true">task_alt</span>
+        <span>
+            <b>@r.Inserted added · @r.Updated updated</b> from @Model.SourceName.
+            Prices are effective-dated, so every past invoice keeps the price it was billed at.
+            @if (r.Errors.Count > 0)
+            {
+                <text> @r.Errors.Count row(s) were skipped — they are listed below.</text>
+            }
+        </span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <form method="post" enctype="multipart/form-data" class="card">
+        <div class="card-head">
+            Import a test catalog / price list
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/admin/import?handler=Template">
+                <span class="icon icon-sm" aria-hidden="true">download</span> Download template
+            </a>
+        </div>
+        <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:14px">
+            <div class="alert info" style="margin:0">
+                <span class="icon icon-sm" aria-hidden="true">info</span>
+                <span>
+                    Good rows are saved even when others fail — fix the rejected ones and import
+                    again. Re-importing the same file changes nothing, so it is safe to retry.
+                </span>
+            </div>
+
+            <label class="field">
+                <span class="field-label">Choose a CSV file</span>
+                <input class="input" type="file" name="Upload" accept=".csv,text/csv"
+                       style="padding:7px 10px;height:auto" />
+                <span class="help-text">
+                    Columns: <code>@Hms.Web.Pages.Admin.ImportModel.TemplateHeader</code>
+                </span>
+            </label>
+
+            <label class="field">
+                <span class="field-label">…or paste the rows</span>
+                <textarea class="textarea" rows="8" asp-for="Csv"
+                          placeholder="@Hms.Web.Pages.Admin.ImportModel.TemplateHeader&#10;@Hms.Web.Pages.Admin.ImportModel.TemplateSample"></textarea>
+            </label>
+
+            <button type="submit" class="btn btn-primary btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">inventory_2</span> Import catalog
+            </button>
+        </div>
+    </form>
+
+    <div class="card card-clip">
+        <div class="card-head">Recent imports</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Batch</th><th>File</th><th>By</th><th>When</th></tr></thead>
+                <tbody>
+                @foreach (var b in Model.Recent)
+                {
+                    <tr>
+                        <td class="id-cell">#@b.Id</td>
+                        <td>@b.SourceFile<div class="text-muted" style="font-size:0.71875rem">@b.Kind</div></td>
+                        <td>@b.By</td>
+                        <td class="tabular">@Ui.DateTimeShort(b.At)</td>
+                    </tr>
+                }
+                @if (Model.Recent.Count == 0)
+                {
+                    <tr><td colspan="4"><div class="empty-state">
+                        <span class="icon" aria-hidden="true">inventory_2</span>
+                        Nothing imported yet.
+                    </div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (Model.Result is { } res && res.Errors.Count > 0)
+{
+    <div class="card card-clip" style="margin-top:14px">
+        <div class="card-head">
+            Rows that need attention
+            <span class="spacer"></span>
+            <span class="card-hint">@res.Errors.Count row(s) — everything else was saved</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th style="width:90px">Row</th><th style="width:160px">Column</th><th>What to fix</th></tr></thead>
+                <tbody>
+                @foreach (var e in res.Errors)
+                {
+                    <tr>
+                        <td class="id-cell">@e.Row</td>
+                        <td><span class="pill warn">@e.Field</span></td>
+                        <td>@e.Message</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
