@@ -1,7 +1,8 @@
 # 0001 — Architect handoff readiness
 
-- **Status:** In Progress
+- **Status:** Done
 - **Date:** 2026-07-26
+- **Closed:** 2026-07-26 — see `notes.md` for verification and audit outcome
 - **PRD ref:** §16.3 (handoff checklist), §9A (MVP scope)
 - **MVP:** enabling work — not a product module, so §9A.2 scope freeze does not apply
 

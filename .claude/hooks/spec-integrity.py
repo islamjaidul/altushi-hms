@@ -9,7 +9,8 @@ Checks:
   1. every spec dir has a spec.md with a recognised Status
   2. every spec at Approved/In Progress/Done has an archived plan.md
   3. every spec dir appears in the docs/specs/README.md index
-  4. every index row corresponds to a real spec dir
+  4. the index row's Status matches the spec's own header Status
+  5. every index row corresponds to a real spec dir
 
 Run directly to audit on demand:  python3 .claude/hooks/spec-integrity.py
 """
@@ -52,13 +53,31 @@ for d in spec_dirs:
     if not status_word:
         findings.append(f"HIGH  {d.name}/spec.md has missing/unrecognised Status ({status!r})")
     elif status_word in NEEDS_PLAN and not (d / "plan.md").exists():
-        findings.append(
-            f"HIGH  {d.name}/ is '{status_word}' but has no archived plan.md "
-            f"(CLAUDE.md Rule 0: plans must be archived in docs/)"
-        )
+        # Retroactive records legitimately have no plan — nothing was planned in advance to
+        # archive. The exemption must be declared in the header so it is explicit, not assumed.
+        if re.search(r"^-\s*\*\*Retroactive:\*\*\s*yes", text, re.M | re.I):
+            pass
+        else:
+            findings.append(
+                f"HIGH  {d.name}/ is '{status_word}' but has no archived plan.md "
+                f"(CLAUDE.md Rule 0: plans must be archived in docs/; "
+                f"add '- **Retroactive:** yes' only if no plan ever existed)"
+            )
 
     if d.name not in index_text:
         findings.append(f"MED   {d.name}/ is missing from the docs/specs/README.md index")
+    elif status_word:
+        # status parity: the index row must agree with the spec's own header.
+        # (a name-only check silently passes a Done/In-Progress contradiction)
+        row = next((ln for ln in index_text.splitlines() if d.name in ln and ln.lstrip().startswith("|")), None)
+        if row:
+            cells = [c.strip() for c in row.split("|")]
+            row_status = next((c for c in cells if any(c.startswith(v) for v in VALID)), None)
+            if row_status and not row_status.startswith(status_word):
+                findings.append(
+                    f"MED   {d.name}/ status mismatch: index says '{row_status}', "
+                    f"spec.md header says '{status_word}'"
+                )
 
     sid = d.name.split("-", 1)[0]
     if sid in seen_ids:

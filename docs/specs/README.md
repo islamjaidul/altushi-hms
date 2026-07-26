@@ -14,7 +14,15 @@ docs/specs/
     notes.md             AFTERWARDS  — deviations, surprises, follow-ups (only if any)
 ```
 
-IDs are sequential and never reused: `0001-`, `0002-`, … Slugs are kebab-case.
+IDs are sequential and never reused. Slugs are kebab-case. Numbering starts at `0000-`, reserved for the retroactive baseline that records work predating this archive; new work starts at `0001-`.
+
+**Retroactive specs.** A record written *after* the fact (because the work predates the archive) must say so in its header and must not invent a plan it never had:
+
+```markdown
+- **Retroactive:** yes — predates the spec archive, so no plan.md exists
+```
+
+That line exempts the spec from the "Approved+ must have `plan.md`" rule. Use it only when no plan genuinely ever existed — never to skip archiving a plan that does.
 
 ## Lifecycle
 
@@ -38,5 +46,6 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 |---|---|---|---|---|
 | [0000-prd-and-competitor-analysis](0000-prd-and-competitor-analysis/spec.md) | PRD authoring & competitor analysis (retroactive baseline) | Done | whole doc | 2026-07-26 |
 | [0001-handoff-readiness](0001-handoff-readiness/spec.md) | Architect handoff readiness | Done | §16.3, §9A | 2026-07-26 |
+| [0002-agent-tooling](0002-agent-tooling/spec.md) | Agent tooling: CLAUDE.md, skills, spec-auditor (retroactive) | Done | n/a | 2026-07-26 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->
