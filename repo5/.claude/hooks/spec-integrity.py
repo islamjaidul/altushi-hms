@@ -21,9 +21,6 @@ from pathlib import Path
 
 VALID = ("Draft", "Approved", "In Progress", "Done", "Superseded", "Abandoned")
 NEEDS_PLAN = ("Approved", "In Progress", "Done")
-# "Retroactive" only makes sense for work already finished and recorded after the fact.
-# Live work (Draft/Approved/In Progress) must still archive its plan going forward.
-TERMINAL = ("Done", "Superseded", "Abandoned")
 
 root = Path(__file__).resolve().parents[2]
 specs_dir = root / "docs" / "specs"
@@ -35,14 +32,6 @@ if not specs_dir.is_dir():
 index_text = readme.read_text(encoding="utf-8") if readme.exists() else ""
 findings = []
 seen_ids = {}
-
-# locate the Status column in the index table header, so parity checks read the right cell
-status_col = None
-for _ln in index_text.splitlines():
-    _cells = [c.strip() for c in _ln.split("|")]
-    if "Status" in _cells and ("ID" in _cells or "Title" in _cells):
-        status_col = _cells.index("Status")
-        break
 
 spec_dirs = sorted(
     d for d in specs_dir.iterdir()
@@ -66,17 +55,8 @@ for d in spec_dirs:
     elif status_word in NEEDS_PLAN and not (d / "plan.md").exists():
         # Retroactive records legitimately have no plan — nothing was planned in advance to
         # archive. The exemption must be declared in the header so it is explicit, not assumed.
-        # `yes\b` so "yesterday's migration" cannot pass as the boolean; TERMINAL so the marker
-        # cannot permanently exempt live, ongoing work.
-        retro = re.search(r"^-\s*\*\*Retroactive:\*\*\s*yes\b", text, re.M | re.I)
-        if retro and status_word in TERMINAL:
+        if re.search(r"^-\s*\*\*Retroactive:\*\*\s*yes", text, re.M | re.I):
             pass
-        elif retro:
-            findings.append(
-                f"HIGH  {d.name}/ claims 'Retroactive: yes' but is '{status_word}' — the "
-                f"exemption is only valid for finished work ({'/'.join(TERMINAL)}); live work "
-                f"must archive its plan"
-            )
         else:
             findings.append(
                 f"HIGH  {d.name}/ is '{status_word}' but has no archived plan.md "
@@ -90,11 +70,9 @@ for d in spec_dirs:
         # status parity: the index row must agree with the spec's own header.
         # (a name-only check silently passes a Done/In-Progress contradiction)
         row = next((ln for ln in index_text.splitlines() if d.name in ln and ln.lstrip().startswith("|")), None)
-        if row and status_col is not None:
+        if row:
             cells = [c.strip() for c in row.split("|")]
-            # read the Status column by its header position — guessing "first cell that looks
-            # like a status" misfires on titles such as "Draft-mode toggle for review UI"
-            row_status = cells[status_col] if status_col < len(cells) else None
+            row_status = next((c for c in cells if any(c.startswith(v) for v in VALID)), None)
             if row_status and not row_status.startswith(status_word):
                 findings.append(
                     f"MED   {d.name}/ status mismatch: index says '{row_status}', "

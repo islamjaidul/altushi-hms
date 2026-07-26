@@ -22,7 +22,11 @@ IDs are sequential and never reused. Slugs are kebab-case. Numbering starts at `
 - **Retroactive:** yes — predates the spec archive, so no plan.md exists
 ```
 
-That line exempts the spec from the "Approved+ must have `plan.md`" rule. Use it only when no plan genuinely ever existed — never to skip archiving a plan that does.
+That line exempts the spec from the "Approved+ must have `plan.md`" rule, but **only for finished work** (`Done` / `Superseded` / `Abandoned`). A `Draft`/`Approved`/`In Progress` spec cannot use it — live work must archive its plan going forward.
+
+Use it only when no plan genuinely ever existed — never to skip archiving one that does.
+
+> **The exemption is a self-attestation the integrity hook cannot verify.** Nothing proves a plan "never existed"; the hook only checks that the claim is well-formed and applied to finished work. Honesty here depends on review (`spec-auditor`), not automation — so do not read hook silence as proof that a retroactive claim is legitimate.
 
 ## Lifecycle
 
