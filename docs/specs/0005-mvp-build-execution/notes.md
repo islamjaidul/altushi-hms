@@ -19,3 +19,12 @@
   `hms_migrator` (object owner) for now — moving runtime traffic to least-privilege `hms_app`
   needs a cross-schema grant migration (kernel/reg/diag/lis/adm + default privileges). The C5
   no-DELETE guarantee itself is grant-tested in the integration suite either way.
+- 2026-07-26 — **Deployed to production VM** (103.132.96.250, the literal 2 vCPU/3 GB box):
+  repo public at github.com/islamjaidul/altushi-hms; clone at /opt/altushi-hms; stack = db/app/
+  backup containers via `compose.yml + compose.vm.yml` (bundled caddy not started — the box's
+  existing host Caddy terminates TLS for hms.specshipper.com via /etc/caddy/sites/, Let's
+  Encrypt cert auto-issued, SSE flush configured). Secrets live only in /opt/altushi-hms/deploy/
+  .env (0600, generated). Persistence verified: compose down/up destroyed containers, the 5
+  named volumes kept all data. `HMS_SEED=true` remains set (idempotent) — flip to false once
+  real data entry begins. Update procedure: `git pull && docker compose -f compose.yml -f
+  compose.vm.yml up -d --build db app backup` (RUNBOOK §4 applies).
