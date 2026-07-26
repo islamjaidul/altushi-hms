@@ -1,0 +1,102 @@
+# hms — single-VM stack (06-deployment.md §1). Same file runs the demo laptop via --profile demo.
+# Memory limits are the 06 §2 budget table; estimates until S6 measures them.
+name: hms
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    mem_limit: 64m
+    restart: unless-stopped
+    ports:
+      - "${HMS_HTTP_PORT:-8080}:80"
+      - "${HMS_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/app.Dockerfile
+    image: hms-app:dev
+    mem_limit: 800m
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ASPNETCORE_ENVIRONMENT: "${HMS_ENV:-Production}"
+      # Workstation GC + heap hard limit aligned to the container limit (ADR-0001)
+      DOTNET_gcServer: "0"
+      DOTNET_GCHeapHardLimit: "0x27000000"   # 624 MiB, below the 800 MiB container limit
+      # Runs as hms_migrator (owner of migrated objects) for now; switching runtime traffic to
+      # least-privilege hms_app needs the cross-schema grant migration — tracked in spec 0005 notes.
+      ConnectionStrings__Hms: "Host=db;Database=hms;Username=hms_migrator;Password=${HMS_DB_MIGRATOR_PASSWORD:-dev-only-migrator}"
+      HMS_SMS_MODE: "${HMS_SMS_MODE:-simulation}"
+      Seed__DevUsers: "${HMS_SEED:-false}"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    volumes:
+      - docs_archive:/var/hms/docs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17.5-alpine
+    mem_limit: 550m
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${HMS_DB_SUPER_PASSWORD:-dev-only-super}"
+      HMS_DB_APP_PASSWORD: "${HMS_DB_APP_PASSWORD:-dev-only-app}"
+      HMS_DB_MIGRATOR_PASSWORD: "${HMS_DB_MIGRATOR_PASSWORD:-dev-only-migrator}"
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - max_connections=40
+      - -c
+      - synchronous_commit=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hms"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - wal_archive:/var/hms/wal_archive
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+
+  backup:
+    image: postgres:17.5-alpine
+    mem_limit: 128m
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/hms/backup-loop.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: "${HMS_DB_SUPER_PASSWORD:-dev-only-super}"
+      PGDATABASE: hms
+    volumes:
+      - backups:/var/hms/backups
+      - ./backup-loop.sh:/opt/hms/backup-loop.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  wal_archive:
+  backups:
+  docs_archive:
+  caddy_data:

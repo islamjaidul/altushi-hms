@@ -1,0 +1,17 @@
+# LAN TLS via internal CA in production; plain HTTP for the demo/dev profile.
+# SSE requires flush_interval -1 (verified in S1 T2 — spec 0005 conflict flag 2).
+{
+	auto_https off
+}
+
+:80 {
+	encode gzip
+
+	# SSE endpoints must not be buffered
+	@sse path /sse/*
+	reverse_proxy @sse app:8080 {
+		flush_interval -1
+	}
+
+	reverse_proxy app:8080
+}

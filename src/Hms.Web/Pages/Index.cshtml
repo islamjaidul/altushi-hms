@@ -1,0 +1,17 @@
+@page "/"
+@model Hms.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+<h1 style="margin-top:0">Welcome, @Model.DisplayName</h1>
+<p style="color:var(--muted-1)">Role home — your modules are in the sidebar. Screens arrive sprint by sprint.</p>
+<div class="tile-row">
+    @foreach (var g in Model.Groups)
+    {
+        <div class="tile">
+            <div class="tile-label">@g.Module</div>
+            <div class="tile-value">@g.Items.Count</div>
+            <div class="tile-label">screens available</div>
+        </div>
+    }
+</div>

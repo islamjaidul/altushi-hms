@@ -1,0 +1,225 @@
+using Hms.Billing.Data;
+using Hms.Kernel.Audit;
+using Hms.Kernel.Data;
+using Hms.Kernel.Numbering;
+using Hms.Kernel.Time;
+using Microsoft.EntityFrameworkCore;
+
+namespace Hms.Billing;
+
+public sealed record NewChargeLine(
+    string CatalogKind, long CatalogId, string Description, int Qty, long UnitPrice,
+    long? RateVersionId = null, long? DoctorId = null, long? ReferrerId = null, long? TestOrderId = null);
+
+public sealed class BillingException(string message) : Exception(message);
+
+/// <summary>
+/// The money core (03 §4/§6, ADR-0015). Every public operation expects the caller's ambient
+/// transaction spanning BillDbContext + KernelDbContext on ONE connection (G19) — invoice,
+/// number, audit and due commit together or not at all.
+/// </summary>
+public sealed class BillingService(
+    NumberSeriesService numbers, AuditWriter audit, FiscalCalendar fiscal,
+    BusinessDayCalendar businessDay, TimeProvider clock)
+{
+    // ---- sessions ----------------------------------------------------------
+
+    public async Task<CounterSession> OpenSessionAsync(
+        BillDbContext bill, long branchId, long counterId, long operatorId, long openingFloat,
+        CancellationToken ct = default)
+    {
+        var now = clock.GetUtcNow();
+        var session = new CounterSession
+        {
+            BranchId = branchId,
+            CounterId = counterId,
+            OperatorId = operatorId,
+            BusinessDay = businessDay.BusinessDayOf(now),
+            OpenedAt = now,
+            OpeningFloat = openingFloat,
+            State = SessionState.Active,
+        };
+        bill.Sessions.Add(session);
+        try
+        {
+            await bill.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException e) when (e.InnerException?.Message.Contains("one_open_session") == true)
+        {
+            // ADR-0015 #1: uniqueness by constraint, surfaced comprehensibly (edge 17 path follows)
+            throw new BillingException(
+                "This counter already has an open session. Close it (or carry-close yesterday's) first.");
+        }
+        return session;
+    }
+
+    // ---- charges & invoicing ----------------------------------------------
+
+    public async Task<ChargeLine> PostChargeAsync(
+        BillDbContext bill, long branchId, long encounterId, string sourceModule, NewChargeLine line,
+        long actorId, CancellationToken ct = default)
+    {
+        if (line.Qty <= 0 || line.UnitPrice < 0)
+            throw new BillingException("Quantity must be positive and price non-negative.");
+        var charge = new ChargeLine
+        {
+            BranchId = branchId,
+            EncounterId = encounterId,
+            SourceModule = sourceModule,
+            CatalogKind = line.CatalogKind,
+            CatalogId = line.CatalogId,
+            DescriptionSnapshot = line.Description,
+            Qty = line.Qty,
+            UnitPrice = line.UnitPrice,
+            RateVersionId = line.RateVersionId,
+            Amount = line.Qty * line.UnitPrice,          // exact: integers throughout (03 §6.1)
+            DoctorId = line.DoctorId,
+            ReferrerId = line.ReferrerId,
+            TestOrderId = line.TestOrderId,
+            InvoiceId = null,                            // unbilled until invoiced
+            CreatedAt = clock.GetUtcNow(),
+            CreatedBy = actorId,
+        };
+        bill.ChargeLines.Add(charge);
+        await bill.SaveChangesAsync(ct);
+        return charge;
+    }
+
+    /// <summary>03 §6 step 2: percentage discounts round half-up to whole taka, ONCE, at the total.</summary>
+    public static long RoundHalfUp(decimal value) => (long)Math.Floor(value + 0.5m);
+
+    /// <summary>
+    /// Freezes the encounter's unbilled charge lines into an invoice: number issued in-transaction,
+    /// invariant enforced by CHECK, due row created, audit appended. Caller commits.
+    /// </summary>
+    public async Task<Invoice> CreateInvoiceAsync(
+        BillDbContext bill, KernelDbContext kernel,
+        long branchId, long encounterId, long sessionId, long patientId,
+        decimal discountPercent, long discountFlat, long? discountApprovalId,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        var charges = await bill.ChargeLines
+            .Where(c => c.EncounterId == encounterId && c.InvoiceId == null)
+            .ToListAsync(ct);
+        if (charges.Count == 0) throw new BillingException("No unbilled charges on this encounter.");
+
+        var gross = charges.Sum(c => c.Amount);
+        var discount = discountFlat + (discountPercent > 0
+            ? RoundHalfUp(gross * discountPercent / 100m) : 0);
+        if (discount > gross) throw new BillingException("Discount cannot exceed the gross amount.");
+        var net = gross - discount;                      // tax dormant (ADR-0018); rounding_adj 0
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var fy = fiscal.FiscalYearOf(today);
+        var (_, invoiceNo) = await numbers.IssueAsync(
+            kernel, branchId, "invoice", fy, "INV-{fy}-{n:D6}", ct);
+
+        var invoice = new Invoice
+        {
+            BranchId = branchId,
+            InvoiceNo = invoiceNo,
+            FiscalYear = fy,
+            PatientId = patientId,
+            EncounterId = encounterId,
+            CounterSessionId = sessionId,
+            Gross = gross,
+            Discount = discount,
+            DiscountApprovalId = discountApprovalId,
+            Net = net,
+            State = InvoiceState.Billed,
+            CreatedAt = clock.GetUtcNow(),
+            CreatedBy = actorId,
+        };
+        bill.Invoices.Add(invoice);
+        await bill.SaveChangesAsync(ct);
+
+        foreach (var c in charges)
+        {
+            c.InvoiceId = invoice.Id;
+            bill.InvoiceLines.Add(new InvoiceLine
+            {
+                InvoiceId = invoice.Id,
+                ChargeLineId = c.Id,
+                DescriptionSnapshot = c.DescriptionSnapshot,
+                Qty = c.Qty,
+                UnitPrice = c.UnitPrice,
+                Amount = c.Amount,
+                RateVersionId = c.RateVersionId,
+                DoctorId = c.DoctorId,
+                ReferrerId = c.ReferrerId,
+            });
+        }
+        bill.Dues.Add(new Due { InvoiceId = invoice.Id, Balance = net });
+        await bill.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "invoice.create", "bill.invoice", invoice.Id,
+            after: new { invoice.InvoiceNo, gross, discount, net });
+        await kernel.SaveChangesAsync(ct);
+        return invoice;
+    }
+
+    // ---- payment & dues ----------------------------------------------------
+
+    /// <summary>
+    /// ADR-0015 #2: the due row is locked (SELECT … FOR UPDATE) for the transaction, so parallel
+    /// collections on one invoice serialize — over-collection is impossible, not just unlikely.
+    /// </summary>
+    public async Task<Receipt> CollectAsync(
+        BillDbContext bill, KernelDbContext kernel,
+        long branchId, long invoiceId, long sessionId, long amount, string tender, string? tenderRef,
+        long actorId, string actorName, long? refundOfReceipt = null, long? approvalId = null,
+        CancellationToken ct = default)
+    {
+        if (amount == 0) throw new BillingException("Amount cannot be zero.");
+
+        var balances = await bill.Database.SqlQuery<long>($"""
+            SELECT balance AS "Value" FROM bill.due WHERE invoice_id = {invoiceId} FOR UPDATE
+            """).ToListAsync(ct);
+        if (balances.Count == 0) throw new BillingException("No due row for this invoice.");
+        var balance = balances[0];
+
+        if (amount > 0 && amount > balance)
+            throw new BillingException($"Amount exceeds due balance (৳ {balance}).");
+
+        // Lock the session row: day-close and late receipts serialize here (ADR-0015; G7 race).
+        var sessionStates = await bill.Database.SqlQuery<string>($"""
+            SELECT state AS "Value" FROM bill.counter_session WHERE id = {sessionId} FOR UPDATE
+            """).ToListAsync(ct);
+        if (sessionStates.Count == 0 ||
+            sessionStates[0] is not (SessionState.Active or SessionState.Reopened))
+            throw new BillingException("Receipts need an open counter session (02 §2.4).");
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var (_, receiptNo) = await numbers.IssueAsync(
+            kernel, branchId, "receipt", fiscal.FiscalYearOf(today), "RCP-{fy}-{n:D6}", ct);
+
+        var receipt = new Receipt
+        {
+            BranchId = branchId,
+            ReceiptNo = receiptNo,
+            InvoiceId = invoiceId,
+            CounterSessionId = sessionId,
+            Amount = amount,
+            Tender = tender,
+            TenderRef = tenderRef,
+            OperatorId = actorId,
+            At = clock.GetUtcNow(),
+            RefundOfReceipt = refundOfReceipt,
+            ApprovalId = approvalId,
+        };
+        bill.Receipts.Add(receipt);
+
+        var newBalance = balance - amount;
+        await bill.Database.ExecuteSqlAsync(
+            $"UPDATE bill.due SET balance = {newBalance} WHERE invoice_id = {invoiceId}", ct);
+
+        var invoice = await bill.Invoices.SingleAsync(i => i.Id == invoiceId, ct);
+        invoice.State = newBalance == 0 ? InvoiceState.Paid : InvoiceState.PartiallyPaid;
+        await bill.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "receipt.collect", "bill.receipt", receipt.Id,
+            after: new { receiptNo, invoiceId, amount, tender, newBalance });
+        await kernel.SaveChangesAsync(ct);
+        return receipt;
+    }
+}

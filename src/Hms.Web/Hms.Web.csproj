@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hms.Kernel\Hms.Kernel.csproj" />
+    <ProjectReference Include="..\Modules\Registration\Hms.Registration\Hms.Registration.csproj" />
+    <ProjectReference Include="..\Modules\Appointments\Hms.Appointments\Hms.Appointments.csproj" />
+    <ProjectReference Include="..\Modules\Billing\Hms.Billing\Hms.Billing.csproj" />
+    <ProjectReference Include="..\Modules\Diagnostics\Hms.Diagnostics\Hms.Diagnostics.csproj" />
+    <ProjectReference Include="..\Modules\Lis\Hms.Lis\Hms.Lis.csproj" />
+    <ProjectReference Include="..\Modules\Dashboard\Hms.Dashboard\Hms.Dashboard.csproj" />
+    <ProjectReference Include="..\Modules\Admin\Hms.Admin\Hms.Admin.csproj" />
+    <ProjectReference Include="..\Modules\Notifications\Hms.Notifications\Hms.Notifications.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- vendor entitlement public key must ship in the published image (ADR-0016) -->
+    <Content Include="vendor-public-key.pem" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

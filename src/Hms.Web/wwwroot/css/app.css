@@ -1,0 +1,130 @@
+/* Shell layout per 05 §2 (Altushi grammar). Built for 1366×768 first. */
+* { box-sizing: border-box; }
+html { font-size: var(--text-base); }
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.shell { display: flex; min-height: 100vh; }
+
+/* sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  flex: 0 0 auto;
+  background: var(--paper);
+  border-right: 1px solid var(--border-2);
+  padding: 0.75rem 0;
+}
+.brand {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem 1rem;
+  border-bottom: 1px solid var(--border-2);
+}
+.brand-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius);
+  background: var(--primary); color: var(--paper); font-weight: 700;
+}
+.brand-name { font-weight: 700; }
+.nav-group { padding: 0.75rem 0 0; }
+.nav-group-title {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.25rem 1rem;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  color: var(--muted-2); letter-spacing: 0.04em;
+}
+.dept-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-3); }
+.dept-dot[data-dept="registration"] { background: var(--dept-registration); }
+.dept-dot[data-dept="appointments"] { background: var(--dept-appointments); }
+.dept-dot[data-dept="billing"] { background: var(--dept-billing); }
+.dept-dot[data-dept="diagnostics"] { background: var(--dept-diagnostics); }
+.dept-dot[data-dept="lis"] { background: var(--dept-lis); }
+.dept-dot[data-dept="dashboard"] { background: var(--dept-dashboard); }
+.dept-dot[data-dept="admin"] { background: var(--dept-admin); }
+.dept-dot[data-dept="notifications"] { background: var(--dept-notifications); }
+.nav-item {
+  display: block;
+  min-height: var(--target-min);
+  line-height: var(--target-min);
+  padding: 0 1rem 0 2.25rem;
+  color: var(--ink-2); text-decoration: none;
+}
+.nav-item:hover { background: var(--surface-1); }
+.nav-item.active { background: var(--primary-active); color: var(--paper); }
+
+/* main column */
+.main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 56px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--border-2);
+  padding: 0 1.25rem;
+}
+.breadcrumb { font-weight: 500; color: var(--ink-2); }
+.topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+.user-chip { color: var(--ink-2); }
+.user-role { color: var(--muted-2); font-size: 0.875rem; }
+.inline-form { display: inline; }
+
+.content { flex: 1 1 auto; padding: 1.25rem; }
+
+/* status footer (05 §2) */
+.status-footer {
+  display: flex; gap: 1.5rem; align-items: center;
+  min-height: 36px;
+  background: var(--ink); color: var(--surface-1);
+  font-size: 0.8125rem;
+  padding: 0 1.25rem;
+}
+.status-ok { color: var(--success-on-dark); }
+.fkey-map { margin-left: auto; color: var(--muted-3); }
+
+/* buttons & forms — 44px targets (§7) */
+.btn {
+  min-height: var(--target-min);
+  padding: 0 1.25rem;
+  border: 1px solid var(--border-1); border-radius: var(--radius);
+  background: var(--paper); color: var(--ink);
+  font: inherit; cursor: pointer;
+}
+.btn-primary { background: var(--primary); border-color: var(--primary-dark); color: var(--paper); font-weight: 500; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-quiet { border-color: transparent; background: transparent; color: var(--muted-1); }
+.btn-quiet:hover { color: var(--ink); }
+
+.field { display: block; margin-bottom: 1rem; }
+.field-label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+.field-input {
+  width: 100%; min-height: var(--target-min);
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-1); border-radius: var(--radius);
+  font: inherit; color: var(--ink); background: var(--paper);
+}
+.field-input:focus { outline: 2px solid var(--primary); outline-offset: 0; border-color: var(--primary); }
+
+.error-note { color: var(--danger); font-weight: 500; }   /* colour + words (§7 U12) */
+
+/* login */
+.login-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+}
+.login-card {
+  width: 380px; background: var(--paper);
+  border: 1px solid var(--border-2); border-radius: var(--radius);
+  padding: 2rem;
+}
+.login-card h1 { margin: 0 0 1.5rem; font-size: 1.25rem; }
+
+/* KPI tiles (template 1 building block) */
+.tile-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.tile {
+  flex: 1 1 200px; background: var(--paper);
+  border: 1px solid var(--border-2); border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+.tile-label { color: var(--muted-1); font-size: 0.8125rem; }
+.tile-value { font-size: 1.5rem; font-weight: 700; }

@@ -1,0 +1,47 @@
+# CI gates per staff_engineer_prompt G8/G15/G16/G18/G21. Red money test blocks merge — no [Skip].
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest   # docker available → Testcontainers works (spec 0005 conflict flag 3)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Restore (locked mode — G15 pinning)
+        run: dotnet restore hms-erp.slnx --locked-mode
+      - name: Build (warnings are errors)
+        run: dotnet build hms-erp.slnx --no-restore -c Release
+      - name: Guard scripts
+        run: |
+          sh eng/check-no-external-hosts.sh src
+          sh eng/check-ui-tokens.sh src
+          sh eng/check-fkeys.sh src
+      - name: Unit + architecture tests
+        run: |
+          dotnet test tests/Hms.Kernel.Tests --no-build -c Release
+          dotnet test tests/Hms.Architecture.Tests --no-build -c Release
+      - name: Integration tests (real PostgreSQL via Testcontainers — G7)
+        run: dotnet test tests/Hms.Integration.Tests --no-build -c Release
+      - name: Print golden tests
+        run: dotnet test tests/Hms.PrintGolden.Tests --no-build -c Release
+      - name: Vulnerable package scan (G15)
+        run: |
+          dotnet list hms-erp.slnx package --vulnerable --include-transitive | tee vuln.txt
+          ! grep -q 'has the following vulnerable packages' vuln.txt
+      - name: Additive-migration gate (03 §12)
+        run: |
+          dotnet tool restore
+          dotnet ef migrations script --idempotent --no-build -c Release \
+            --project src/Hms.Kernel --startup-project src/Hms.Web --context KernelDbContext -o kernel.sql
+          dotnet ef migrations script --idempotent --no-build -c Release \
+            --project src/Hms.Kernel --startup-project src/Hms.Web --context AuthDbContext -o auth.sql
+          sh eng/check-additive-migrations.sh kernel.sql
+          sh eng/check-additive-migrations.sh auth.sql
+      - name: Image build
+        run: docker build -f deploy/app.Dockerfile -t hms-app:ci .

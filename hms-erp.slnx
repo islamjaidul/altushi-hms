@@ -1,0 +1,45 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hms.Kernel/Hms.Kernel.csproj" />
+    <Project Path="src/Hms.Web/Hms.Web.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Admin/">
+    <Project Path="src/Modules/Admin/Hms.Admin.Contracts/Hms.Admin.Contracts.csproj" />
+    <Project Path="src/Modules/Admin/Hms.Admin/Hms.Admin.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Appointments/">
+    <Project Path="src/Modules/Appointments/Hms.Appointments.Contracts/Hms.Appointments.Contracts.csproj" />
+    <Project Path="src/Modules/Appointments/Hms.Appointments/Hms.Appointments.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Billing/">
+    <Project Path="src/Modules/Billing/Hms.Billing.Contracts/Hms.Billing.Contracts.csproj" />
+    <Project Path="src/Modules/Billing/Hms.Billing/Hms.Billing.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Dashboard/">
+    <Project Path="src/Modules/Dashboard/Hms.Dashboard.Contracts/Hms.Dashboard.Contracts.csproj" />
+    <Project Path="src/Modules/Dashboard/Hms.Dashboard/Hms.Dashboard.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Diagnostics/">
+    <Project Path="src/Modules/Diagnostics/Hms.Diagnostics.Contracts/Hms.Diagnostics.Contracts.csproj" />
+    <Project Path="src/Modules/Diagnostics/Hms.Diagnostics/Hms.Diagnostics.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Lis/">
+    <Project Path="src/Modules/Lis/Hms.Lis.Contracts/Hms.Lis.Contracts.csproj" />
+    <Project Path="src/Modules/Lis/Hms.Lis/Hms.Lis.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/">
+    <Project Path="src/Modules/Notifications/Hms.Notifications.Contracts/Hms.Notifications.Contracts.csproj" />
+    <Project Path="src/Modules/Notifications/Hms.Notifications/Hms.Notifications.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Registration/">
+    <Project Path="src/Modules/Registration/Hms.Registration.Contracts/Hms.Registration.Contracts.csproj" />
+    <Project Path="src/Modules/Registration/Hms.Registration/Hms.Registration.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hms.Architecture.Tests/Hms.Architecture.Tests.csproj" />
+    <Project Path="tests/Hms.Integration.Tests/Hms.Integration.Tests.csproj" />
+    <Project Path="tests/Hms.Kernel.Tests/Hms.Kernel.Tests.csproj" />
+    <Project Path="tests/Hms.PrintGolden.Tests/Hms.PrintGolden.Tests.csproj" />
+  </Folder>
+</Solution>

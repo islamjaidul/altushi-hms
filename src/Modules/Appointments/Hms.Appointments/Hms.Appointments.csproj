@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hms.Appointments.Contracts\Hms.Appointments.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Hms.Kernel\Hms.Kernel.csproj" />
+    <ProjectReference Include="..\..\Billing\Hms.Billing.Contracts\Hms.Billing.Contracts.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

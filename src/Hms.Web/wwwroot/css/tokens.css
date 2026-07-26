@@ -1,0 +1,71 @@
+/* 05 §1 — the binding design tokens (Altushi reference). Screens must not hardcode
+   colours/fonts (lint: eng/check-ui-tokens.sh). */
+@font-face {
+  font-family: "Public Sans";
+  src: url("/fonts/PublicSans-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Public Sans";
+  src: url("/fonts/PublicSans-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Public Sans";
+  src: url("/fonts/PublicSans-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans Bengali";
+  src: url("/fonts/NotoSansBengali-Regular.ttf") format("truetype");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  /* type */
+  --font-ui: "Public Sans", system-ui, sans-serif;
+  --font-bn: "Noto Sans Bengali", var(--font-ui);
+  --text-base: 16px;                 /* §7 U3 floor */
+
+  /* neutrals */
+  --ink: #17211f;
+  --ink-2: #44524e;
+  --muted-1: #5b6a66;
+  --muted-2: #7c8b87;
+  --muted-3: #9daca7;
+  --border-1: #c4cdc9;
+  --border-2: #e3e8e5;
+  --surface-1: #e9eeec;
+  --surface-2: #edf1ef;
+  --paper: #ffffff;
+
+  /* brand */
+  --primary: #1b5e9c;
+  --primary-active: #22456b;
+  --primary-dark: #134a7d;
+
+  /* semantic — always paired with a word, never colour alone (§7 U12) */
+  --danger: #b3403f;
+  --success: #2f7d4f;
+  --success-on-dark: #8fd3ab;
+  --warning: #a9711c;
+
+  /* module accent dots (wayfinding only) */
+  --dept-registration: #1b5e9c;
+  --dept-appointments: #7c5cb0;
+  --dept-billing: #2f7d4f;
+  --dept-diagnostics: #a9711c;
+  --dept-lis: #b3403f;
+  --dept-dashboard: #134a7d;
+  --dept-admin: #5b6a66;
+  --dept-notifications: #44524e;
+
+  /* metrics */
+  --target-min: 44px;                /* §7 minimum hit target */
+  --radius: 6px;
+  --sidebar-w: 232px;
+}

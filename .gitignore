@@ -31,3 +31,14 @@ dist/
 build/
 __pycache__/
 *.pyc
+
+# .NET (ADR-0001)
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+artifacts/
+
+# dev-only signing key (never commit)
+eng/dev-keys/

@@ -1,0 +1,7 @@
+# VM overlay: the host-level Caddy (ports 80/443, shared with other apps on this box) terminates
+# TLS for hms.specshipper.com and proxies to the app on localhost. Start only db/app/backup:
+#   docker compose -f compose.yml -f compose.vm.yml up -d db app backup
+services:
+  app:
+    ports:
+      - "127.0.0.1:8090:8080"
