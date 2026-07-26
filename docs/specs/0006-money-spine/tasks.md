@@ -1,0 +1,11 @@
+# 0006 — Tasks
+- [x] Registration: entities, migration (extensions, dmetaphone generated column, trgm index), service
+- [x] UHID issue via number series (never fiscal-resets), audit in-transaction
+- [x] Dup-warning: same phone OR phonetic+age band — proven against spelling variants
+- [x] Edges 24/25/26: no-phone, unknown-emergency, age⇄DOB (DOB wins)
+- [x] Billing: entities + migration (session partial-unique, receipt-immutability trigger, C5 grants)
+- [x] Invoice creation: freeze lines, rounding rule 03 §6 (half-up once), CHECK-enforced identity
+- [x] Receipts/tenders, partial payment, row-locked due collection
+- [x] G6/G7 tests green on real Postgres (22 integration tests incl. parallel-collection race, no-DELETE grant)
+- [ ] Registration + OPD invoice screens (templates 4/2) — deferred, see notes.md
+- [ ] UHID card PDF layout — deferred, see notes.md

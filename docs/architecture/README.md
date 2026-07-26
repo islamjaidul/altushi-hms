@@ -6,7 +6,7 @@
 
 ## Status
 
-Nothing written yet — awaiting architect. Expected deliverables below.
+**All 10 deliverables drafted 2026-07-26** (spec `docs/specs/0003-mvp-architecture/`) — status *Draft for PM review*. ADR index with Q1–Q15 coverage: [`01-adr/README.md`](01-adr/README.md). Frontend design reference: `assets/altushi-hms-demo.html` (binding for `05-ui-architecture.md`). Memory-budget figures are estimates pending measured validation (build plan S6).
 
 ## Expected deliverables
 

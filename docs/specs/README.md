@@ -34,6 +34,8 @@ Use it only when no plan genuinely ever existed — never to skip archiving one 
 
 A spec is never deleted or rewritten after `Done`. Corrections happen in a **new** spec that supersedes it — same rule as the PRD's no-hard-delete principle.
 
+`Done` means **the specified work was produced** — not that its artifacts passed external (e.g., PM) review. Review outcomes live in the artifacts' own status headers; post-close outcomes (audits, follow-ups) are appended to the spec's `notes.md`.
+
 ## How this relates to the other docs
 
 | Doc | Holds |
@@ -51,5 +53,14 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0000-prd-and-competitor-analysis](0000-prd-and-competitor-analysis/spec.md) | PRD authoring & competitor analysis (retroactive baseline) | Done | whole doc | 2026-07-26 |
 | [0001-handoff-readiness](0001-handoff-readiness/spec.md) | Architect handoff readiness | Done | §16.3, §9A | 2026-07-26 |
 | [0002-agent-tooling](0002-agent-tooling/spec.md) | Agent tooling: CLAUDE.md, skills, spec-auditor (retroactive) | Done | n/a | 2026-07-26 |
+| [0003-mvp-architecture](0003-mvp-architecture/spec.md) | MVP architecture — all 10 architect deliverables, Q1–Q15 as ADRs | Done | §16, §9A, §8, §6 | 2026-07-26 |
+| [0004-engineer-handoff](0004-engineer-handoff/spec.md) | Staff-engineer handoff prompt (TDD, guardrails, escalation) | Done | §9A | 2026-07-26 |
+| [0005-mvp-build-execution](0005-mvp-build-execution/spec.md) | MVP build execution plan & S1 walking skeleton + spikes | In Progress | §9A, §7, §8, §11, §12 | 2026-07-26 |
+| [0006-money-spine](0006-money-spine/spec.md) | S2: money spine — registration, invoice, payment | Done | §9A.2, §11, §5A | 2026-07-26 |
+| [0007-diagnostics-approvals](0007-diagnostics-approvals/spec.md) | S3: diagnostics + approval engine | Done | §9A.2, §11, §12 | 2026-07-26 |
+| [0008-lis-dayclose](0008-lis-dayclose/spec.md) | S4: LIS + delivery + day-close | Done | §9A.2, §11, §6.6 | 2026-07-26 |
+| [0009-admin-hardening](0009-admin-hardening/spec.md) | S5: dashboard, admin, import, hardening | Done | §9A.2, §8, §12 | 2026-07-26 |
+| [0010-demo-kit](0010-demo-kit/spec.md) | S6: demo kit + performance | In Progress | §9A.4, §14, §8 | 2026-07-26 |
+| [0011-release-candidate](0011-release-candidate/spec.md) | S7: buffer, rehearsals, release candidate | Draft | §9A | 2026-07-26 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

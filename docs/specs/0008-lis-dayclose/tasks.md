@@ -1,0 +1,11 @@
+# 0008 — Tasks
+- [x] Sample M:N model, barcode single-identity, reprint-same-barcode with audit (edges 27/33)
+- [x] Rejection → child sample bound to same tests; chain preserved (02 §2.8)
+- [x] State-guarded transitions; illegal moves rejected comprehensibly (G9)
+- [x] Result v1 → verify (e-sign hash, verifier role incl. reporting consultant, edge 34)
+- [x] Amendment = v2 keeping v1 immutable, approval-linked (edge 22)
+- [x] Day-close: expected/counted/variance recorded-not-blocked (edge 18); Σ tenders = Σ receipts (G6)
+- [x] Close vs late receipt race → session row lock, one consistent outcome (G7)
+- [x] Refund-after-close = negative receipt in current session; closed receipts trigger-immutable (edge 20)
+- [x] Carry-close path (stale business day refused without approval, edge 17)
+- [ ] Pipeline board / result entry / day-close screens + report-ready notification — deferred (notes)
