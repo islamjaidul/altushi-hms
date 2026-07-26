@@ -1,0 +1,33 @@
+# Personal Claude Code settings (permissions differ per machine/user)
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# Logs & temp
+*.log
+tmp/
+scratch/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build / dependency output (for when implementation starts;
+# the architect will extend this per the chosen stack)
+node_modules/
+vendor/
+dist/
+build/
+__pycache__/
+*.pyc
