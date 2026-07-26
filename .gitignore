@@ -42,3 +42,6 @@ artifacts/
 
 # dev-only signing key (never commit)
 eng/dev-keys/
+
+# the entitlement PUBLIC key ships with the app (ADR-0016); private keys stay ignored
+!src/Hms.Web/vendor-public-key.pem
