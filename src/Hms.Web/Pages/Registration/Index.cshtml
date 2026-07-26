@@ -1,0 +1,121 @@
+@page "/registration"
+@model Hms.Web.Pages.Registration.IndexModel
+@{
+    ViewData["Title"] = "Patient Directory";
+    ViewData["Crumb"] = "Front Desk";
+    ViewData["FKeys"] = "F2 New patient · / focuses search";
+}
+
+<div class="row" style="margin-bottom:14px">
+    <form method="get" class="row" style="gap:10px">
+        <span class="global-search" style="width:340px">
+            <span class="icon" aria-hidden="true">search</span>
+            <label class="sr-only" for="Q">Search patients</label>
+            <input id="Q" name="q" value="@Model.Q" class="input" style="padding-left:36px;height:38px"
+                   placeholder="Name, registration ID or phone…" autocomplete="off" autofocus />
+        </span>
+        <button type="submit" class="btn">Search</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Q))
+        {
+            <a class="btn btn-quiet" href="/registration">Clear</a>
+        }
+    </form>
+    <span class="card-hint">
+        @Model.Rows.Count shown · @Model.TotalPatients registered
+    </span>
+    <span class="spacer"></span>
+    @if (Model.Can("registration.create"))
+    {
+        <a class="btn btn-primary" href="/registration/new" data-new-patient>
+            <span class="icon icon-sm" aria-hidden="true">person_add</span> New patient
+        </a>
+    }
+</div>
+
+<div class="card card-clip">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Reg No</th>
+                <th>Patient</th>
+                <th>Age / Sex</th>
+                <th>Phone</th>
+                <th>Area</th>
+                <th class="mid">Blood</th>
+                <th class="num">Due</th>
+                <th class="num">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var p in Model.Rows)
+            {
+                <tr>
+                    <td class="id-cell">@p.Uhid</td>
+                    <td><b>@p.FullName</b></td>
+                    <td>@p.Age · @Ui.SexShort(p.Sex)</td>
+                    <td>@(p.Phone ?? "—")</td>
+                    <td>@(p.Area ?? "—")</td>
+                    <td class="mid">
+                        @if (p.BloodGroup is not null)
+                        {
+                            <span class="pill bad">@p.BloodGroup</span>
+                        }
+                        else
+                        {
+                            <span class="dash">—</span>
+                        }
+                    </td>
+                    <td class="num">
+                        @if (p.Due > 0)
+                        {
+                            <span class="money-due">@Ui.Money(p.Due)</span>
+                        }
+                        else
+                        {
+                            <span class="dash">—</span>
+                        }
+                    </td>
+                    <td class="num">
+                        <span class="btn-row end">
+                            @if (Model.Can("billing.invoice.create"))
+                            {
+                                <a class="btn-icon primary" href="/billing/opd?patientId=@p.Id" title="New invoice">
+                                    <span class="icon icon-sm" aria-hidden="true">point_of_sale</span>
+                                </a>
+                            }
+                            @if (Model.Can("appointments.read"))
+                            {
+                                <a class="btn-icon info" href="/appointments?patientId=@p.Id" title="New appointment">
+                                    <span class="icon icon-sm" aria-hidden="true">calendar_add_on</span>
+                                </a>
+                            }
+                            <a class="btn-icon" href="/registration/@p.Id/card" title="Reprint ID card">
+                                <span class="icon icon-sm" aria-hidden="true">badge</span>
+                            </a>
+                        </span>
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <span class="icon" aria-hidden="true">group</span>
+                            @if (string.IsNullOrWhiteSpace(Model.Q))
+                            {
+                                <span>No patients registered yet. Start with <b>New patient</b>.</span>
+                            }
+                            else
+                            {
+                                <span>Nothing matches “@Model.Q”. Try part of the name, the UHID, or the phone number.</span>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

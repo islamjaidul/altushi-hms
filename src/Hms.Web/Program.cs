@@ -4,6 +4,7 @@ using Hms.Kernel.Data;
 using Hms.Kernel.Entitlements;
 using Hms.Kernel.Jobs;
 using Hms.Kernel.Numbering;
+using Hms.Kernel.Approvals;
 using Hms.Kernel.Time;
 using Hms.Web;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,20 @@ builder.Services.AddDbContext<KernelDbContext>(o => o
 builder.Services.AddDbContext<AuthDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "adm"))
     .UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Registration.Data.RegDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "reg")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Billing.Data.BillDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "bill")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Diagnostics.Data.DiagDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "diag")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Lis.Data.LisDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "lis")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Admin.Data.AdmDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "adm_data")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Appointments.Data.ApptDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "appt")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Notifications.Data.NotifDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "notif")).UseSnakeCaseNamingConvention());
 
 builder.Services
     .AddIdentity<AppUser, AppRole>(o =>
@@ -66,6 +81,25 @@ builder.Services.AddSingleton(new FiscalCalendar(
 builder.Services.AddSingleton(new BusinessDayCalendar(
     TimeOnly.Parse(builder.Configuration.GetValue("Business:DayBoundary", "00:00")!))); // P2
 builder.Services.AddSingleton<IReadOnlyList<NavItem>>(ModuleNav.Registry);
+builder.Services.AddSingleton<HmsTx>();
+builder.Services.AddSingleton<Hms.Registration.RegistrationService>();
+builder.Services.AddSingleton<Hms.Billing.BillingService>();
+builder.Services.AddSingleton<Hms.Billing.DayCloseService>();
+builder.Services.AddSingleton<Hms.Lis.LisService>();
+builder.Services.AddSingleton<ApprovalEngine>();
+builder.Services.AddSingleton<Hms.Admin.RateResolver>();
+builder.Services.AddSingleton<Hms.Appointments.AppointmentsService>();
+builder.Services.AddSingleton(Hms.Notifications.SmsOptions.From(
+    builder.Configuration["HMS_SMS_MODE"]));                                 // edge 3: simulation default
+builder.Services.AddSingleton<Hms.Notifications.SmsQueue>();
+builder.Services.AddSingleton<HospitalIdentity>(_ => new HospitalIdentity(
+    builder.Configuration["Hospital:Name"] ?? "Altushi General Hospital",
+    builder.Configuration["Hospital:Tagline"] ?? "Hospital ERP",
+    builder.Configuration["Hospital:Address"] ?? "VIP Road, Sheikhghat, Sylhet-3100",
+    builder.Configuration["Hospital:Phone"] ?? "0821-719944, 01700-000000",
+    builder.Configuration["Hospital:Monogram"] ?? "A",
+    builder.Configuration["Hospital:FooterNote"]
+        ?? "This is a computer generated document — no signature required for receipts."));
 
 var app = builder.Build();
 
@@ -90,6 +124,13 @@ using (var scope = app.Services.CreateScope())
     {
         await kdb.Database.MigrateAsync();
         await sp.GetRequiredService<AuthDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Registration.Data.RegDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Billing.Data.BillDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Diagnostics.Data.DiagDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Lis.Data.LisDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Admin.Data.AdmDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Appointments.Data.ApptDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Notifications.Data.NotifDbContext>().Database.MigrateAsync();
         await DevSeed.RunAsync(sp);
     }
     finally

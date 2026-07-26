@@ -4,6 +4,7 @@
 @inject EntitlementProvider Entitlements
 @inject BusinessDayCalendar BusinessDay
 @inject TimeProvider Clock
+@inject HospitalIdentity Hospital
 @{
     var user = Context.User;
     var isAuthed = user.Identity?.IsAuthenticated == true;
@@ -14,13 +15,26 @@
     var displayName = user.FindFirst("display_name")?.Value ?? user.Identity?.Name ?? "";
     var roles = string.Join(", ", user.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value));
     var businessDay = BusinessDay.BusinessDayOf(Clock.GetUtcNow());
+    var path = Context.Request.Path.Value ?? "/";
+
+    // The crumb/title come from the nav entry the current URL matches — one source, so the
+    // heading can never disagree with the sidebar (05 §2).
+    var current = nav.SelectMany(g => g.Items)
+        .Where(i => path.Equals(i.Url, StringComparison.OrdinalIgnoreCase))
+        .Select(i => new { Item = i, Group = nav.First(g => g.Items.Contains(i)) })
+        .FirstOrDefault();
+    var crumb = (string?)ViewData["Crumb"] ?? current?.Group.Label ?? "Home";
+    var title = (string?)ViewData["Title"] ?? current?.Item.Title ?? "Home";
+    var fkeys = (string?)ViewData["FKeys"] ?? "F2 New patient · F3 Item search · F10 Payment";
+    var toast = TempData["Toast"] as string;
+    var toastIcon = TempData["ToastIcon"] as string ?? "task_alt";
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@(ViewData["Title"] ?? "HMS") — Altushi HMS</title>
+    <title>@title — @Hospital.Name</title>
     <link rel="stylesheet" href="/css/tokens.css" />
     <link rel="stylesheet" href="/css/app.css" />
 </head>
@@ -30,36 +44,66 @@
     {
         <aside class="sidebar">
             <div class="brand">
-                <span class="brand-mark">AH</span>
-                <span class="brand-name">Altushi HMS</span>
+                <span class="brand-mark">@Hospital.Monogram</span>
+                <span class="brand-text">
+                    <span class="brand-name">@Hospital.Name</span>
+                    <span class="brand-tagline">@Hospital.Tagline</span>
+                </span>
             </div>
-            <nav aria-label="Modules">
+            <nav class="rail-nav" aria-label="Modules">
                 @foreach (var group in nav)
                 {
                     <div class="nav-group">
                         <div class="nav-group-title">
                             <span class="dept-dot" data-dept="@group.Module.ToLowerInvariant()"></span>
-                            @group.Module
+                            @group.Label
                         </div>
                         @foreach (var item in group.Items)
                         {
-                            <a class="nav-item" href="@item.Url">@item.Title</a>
+                            var active = path.Equals(item.Url, StringComparison.OrdinalIgnoreCase);
+                            <a class="nav-item @(active ? "active" : "")" href="@item.Url"
+                               aria-current="@(active ? "page" : null)">
+                                <span class="icon" aria-hidden="true">@item.Icon</span>
+                                <span>@item.Title</span>
+                            </a>
                         }
                     </div>
                 }
             </nav>
+            <div class="rail-foot">MVP build · @Entitlements.EnabledModules.Count modules entitled</div>
         </aside>
     }
     <div class="main">
         @if (isAuthed)
         {
             <header class="topbar">
-                <div class="breadcrumb">@(ViewData["Title"] ?? "Home")</div>
-                <div class="topbar-right">
-                    <span class="user-chip">@displayName <span class="user-role">@roles</span></span>
-                    <form method="post" action="/logout" class="inline-form">
+                <div class="topbar-title">
+                    <div class="crumb">@crumb</div>
+                    <div class="page-title">@title</div>
+                </div>
+                @if (perms.Contains("registration.read"))
+                {
+                    <form class="global-search" method="get" action="/registration" role="search">
+                        <span class="icon" aria-hidden="true">search</span>
+                        <label class="sr-only" for="global-q">Search patients</label>
+                        <input id="global-q" name="q" data-global-search
+                               placeholder="Search patient by name, ID or phone…" autocomplete="off" />
+                    </form>
+                }
+                <a class="topbar-btn" href="/notifications/tray" title="Notifications" aria-label="Notifications">
+                    <span class="icon icon-lg" aria-hidden="true">notifications</span>
+                </a>
+                <div class="user-chip">
+                    <span class="avatar">@Ui.Initials(displayName)</span>
+                    <span>
+                        <span class="user-name">@displayName</span><br />
+                        <span class="user-role">@roles</span>
+                    </span>
+                    <form method="post" action="/logout">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-quiet">Sign out</button>
+                        <button type="submit" class="btn-icon" title="Sign out" aria-label="Sign out">
+                            <span class="icon icon-sm" aria-hidden="true">logout</span>
+                        </button>
                     </form>
                 </div>
             </header>
@@ -68,19 +112,29 @@
             @RenderBody()
         </main>
         <footer class="status-footer">
-            <span class="status-ok">● Server OK</span>
+            <span><span class="status-dot"></span> Server: PRIMARY — DB online</span>
             @if (isAuthed)
             {
-                <span>@displayName (@roles)</span>
-                <span>Business day: @businessDay.ToString("dd MMM yyyy")</span>
-                <span id="fkey-map" class="fkey-map"></span>
+                <span>User: <b>@displayName</b> — @roles</span>
+                <span>Business day: <span class="tabular">@Ui.DateLong(businessDay)</span></span>
+                <span class="fkey-map" id="fkey-map">@fkeys</span>
             }
         </footer>
     </div>
 </div>
+
+@if (!string.IsNullOrEmpty(toast))
+{
+    <div class="toast" role="status" data-toast>
+        <span class="icon" aria-hidden="true">@toastIcon</span>
+        <span>@toast</span>
+    </div>
+}
+
 <script src="/js/fkeys.js"></script>
 <script src="/js/typeahead.js"></script>
 <script src="/js/barcode.js"></script>
+<script src="/js/app.js"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

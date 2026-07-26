@@ -1,0 +1,37 @@
+@page "/registration/{id:long}/card"
+@model Hms.Web.Pages.Registration.CardModel
+@inject Hms.Web.HospitalIdentity Hospital
+@{
+    ViewData["Title"] = "Patient ID Card";
+    ViewData["Crumb"] = "Front Desk";
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/registration?q=" + Model.Uhid)
+    </div>
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead("Patient ID Card", Model.Uhid, Model.RegisteredAt))
+
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.FullName</b></div>
+            <div><span class="k">Registration no:</span> <b>@Model.Uhid</b></div>
+            <div><span class="k">Age / Sex:</span> @Model.Age · @Ui.SexWord(Model.Sex)</div>
+            <div><span class="k">Blood group:</span> @(Model.BloodGroup ?? "Not recorded")</div>
+            <div><span class="k">Mobile:</span> @(Model.Phone ?? "Not recorded")</div>
+            <div><span class="k">Registered:</span> @Ui.DateTimeShort(Model.RegisteredAt)</div>
+            <div style="grid-column:span 2"><span class="k">Address:</span> @(Model.Address ?? "—")</div>
+        </div>
+
+        <div class="barcode"></div>
+        <div class="barcode-text">@Model.Uhid</div>
+
+        <div class="sheet-words" style="text-align:center;color:var(--muted-1)">
+            Please bring this card on every visit. Scanning it opens your record instantly.
+        </div>
+
+        @await Html.PartialAsync("_SheetFooter")
+    </div>
+</div>

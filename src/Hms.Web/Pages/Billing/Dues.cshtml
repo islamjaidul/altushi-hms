@@ -1,0 +1,119 @@
+@page "/billing/dues"
+@model Hms.Web.Pages.Billing.DuesModel
+@{
+    ViewData["Title"] = "Due Collection";
+    ViewData["Crumb"] = "Billing & Cash";
+    ViewData["FKeys"] = "F10 Payment · / focuses search";
+}
+
+@if (Model.Session is null)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">lock</span>
+        <span><b>Your counter is closed.</b> <a href="/billing/session">Open counter →</a></span>
+    </div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="tile-row" style="margin-bottom:14px">
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Total outstanding</span>
+            <span class="icon" aria-hidden="true">currency_exchange</span>
+        </div>
+        <div class="tile-value text-danger">@Ui.Money(Model.TotalOutstanding)</div>
+        <div class="tile-sub">across @Model.Rows.Count listed invoice(s)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Collected this session</span>
+            <span class="icon" aria-hidden="true">payments</span>
+        </div>
+        <div class="tile-value text-success">@Ui.Money(Model.CollectedToday)</div>
+        <div class="tile-sub">@(Model.Session?.CounterName ?? "counter closed")</div>
+    </div>
+</div>
+
+<form method="get" class="row" style="margin-bottom:14px">
+    <span class="global-search" style="width:340px">
+        <span class="icon" aria-hidden="true">search</span>
+        <label class="sr-only" for="Q">Search dues</label>
+        <input id="Q" name="q" value="@Model.Q" class="input" style="padding-left:36px;height:38px"
+               placeholder="Patient name, reg no or invoice no…" autocomplete="off" />
+    </span>
+    <button type="submit" class="btn">Search</button>
+</form>
+
+<div class="card card-clip">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Invoice</th>
+                <th>Patient</th>
+                <th>Reg No</th>
+                <th>Phone</th>
+                <th>Billed</th>
+                <th class="num">Billed ৳</th>
+                <th class="num">Due ৳</th>
+                <th style="width:300px">Collect</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                <tr>
+                    <td class="id-cell">@r.InvoiceNo</td>
+                    <td><b>@r.PatientName</b></td>
+                    <td>@r.Uhid</td>
+                    <td>@(r.Phone ?? "—")</td>
+                    <td class="tabular">@Ui.DateTimeShort(r.CreatedAt)</td>
+                    <td class="num">@Ui.Group(r.Billed)</td>
+                    <td class="num money-due">@Ui.Group(r.Balance)</td>
+                    <td>
+                        @if (Model.Session is not null)
+                        {
+                            <form method="post" asp-page-handler="Collect" class="row" style="gap:6px"
+                                  data-confirm="Collect against @r.InvoiceNo for @r.PatientName? The receipt prints immediately and cannot be deleted — only reversed.">
+                                <input type="hidden" name="InvoiceId" value="@r.InvoiceId" />
+                                <label class="sr-only" for="amt-@r.InvoiceId">Amount</label>
+                                <input id="amt-@r.InvoiceId" name="Amount" value="@r.Balance"
+                                       class="input input-sm input-num" style="width:96px" inputmode="numeric" />
+                                <label class="sr-only" for="tnd-@r.InvoiceId">Mode</label>
+                                <select id="tnd-@r.InvoiceId" name="Tender" class="select input-sm" style="width:92px">
+                                    <option value="cash">Cash</option>
+                                    <option value="card">Card</option>
+                                    <option value="bkash">bKash</option>
+                                    <option value="nagad">Nagad</option>
+                                </select>
+                                <button type="submit" class="btn-tint">Collect</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Counter closed</span>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <span class="icon" aria-hidden="true">task_alt</span>
+                            No outstanding dues. Every invoice is settled.
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

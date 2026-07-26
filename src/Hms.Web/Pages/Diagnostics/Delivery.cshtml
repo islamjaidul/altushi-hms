@@ -1,0 +1,119 @@
+@page "/diagnostics/delivery"
+@model Hms.Web.Pages.Diagnostics.DeliveryModel
+@{
+    ViewData["Title"] = "Report Delivery";
+    ViewData["Crumb"] = "Diagnostics";
+    ViewData["FKeys"] = "Scan the delivery slip barcode";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">block</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="row" style="margin-bottom:14px">
+    <span class="card-hint">Verified reports waiting to be handed over. A report with money owing stays here.</span>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Ready for collection
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Ready.Count</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Order</th>
+                <th>Patient</th>
+                <th>Reports</th>
+                <th>Phone</th>
+                <th class="num">Due</th>
+                <th style="width:320px">Hand over</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model.Ready)
+            {
+                <tr>
+                    <td class="id-cell">@c.OrderNo</td>
+                    <td><b>@c.PatientName</b><div class="text-muted" style="font-size:0.71875rem">@c.Uhid</div></td>
+                    <td>@c.TestList</td>
+                    <td>@(c.Phone ?? "—")</td>
+                    <td class="num">
+                        @if (c.Held)
+                        {
+                            <span class="money-due">@Ui.Money(c.Due)</span>
+                        }
+                        else
+                        {
+                            <span class="pill good">Paid</span>
+                        }
+                    </td>
+                    <td>
+                        @if (c.Held)
+                        {
+                            @* §7 U7: while money is owed the only control offered is the one that
+                               fixes it — there is no "deliver anyway" button to press by mistake. *@
+                            <a class="btn-tint danger" href="/billing/dues?q=@c.Uhid">
+                                <span class="icon icon-sm" aria-hidden="true">payments</span> Collect due first
+                            </a>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Deliver" class="row" style="gap:6px">
+                                <input type="hidden" name="orderId" value="@c.OrderId" />
+                                <label class="sr-only" for="col-@c.OrderId">Collected by</label>
+                                <input id="col-@c.OrderId" name="collector" class="input input-sm"
+                                       style="width:150px" placeholder="Collected by…" />
+                                <button type="submit" class="btn-tint">Deliver</button>
+                                <a class="btn-icon" href="/lis/report/@c.OrderId" title="Print report">
+                                    <span class="icon icon-sm" aria-hidden="true">print</span>
+                                </a>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Ready.Count == 0)
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <span class="icon" aria-hidden="true">outbox</span>
+                            Nothing waiting. Verified reports appear here automatically.
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.Delivered.Count > 0)
+{
+    <div class="card card-clip" style="margin-top:14px">
+        <div class="card-head">Recently delivered</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Order</th><th>Patient</th><th>Reports</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var c in Model.Delivered)
+                {
+                    <tr>
+                        <td class="id-cell">@c.OrderNo</td>
+                        <td>@c.PatientName</td>
+                        <td>@c.TestList</td>
+                        <td class="num"><a class="btn-tint" href="/lis/report/@c.OrderId">View report</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

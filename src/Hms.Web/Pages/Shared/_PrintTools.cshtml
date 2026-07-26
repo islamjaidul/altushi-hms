@@ -1,0 +1,13 @@
+@model string
+@* Preview + Print. The screen IS the preview, so the printer-unplugged fallback (edge 2) is
+   the browser's print-to-PDF of this same layout. The server-rendered PDF affordance that
+   05 §6 also calls for is still to come — it needs the QuestPDF document set (ADR-0009). *@
+<div class="modal-tools no-print">
+    <a class="btn" href="@Model">
+        <span class="icon icon-sm" aria-hidden="true">arrow_back</span> Back
+    </a>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+        <span class="icon icon-sm" aria-hidden="true">print</span> Print
+    </button>
+</div>

@@ -1,0 +1,142 @@
+@page "/lis/verify"
+@model Hms.Web.Pages.Lis.VerifyModel
+@{
+    ViewData["Title"] = "Verification Queue";
+    ViewData["Crumb"] = "Laboratory";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-side-main">
+    <div class="card card-clip">
+        <div class="card-head">
+            Awaiting verification
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Worklist.Count</span>
+        </div>
+        @foreach (var c in Model.Worklist)
+        {
+            var selected = Model.Selected?.OrderId == c.OrderId;
+            <a class="worklist-row @(selected ? "selected" : "")" href="/lis/verify?orderId=@c.OrderId">
+                <div class="worklist-id">@c.OrderNo</div>
+                <div style="font-size:0.78125rem;font-weight:600">@c.PatientName</div>
+                <div class="worklist-sub">@c.TestList</div>
+            </a>
+        }
+        @if (Model.Worklist.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="icon" aria-hidden="true">task_alt</span>
+                Nothing waiting for verification.
+            </div>
+        }
+    </div>
+
+    @if (Model.Selected is { } sel)
+    {
+        <form method="post" class="stack"
+              data-confirm="Verify and release this report? Your e-signature is attached to these values, and the patient is notified immediately.">
+            <input type="hidden" name="OrderId" value="@sel.OrderId" />
+
+            <div class="patient-banner">
+                <span class="avatar">@Ui.Initials(sel.PatientName)</span>
+                <span>
+                    <div class="patient-name">@sel.PatientName</div>
+                    <div class="patient-meta">@sel.Uhid · @sel.OrderNo · @sel.TestList</div>
+                </span>
+                <span class="spacer"></span>
+                @if (sel.Held)
+                {
+                    <span class="pill bad">Due @Ui.Money(sel.Due)</span>
+                }
+            </div>
+
+            @foreach (var t in Model.Tests)
+            {
+                <div class="card card-clip">
+                    <div class="card-head">
+                        @t.Name
+                        <span class="spacer"></span>
+                        <span class="card-hint">
+                            entered by @(t.EnteredBy ?? "—") · @Ui.DateTimeShort(t.EnteredAt)
+                        </span>
+                        @if (t.Verified)
+                        {
+                            <span class="pill good">Verified</span>
+                        }
+                    </div>
+
+                    @if (t.Values.Count > 0)
+                    {
+                        <div class="table-wrap">
+                            <table class="data">
+                                <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th class="num">Result</th>
+                                    <th class="mid" style="width:70px">Flag</th>
+                                    <th style="width:100px">Unit</th>
+                                    <th style="width:130px">Reference</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var v in t.Values)
+                                {
+                                    <tr>
+                                        <td>@v.Name</td>
+                                        <td class="num"><b>@v.Value</b></td>
+                                        <td class="mid">
+                                            @if (v.Flag == "H")
+                                            {
+                                                <span class="flag high">High</span>
+                                            }
+                                            else if (v.Flag == "L")
+                                            {
+                                                <span class="flag low">Low</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="flag none">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-muted">@v.Unit</td>
+                                        <td class="text-muted tabular">@v.Range</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(t.Narrative))
+                    {
+                        <div class="card-body" style="padding-top:0">@t.Narrative</div>
+                    }
+                </div>
+            }
+
+            <div class="row">
+                <span class="card-hint">
+                    Verifying attaches your e-signature to exactly these values and releases the
+                    report. A correction afterwards creates a new version — it never rewrites this one.
+                </span>
+                <span class="spacer"></span>
+                <button type="submit" class="btn btn-success btn-cta">
+                    <span class="icon icon-sm" aria-hidden="true">verified</span> Verify &amp; e-sign
+                </button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="empty-card">
+            <span class="icon" aria-hidden="true">verified</span>
+            Select an order on the left to review and sign it.
+        </div>
+    }
+</div>

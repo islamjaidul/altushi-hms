@@ -1,0 +1,86 @@
+@page "/admin/users"
+@model Hms.Web.Pages.Admin.UsersModel
+@{
+    ViewData["Title"] = "Users & Roles";
+    ViewData["Crumb"] = "Administration";
+}
+
+<div class="card-hint" style="margin-bottom:14px">
+    Login accounts and what each role may do. A departing staff member is deactivated, never
+    deleted — their name has to stay readable on every receipt they issued.
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Login accounts
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Users.Count account(s)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var u in Model.Users)
+            {
+                <tr>
+                    <td class="id-cell">@u.Username</td>
+                    <td><b>@u.DisplayName</b></td>
+                    <td>@(string.IsNullOrEmpty(u.Roles) ? "— no role —" : u.Roles)</td>
+                    <td>
+                        @if (u.LockedOut)
+                        {
+                            <span class="pill bad">Locked out</span>
+                        }
+                        else if (u.Active)
+                        {
+                            <span class="pill good">Active</span>
+                        }
+                        else
+                        {
+                            <span class="pill">Deactivated</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-clip" style="margin-top:14px">
+    <div class="card-head">
+        Role permissions
+        <span class="spacer"></span>
+        <span class="card-hint">what each role may do — the sidebar is built from exactly this</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th style="width:180px">Role</th><th style="width:80px" class="num">Users</th><th>Permissions</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Roles)
+            {
+                <tr>
+                    <td><b>@r.Name</b></td>
+                    <td class="num">@r.Users</td>
+                    <td>
+                        <span class="chip-row">
+                            @foreach (var p in r.Permissions)
+                            {
+                                <span class="pill">@p</span>
+                            }
+                            @if (r.Permissions.Count == 0)
+                            {
+                                <span class="dash">no grants</span>
+                            }
+                        </span>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

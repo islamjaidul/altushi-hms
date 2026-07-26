@@ -1,0 +1,147 @@
+@page "/lis/results"
+@model Hms.Web.Pages.Lis.ResultsModel
+@{
+    ViewData["Title"] = "Result Entry";
+    ViewData["Crumb"] = "Laboratory";
+    ViewData["FKeys"] = "Enter advances to the next value";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-side-main">
+    <div class="card card-clip">
+        <div class="card-head">
+            Awaiting results
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Worklist.Count</span>
+        </div>
+        @foreach (var c in Model.Worklist)
+        {
+            var selected = Model.Selected?.OrderId == c.OrderId;
+            <a class="worklist-row @(selected ? "selected" : "")" href="/lis/results?orderId=@c.OrderId">
+                <div class="worklist-id">@c.OrderNo</div>
+                <div style="font-size:0.78125rem;font-weight:600">@c.PatientName</div>
+                <div class="worklist-sub">@c.TestList</div>
+            </a>
+        }
+        @if (Model.Worklist.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="icon" aria-hidden="true">task_alt</span>
+                Nothing waiting for result entry.
+            </div>
+        }
+    </div>
+
+    @if (Model.Selected is { } sel)
+    {
+        <form method="post" class="stack">
+            <input type="hidden" name="OrderId" value="@sel.OrderId" />
+
+            <div class="patient-banner">
+                <span class="avatar">@Ui.Initials(sel.PatientName)</span>
+                <span>
+                    <div class="patient-name">@sel.PatientName</div>
+                    <div class="patient-meta">
+                        @sel.Uhid · @sel.OrderNo · promised @Ui.DateTimeShort(sel.PromisedAt)
+                        @if (sel.Samples.Count > 0)
+                        {
+                            <text> · tube @string.Join(", ", sel.Samples.Select(x => x.Barcode))</text>
+                        }
+                    </div>
+                </span>
+                <span class="spacer"></span>
+                @if (sel.Held)
+                {
+                    <span class="pill bad">Due @Ui.Money(sel.Due)</span>
+                }
+            </div>
+
+            @foreach (var t in Model.Tests)
+            {
+                <div class="card card-clip">
+                    <div class="card-head">
+                        @t.Name
+                        <span class="spacer"></span>
+                        @if (t.HasResult)
+                        {
+                            <span class="pill good">Entered</span>
+                        }
+                    </div>
+
+                    @if (t.NarrativeOnly)
+                    {
+                        <div class="card-body" style="padding-top:0">
+                            <label class="field">
+                                <span class="field-label">Findings / impression</span>
+                                <textarea class="textarea" rows="4" readonly="@t.HasResult"
+                                          name="Narratives[@t.OrderTestId]"
+                                          placeholder="e.g. No active pulmonary lesion.">@t.Narrative</textarea>
+                            </label>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-wrap">
+                            <table class="data">
+                                <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th class="num" style="width:150px">Result</th>
+                                    <th style="width:110px">Unit</th>
+                                    <th style="width:130px">Reference range</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var p in t.Parameters)
+                                {
+                                    var fieldName = $"Values[{t.OrderTestId}.{p.Code}]";
+                                    var fieldId = $"v-{t.OrderTestId}-{p.Code}";
+                                    <tr>
+                                        <td>@p.Name</td>
+                                        <td class="num">
+                                            <label class="sr-only" for="@fieldId">@p.Name</label>
+                                            <input id="@fieldId"
+                                                   name="@fieldName"
+                                                   value="@p.Existing"
+                                                   class="input input-sm input-num"
+                                                   readonly="@t.HasResult"
+                                                   data-advance inputmode="decimal" autocomplete="off" />
+                                        </td>
+                                        <td class="text-muted">@p.Unit</td>
+                                        <td class="text-muted tabular">@p.Range</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="row">
+                <span class="card-hint">
+                    Values outside the reference range are flagged H or L automatically when saved.
+                    Saving is not verifying — a pathologist releases the report.
+                </span>
+                <span class="spacer"></span>
+                <button type="submit" class="btn btn-primary btn-cta">
+                    <span class="icon icon-sm" aria-hidden="true">save</span> Save results
+                </button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="empty-card">
+            <span class="icon" aria-hidden="true">edit_note</span>
+            Select an order on the left to enter its results.
+        </div>
+    }
+</div>

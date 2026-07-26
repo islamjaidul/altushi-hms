@@ -1,0 +1,16 @@
+{
+  "name": "hms-ui-smoke",
+  "version": "1.0.0",
+  "description": "Playwright UI smoke suite for the HMS ERP app (spec 0012-ui-pass)",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "1.60.0"
+  }
+}

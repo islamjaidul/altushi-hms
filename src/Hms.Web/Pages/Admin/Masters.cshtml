@@ -1,0 +1,114 @@
+@page "/admin/masters"
+@model Hms.Web.Pages.Admin.MastersModel
+@{
+    ViewData["Title"] = "Price List & Catalog";
+    ViewData["Crumb"] = "Administration";
+}
+
+<div class="row" style="margin-bottom:14px">
+    <span class="card-hint" style="max-width:640px">
+        Services and tests with the price version in force on @Ui.DateLong(Model.Today).
+        Changing a price creates a new version from a future date — every past invoice keeps
+        reproducing the price it was actually billed at.
+    </span>
+    <span class="spacer"></span>
+    @if (Model.UnpricedCount > 0)
+    {
+        <span class="pill warn">@Model.UnpricedCount item(s) not sellable today</span>
+    }
+</div>
+
+@if (Model.UnpricedCount > 0)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">warning</span>
+        <span>
+            An item with no effective price is deliberately absent from the billing catalogue
+            rather than sellable at zero — load its price before go-live.
+        </span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        Test catalog
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Tests.Count test(s)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th style="width:110px">Code</th><th>Test</th><th style="width:130px">Department</th>
+                <th style="width:190px">Sample · turnaround</th>
+                <th class="num" style="width:110px">Price ৳</th>
+                <th style="width:150px">Effective from</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Tests)
+            {
+                <tr>
+                    <td class="id-cell">@r.Code</td>
+                    <td><b>@r.Name</b></td>
+                    <td>@r.Dept</td>
+                    <td class="text-muted">@r.Extra</td>
+                    <td class="num">
+                        @if (r.Price is { } p)
+                        {
+                            @Ui.Group(p)
+                        }
+                        else
+                        {
+                            <span class="pill warn">No price</span>
+                        }
+                    </td>
+                    <td class="tabular text-muted">@(r.From is { } f ? Ui.DateLong(f) : "—")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-clip" style="margin-top:14px">
+    <div class="card-head">
+        Services
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Services.Count service(s)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th style="width:110px">Code</th><th>Service</th><th style="width:130px">Department</th>
+                <th style="width:190px">Kind</th>
+                <th class="num" style="width:110px">Price ৳</th>
+                <th style="width:150px">Effective from</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Services)
+            {
+                <tr>
+                    <td class="id-cell">@r.Code</td>
+                    <td><b>@r.Name</b></td>
+                    <td>@r.Dept</td>
+                    <td class="text-muted">@r.Extra</td>
+                    <td class="num">
+                        @if (r.Price is { } p)
+                        {
+                            @Ui.Group(p)
+                        }
+                        else
+                        {
+                            <span class="pill warn">No price</span>
+                        }
+                    </td>
+                    <td class="tabular text-muted">@(r.From is { } f ? Ui.DateLong(f) : "—")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

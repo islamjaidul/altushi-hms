@@ -1,0 +1,178 @@
+@page "/registration/new"
+@model Hms.Web.Pages.Registration.NewModel
+@inject Hms.Web.HospitalIdentity Hospital
+@{
+    ViewData["Title"] = "New Patient";
+    ViewData["Crumb"] = "Front Desk";
+    ViewData["FKeys"] = "Enter advances · Tab to move · Alt+S saves";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.Duplicates.Count > 0)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">warning</span>
+        <span>
+            <b>@Model.Duplicates.Count possible duplicate@(Model.Duplicates.Count == 1 ? "" : "s")</b> —
+            this patient may already be registered. Use the existing record if it is the same person,
+            otherwise continue below.
+            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
+                @foreach (var d in Model.Duplicates)
+                {
+                    <a class="btn-tint" href="/registration?q=@d.Uhid">
+                        @d.FullName · @d.Uhid @(d.Phone is null ? "" : "· " + d.Phone)
+                    </a>
+                }
+            </div>
+        </span>
+    </div>
+}
+
+<form method="post" class="grid grid-main-side">
+    <div class="card">
+        <div class="card-head">
+            New patient registration
+            <span class="spacer"></span>
+            <span class="card-hint">Fields marked <span class="req">*</span> are required</span>
+        </div>
+
+        <div class="field-grid cols-3" style="padding:4px 20px 16px">
+            <label class="field span-2">
+                <span class="field-label">Full name <span class="req">*</span></span>
+                <input class="input" asp-for="FullName" data-advance autofocus
+                       placeholder="Patient's full name" autocomplete="off" />
+            </label>
+            <label class="field">
+                <span class="field-label">Age or date of birth <span class="req">*</span></span>
+                <input class="input" asp-for="AgeOrDob" data-advance placeholder="45  ·  8 months  ·  12/03/1980" />
+                <span class="help-text">Years, months or a date — all accepted.</span>
+            </label>
+
+            <label class="field">
+                <span class="field-label">Sex <span class="req">*</span></span>
+                <select class="select" asp-for="Sex" data-advance>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Mobile number</span>
+                <input class="input" asp-for="Phone" data-advance placeholder="01XXX-XXXXXX" inputmode="numeric" />
+            </label>
+            <label class="field">
+                <span class="field-label">Blood group</span>
+                <select class="select" asp-for="BloodGroup" data-advance>
+                    <option value="">Unknown</option>
+                    @foreach (var g in new[] { "A+", "A−", "B+", "B−", "O+", "O−", "AB+", "AB−" })
+                    {
+                        <option value="@g">@g</option>
+                    }
+                </select>
+            </label>
+
+            <label class="field">
+                <span class="field-label">Guardian / attendant</span>
+                <input class="input" asp-for="Guardian" data-advance placeholder="Name (relation)" />
+            </label>
+            <label class="field">
+                <span class="field-label">Area / Thana</span>
+                <input class="input" asp-for="Area" data-advance placeholder="e.g. Zindabazar" />
+            </label>
+            <label class="field">
+                <span class="field-label">Patient type</span>
+                <select class="select" asp-for="PatientType" data-advance>
+                    <option value="general">General</option>
+                    <option value="corporate">Corporate</option>
+                    <option value="package">Health package</option>
+                    <option value="staff">Staff / family</option>
+                </select>
+            </label>
+
+            <label class="field span-3">
+                <span class="field-label">Full address</span>
+                <input class="input" asp-for="Address" data-advance placeholder="House, road, post office…" />
+            </label>
+
+            <label class="field span-3 row" style="gap:8px">
+                <input type="checkbox" asp-for="UnknownIdentity" style="width:18px;height:18px" />
+                <span>
+                    <b>Identity unknown</b> — unconscious emergency case.
+                    <span class="help-text" style="display:inline">
+                        The system issues a UHID immediately; details are filled in later.
+                    </span>
+                </span>
+            </label>
+        </div>
+
+        <div class="row" style="padding:0 20px 18px;gap:10px">
+            <button type="submit" name="action" value="print" class="btn btn-primary btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">badge</span> Register &amp; print ID card
+            </button>
+            <button type="submit" name="action" value="save" class="btn">Save only</button>
+            @if (Model.Duplicates.Count > 0)
+            {
+                <button type="submit" name="DuplicatesAcknowledged" value="true" class="btn btn-danger">
+                    Not a duplicate — register anyway
+                </button>
+            }
+            <span class="spacer"></span>
+            <span class="card-hint">A UHID and barcode ID card are generated on save.</span>
+        </div>
+    </div>
+
+    <div class="stack">
+        <div class="card card-body">
+            <div style="font-weight:700;font-size:0.875rem;margin-bottom:10px">Photo &amp; fingerprint</div>
+            <div class="row" style="gap:10px">
+                <span class="dropzone">
+                    <span class="icon icon-xl" aria-hidden="true">person_add</span>
+                    Capture photo
+                </span>
+                <span class="dropzone">
+                    <span class="icon icon-xl" aria-hidden="true">badge</span>
+                    Scan finger
+                </span>
+            </div>
+            <div class="help-text">Biometric devices are not installed yet (§9A.3) — the fields are ready.</div>
+        </div>
+
+        <div class="idcard-panel">
+            <div class="idcard-cap">
+                <span class="icon icon-sm" aria-hidden="true">badge</span> ID card preview
+            </div>
+            <div class="idcard">
+                <div class="idcard-hosp">
+                    <span class="idcard-mark">@Hospital.Monogram</span>
+                    <span style="font-size:0.75rem;font-weight:800">@Hospital.Name</span>
+                </div>
+                <div class="idcard-name" data-card-name>Patient name</div>
+                <div class="idcard-reg">UHID issued on save</div>
+                <div class="barcode"></div>
+                <div class="barcode-text">ALT ⋅ ⋅ ⋅ ⋅ ⋅ ⋅</div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+  // Live card preview — the operator sees what will print before it prints (05 §4 doc+preview).
+  (function () {
+    const name = document.getElementById("FullName");
+    const out = document.querySelector("[data-card-name]");
+    if (name && out) {
+      name.addEventListener("input", () => {
+        out.textContent = name.value.trim() || "Patient name";
+      });
+    }
+  })();
+</script>
+}

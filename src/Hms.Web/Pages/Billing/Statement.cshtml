@@ -1,0 +1,76 @@
+@page "/billing/statement/{id:long}"
+@model Hms.Web.Pages.Billing.StatementModel
+@{
+    ViewData["Title"] = "Day-Close Statement";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/billing/day-close")
+    </div>
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead("Counter Day-Close Statement",
+                Model.CounterName + " · " + Ui.DateLong(Model.BusinessDay), Model.ClosedAt))
+
+        <div class="sheet-info">
+            <div><span class="k">Counter:</span> <b>@Model.CounterName</b></div>
+            <div><span class="k">Operator:</span> @Model.OperatorName</div>
+            <div><span class="k">Business day:</span> @Ui.DateLong(Model.BusinessDay)</div>
+            <div><span class="k">Closed at:</span> @Ui.DateTimeShort(Model.ClosedAt)</div>
+        </div>
+
+        <table class="sheet-table">
+            <thead><tr><th>Money taken by mode</th><th class="num" style="width:120px">Amount ৳</th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Tenders)
+            {
+                <tr><td>@Ui.Humanize(t.Tender)</td><td class="num">@Ui.Group(t.Amount)</td></tr>
+            }
+            @if (Model.Tenders.Count == 0)
+            {
+                <tr><td colspan="2">No receipts on this session.</td></tr>
+            }
+            </tbody>
+        </table>
+
+        <table class="sheet-table" style="margin-top:14px">
+            <thead><tr><th>Billing summary</th><th class="num" style="width:120px">Amount ৳</th></tr></thead>
+            <tbody>
+            <tr><td>Gross billed</td><td class="num">@Ui.Group(Model.Gross)</td></tr>
+            <tr><td>Less: discount given</td><td class="num">@Ui.Group(Model.Discount)</td></tr>
+            <tr><td>Net billed</td><td class="num">@Ui.Group(Model.Net)</td></tr>
+            <tr><td>Due carried out of this session</td><td class="num">@Ui.Group(Model.DueCreated)</td></tr>
+            <tr><td>Collected against earlier dues</td><td class="num">@Ui.Group(Model.DueCollected)</td></tr>
+            <tr><td>Refunds</td><td class="num">@Ui.Group(Model.Refunds)</td></tr>
+            </tbody>
+        </table>
+
+        <div class="sheet-totals">
+            <div class="sheet-total-line"><span>Opening float</span><span>@Ui.Group(Model.OpeningFloat)</span></div>
+            <div class="sheet-total-line"><span>Cash expected</span><span>@Ui.Group(Model.ExpectedCash)</span></div>
+            <div class="sheet-total-line"><span>Cash counted</span><span>@Ui.Group(Model.CountedCash)</span></div>
+            <div class="sheet-total-line strong">
+                <span>Variance</span>
+                <span>@(Model.Variance == 0 ? "Nil — matched" : Ui.Group(Model.Variance))</span>
+            </div>
+        </div>
+
+        @if (Model.Variance != 0)
+        {
+            <div class="sheet-words">
+                Variance of <b>@Ui.Money(Math.Abs(Model.Variance))</b>
+                (@(Model.Variance < 0 ? "short" : "over")) recorded against @Model.OperatorName.
+            </div>
+        }
+
+        <div class="sheet-signs">
+            <div class="sheet-sign">Counted by (@Model.OperatorName)</div>
+            <div class="sheet-sign">Checked by (Accounts)</div>
+        </div>
+
+        @await Html.PartialAsync("_SheetFooter")
+    </div>
+</div>

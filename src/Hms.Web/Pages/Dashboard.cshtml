@@ -1,0 +1,200 @@
+@page "/dashboard"
+@model Hms.Web.Pages.DashboardModel
+@{
+    ViewData["Title"] = "MD Dashboard";
+    ViewData["Crumb"] = "Overview";
+    var seriesClasses = new[] { "--series-1", "--series-2", "--series-3", "--series-4", "--series-5", "--series-6", "--series-7" };
+}
+
+<div class="tile-row">
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Income today</span>
+            <span class="icon" aria-hidden="true">monitoring</span>
+        </div>
+        <div class="tile-value">@Ui.Money(Model.IncomeToday)</div>
+        <div class="tile-sub">@Model.InvoicesToday invoice(s) · @Model.PatientsToday patient(s)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Collected today</span>
+            <span class="icon" aria-hidden="true">payments</span>
+        </div>
+        <div class="tile-value text-success">@Ui.Money(Model.CollectedToday)</div>
+        <div class="tile-sub">cash and digital, all counters</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Outstanding due</span>
+            <span class="icon" aria-hidden="true">currency_exchange</span>
+        </div>
+        <div class="tile-value text-danger">@Ui.Money(Model.OutstandingDue)</div>
+        <div class="tile-sub">across all unpaid invoices</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Discount given today</span>
+            <span class="icon" aria-hidden="true">fact_check</span>
+        </div>
+        <div class="tile-value text-warning">@Ui.Money(Model.DiscountToday)</div>
+        <div class="tile-sub">@Model.Discounts.Count invoice(s) discounted</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Counter variance</span>
+            <span class="icon" aria-hidden="true">savings</span>
+        </div>
+        <div class="tile-value @(Model.VarianceToday == 0 ? "" : "text-danger")">
+            @(Model.VarianceToday == 0 ? "Nil" : Ui.Money(Model.VarianceToday))
+        </div>
+        <div class="tile-sub">@Model.OpenCounters counter(s) still open</div>
+    </div>
+</div>
+
+<div class="grid grid-3" style="margin-top:14px">
+    <div class="card card-clip">
+        <div class="card-head">
+            Income — last 12 days
+            <span class="spacer"></span>
+            <span class="section-sub">net billed, ৳</span>
+        </div>
+        <div class="bar-chart">
+            @foreach (var bar in Model.Trend)
+            {
+                var pct = Model.TrendMax == 0 ? 0 : (int)(bar.Net * 100 / Model.TrendMax);
+                <div class="bar-col">
+                    <span class="bar-val">@(bar.Net == 0 ? "" : Ui.Group(bar.Net / 1000) + "k")</span>
+                    <span class="bar @(bar.Day == Model.Today ? "today" : "")"
+                          style="height:@(Math.Max(pct, 1))%"
+                          title="@Ui.DateLong(bar.Day): @Ui.Money(bar.Net)"></span>
+                    <span class="bar-label">@bar.Day.Day</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">
+            Department split — today
+            <span class="spacer"></span>
+            <span class="section-sub">by billed amount</span>
+        </div>
+        @foreach (var (slice, i) in Model.DeptSplit.Select((s, i) => (s, i)))
+        {
+            var pct = Model.DeptMax == 0 ? 0 : (int)(slice.Amount * 100 / Model.DeptMax);
+            <div class="dist-row">
+                <span class="dist-dot" style="background:var(@seriesClasses[i % seriesClasses.Length])"></span>
+                <span class="dist-label">@slice.Dept</span>
+                <span class="dist-track">
+                    <span class="dist-fill"
+                          style="width:@pct%;background:var(@seriesClasses[i % seriesClasses.Length])"></span>
+                </span>
+                <span class="dist-value">@Ui.Group(slice.Amount)</span>
+            </div>
+        }
+        @if (Model.DeptSplit.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="icon" aria-hidden="true">monitoring</span>
+                Nothing billed today yet.
+            </div>
+        }
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">Live snapshot</div>
+        <a class="snap-row" href="/lis/board">
+            <span class="snap-icon"><span class="icon icon-sm" aria-hidden="true">biotech</span></span>
+            <span class="snap-label">Lab orders in process</span>
+            <span class="snap-value">@Model.LabInProgress</span>
+            <span class="icon icon-sm" aria-hidden="true" style="color:var(--muted-4)">chevron_right</span>
+        </a>
+        <a class="snap-row" href="/admin/approvals">
+            <span class="snap-icon"><span class="icon icon-sm" aria-hidden="true">fact_check</span></span>
+            <span class="snap-label">Approvals waiting</span>
+            <span class="snap-value">@Model.PendingApprovals</span>
+            <span class="icon icon-sm" aria-hidden="true" style="color:var(--muted-4)">chevron_right</span>
+        </a>
+        <a class="snap-row" href="/billing/dues">
+            <span class="snap-icon"><span class="icon icon-sm" aria-hidden="true">payments</span></span>
+            <span class="snap-label">Money still owed</span>
+            <span class="snap-value">@Ui.Money(Model.OutstandingDue)</span>
+            <span class="icon icon-sm" aria-hidden="true" style="color:var(--muted-4)">chevron_right</span>
+        </a>
+        <a class="snap-row" href="/billing/day-close">
+            <span class="snap-icon"><span class="icon icon-sm" aria-hidden="true">savings</span></span>
+            <span class="snap-label">Counters still open</span>
+            <span class="snap-value">@Model.OpenCounters</span>
+            <span class="icon icon-sm" aria-hidden="true" style="color:var(--muted-4)">chevron_right</span>
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-main-side" style="margin-top:14px">
+    <div class="card card-clip">
+        <div class="card-head">
+            Discounts today — who approved what
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/admin/approvals">Open approvals →</a>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th>Invoice</th><th>Patient</th><th class="num">Discount ৳</th><th>Authorised by</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model.Discounts)
+                {
+                    <tr>
+                        <td class="id-cell">@d.InvoiceNo</td>
+                        <td>@d.PatientName</td>
+                        <td class="num text-warning">@Ui.Group(d.Discount)</td>
+                        <td>@d.ApprovedBy</td>
+                    </tr>
+                }
+                @if (Model.Discounts.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <span class="icon" aria-hidden="true">task_alt</span>
+                                No discount given today.
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">Cash variance by counter</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Counter</th><th>Operator</th><th class="num">Variance ৳</th></tr></thead>
+                <tbody>
+                @foreach (var v in Model.Variances)
+                {
+                    <tr>
+                        <td>@v.Counter<div class="text-muted" style="font-size:0.71875rem">@Ui.DateLong(v.Day)</div></td>
+                        <td>@v.Operator</td>
+                        <td class="num @(v.Variance < 0 ? "text-danger" : "text-warning")">@Ui.Group(v.Variance)</td>
+                    </tr>
+                }
+                @if (Model.Variances.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3">
+                            <div class="empty-state">
+                                <span class="icon" aria-hidden="true">task_alt</span>
+                                Every counter matched to the taka.
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

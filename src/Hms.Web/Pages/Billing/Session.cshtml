@@ -1,0 +1,111 @@
+@page "/billing/session"
+@model Hms.Web.Pages.Billing.SessionModel
+@{
+    ViewData["Title"] = "Counter Session";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side narrow">
+    @if (Model.Current is { } open)
+    {
+        <div class="card">
+            <div class="card-head">
+                Your counter is open
+                <span class="spacer"></span>
+                <span class="pill good">Open</span>
+            </div>
+            <div class="card-body" style="padding-top:0">
+                <div class="sheet-info" style="margin:0">
+                    <div><span class="k">Counter:</span> <b>@open.CounterName</b></div>
+                    <div><span class="k">Business day:</span> @Ui.DateLong(open.BusinessDay)</div>
+                    <div><span class="k">Opening float:</span> @Ui.Money(open.OpeningFloat)</div>
+                    <div><span class="k">Invoices so far:</span> @Model.InvoicesToday</div>
+                    <div><span class="k">Taken so far:</span> <b>@Ui.Money(Model.TakenToday)</b></div>
+                </div>
+                <div class="btn-row" style="margin-top:16px">
+                    <a class="btn btn-primary" href="/billing/opd">
+                        <span class="icon icon-sm" aria-hidden="true">point_of_sale</span> Go to billing
+                    </a>
+                    @if (Model.Can("billing.session.close"))
+                    {
+                        <a class="btn" href="/billing/day-close">
+                            <span class="icon icon-sm" aria-hidden="true">savings</span> Close the counter
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <form method="post" class="card">
+            <div class="card-head">
+                Open your counter
+                <span class="spacer"></span>
+                <span class="card-hint">Receipts need an open counter session</span>
+            </div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:14px">
+                <label class="field">
+                    <span class="field-label">Counter <span class="req">*</span></span>
+                    <select class="select" asp-for="CounterId">
+                        <option value="0">— Select counter —</option>
+                        @foreach (var c in Model.Counters)
+                        {
+                            @* Error-proofing by absence (§7 U7): a counter someone else holds is
+                               not selectable, so the "already open" error can never be reached. *@
+                            <option value="@c.Id" disabled="@(c.OpenBy is not null)">
+                                @c.Name@(c.OpenBy is null ? "" : $" — in use by {c.OpenBy}")
+                            </option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Opening cash float (৳)</span>
+                    <input class="input input-num" asp-for="OpeningFloat" inputmode="numeric" placeholder="2000" />
+                    <span class="help-text">
+                        The change money in the drawer right now. Day-close compares the count against
+                        this plus everything you take today.
+                    </span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-cta">
+                    <span class="icon icon-sm" aria-hidden="true">lock</span> Open counter
+                </button>
+            </div>
+        </form>
+    }
+
+    <div class="card">
+        <div class="card-head">All counters</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Counter</th><th>Status</th></tr></thead>
+                <tbody>
+                @foreach (var c in Model.Counters)
+                {
+                    <tr>
+                        <td><b>@c.Name</b><div class="text-muted" style="font-size:0.71875rem">@c.Kind</div></td>
+                        <td>
+                            @if (c.OpenBy is null)
+                            {
+                                <span class="pill">Closed</span>
+                            }
+                            else
+                            {
+                                <span class="pill good">Open — @c.OpenBy</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

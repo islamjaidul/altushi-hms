@@ -1,0 +1,74 @@
+@page "/billing/invoice/{id:long}"
+@model Hms.Web.Pages.Billing.InvoiceModel
+@{
+    ViewData["Title"] = "Money Receipt";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/billing/opd")
+    </div>
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead("Money Receipt", Model.InvoiceNo, Model.CreatedAt))
+
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>
+            <div><span class="k">Counter:</span> @Model.CounterName</div>
+            <div><span class="k">Reg no:</span> @Model.Uhid</div>
+            <div><span class="k">Operator:</span> @Model.OperatorName</div>
+            <div><span class="k">Age / Sex:</span> @Model.Age · @Ui.SexWord(Model.Sex)</div>
+            <div><span class="k">Mobile:</span> @(Model.Phone ?? "—")</div>
+        </div>
+
+        <table class="sheet-table">
+            <thead>
+            <tr><th>Description</th><th class="num" style="width:70px">Qty</th><th class="num" style="width:110px">Amount</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var l in Model.Lines)
+            {
+                <tr>
+                    <td>@l.Description</td>
+                    <td class="num">@l.Qty</td>
+                    <td class="num">@Ui.Group(l.Amount)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+
+        <div class="sheet-totals">
+            <div class="sheet-total-line"><span>Gross</span><span>@Ui.Money(Model.Gross)</span></div>
+            @if (Model.Discount > 0)
+            {
+                <div class="sheet-total-line"><span>Less: discount</span><span>− @Ui.Money(Model.Discount)</span></div>
+            }
+            <div class="sheet-total-line strong"><span>Net payable</span><span>@Ui.Money(Model.Net)</span></div>
+            <div class="sheet-total-line"><span>Paid</span><span>@Ui.Money(Model.Paid)</span></div>
+            <div class="sheet-total-line strong"><span>Due</span><span>@Ui.Money(Model.Due)</span></div>
+        </div>
+
+        <div class="sheet-words">
+            In words: <b>@Ui.Words(Model.Paid > 0 ? Model.Paid : Model.Net)</b>
+        </div>
+
+        @if (Model.Payments.Count > 0)
+        {
+            <div class="sheet-words" style="color:var(--muted-1)">
+                @foreach (var p in Model.Payments)
+                {
+                    <div>@p.ReceiptNo · @Ui.Money(p.Amount) · @Ui.Humanize(p.Tender) · @Ui.DateTimeShort(p.At)</div>
+                }
+            </div>
+        }
+
+        <div class="sheet-signs">
+            <div class="sheet-sign">Received by (@Model.OperatorName)</div>
+            <div class="sheet-sign">Patient / attendant</div>
+        </div>
+
+        @await Html.PartialAsync("_SheetFooter")
+    </div>
+</div>

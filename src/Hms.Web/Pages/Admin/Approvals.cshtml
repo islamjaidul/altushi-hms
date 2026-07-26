@@ -1,0 +1,76 @@
+@page "/admin/approvals"
+@model Hms.Web.Pages.Admin.ApprovalsModel
+@{
+    ViewData["Title"] = "Approvals Inbox";
+    ViewData["Crumb"] = "Administration";
+}
+
+<div class="narrower">
+    <div class="card-hint" style="margin-bottom:14px">
+        Discounts, refunds and reopens above an operator's limit wait here. Approving posts the
+        decision instantly — the counter's screen picks it up on its next save.
+    </div>
+
+    @foreach (var a in Model.Pending)
+    {
+        <div class="approval-card">
+            <span class="approval-icon"><span class="icon icon-lg" aria-hidden="true">fact_check</span></span>
+            <div style="flex:1">
+                <div class="approval-title">
+                    @Ui.Humanize(a.Type)
+                    @if (a.Amount is { } amt)
+                    {
+                        <text> — @Ui.Money(amt)</text>
+                    }
+                </div>
+                <div class="approval-sub">@a.Subject</div>
+                <div class="approval-sub">
+                    @a.Reason · requested by <b>@a.RequestedBy</b> · @Ui.DateTimeShort(a.RequestedAt)
+                </div>
+            </div>
+            <form method="post" asp-page-handler="Decide" class="btn-row">
+                <input type="hidden" name="id" value="@a.Id" />
+                <label class="sr-only" for="note-@a.Id">Note</label>
+                <input id="note-@a.Id" name="note" class="input input-sm" style="width:160px" placeholder="Note (optional)" />
+                <button type="submit" name="approve" value="true" class="btn btn-success">Approve</button>
+                <button type="submit" name="approve" value="false" class="btn btn-danger">Reject</button>
+            </form>
+        </div>
+    }
+
+    @if (Model.Pending.Count == 0)
+    {
+        <div class="empty-card">
+            <span class="icon" aria-hidden="true">task_alt</span>
+            Nothing waiting for approval. Approved requests take effect immediately.
+        </div>
+    }
+
+    @if (Model.Recent.Count > 0)
+    {
+        <div class="card card-clip" style="margin-top:14px">
+            <div class="card-head">Recently decided</div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr><th>Type</th><th class="num">Amount ৳</th><th>Decision</th><th>By</th><th>When</th><th>Note</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.Recent)
+                    {
+                        var (css, word) = Ui.Status(r.State);
+                        <tr>
+                            <td>@Ui.Humanize(r.Type)</td>
+                            <td class="num">@(r.Amount is { } a2 ? Ui.Group(a2) : "—")</td>
+                            <td><span class="pill @css">@word</span></td>
+                            <td>@r.DecidedBy</td>
+                            <td class="tabular">@(r.DecidedAt is { } d ? Ui.DateTimeShort(d) : "—")</td>
+                            <td class="text-muted">@(r.Note ?? "—")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

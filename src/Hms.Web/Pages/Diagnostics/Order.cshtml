@@ -1,0 +1,183 @@
+@page "/diagnostics/order"
+@model Hms.Web.Pages.Diagnostics.OrderModel
+@{
+    ViewData["Title"] = "Diagnostic Order";
+    ViewData["Crumb"] = "Diagnostics";
+    ViewData["FKeys"] = "F3 Item search · F10 Payment";
+    var net = Model.Gross - Math.Max(0, Math.Min(Model.Gross, Model.DiscountFlat));
+}
+
+@if (Model.Session is null)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">lock</span>
+        <span><b>Your counter is closed.</b> <a href="/billing/session">Open counter →</a></span>
+    </div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" class="grid grid-pos" data-pos data-gross="@Model.Gross">
+    @foreach (var id in Model.Items)
+    {
+        <input type="hidden" name="Items" value="@id" />
+    }
+
+    <div class="stack">
+        <div class="card card-body">
+            <div class="field-grid cols-3">
+                <label class="field">
+                    <span class="field-label">Patient <span class="req">*</span></span>
+                    <select class="select" asp-for="PatientId" onchange="this.form.submit()">
+                        <option value="">— Select patient —</option>
+                        @foreach (var p in Model.Patients)
+                        {
+                            <option value="@p.Id">@p.Label</option>
+                        }
+                    </select>
+                </label>
+                @* Referrer capture (§9A.2 module 4) needs the adm.referrer master, which lands
+                   with the masters screens — a free-text box here would look like capture while
+                   discarding the value, so the field waits for the table. *@
+                <div class="field">
+                    <span class="field-label">Referred by</span>
+                    <input class="input" value="Self / walk-in" disabled />
+                    <span class="help-text">Referrer list arrives with the referrer master.</span>
+                </div>
+                <div class="field">
+                    <span class="field-label">Counter</span>
+                    <input class="input" value="@(Model.Session?.CounterName ?? "Not open")" disabled />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="cat-toolbar">
+                <span class="icon" aria-hidden="true">search</span>
+                <input class="cat-search" asp-for="Q"
+                       placeholder="Search test by name or code…" autocomplete="off" />
+                <span class="card-hint">@Model.Catalog.Count tests</span>
+            </div>
+            <div class="cat-list">
+                @foreach (var c in Model.Catalog)
+                {
+                    <div class="cat-row">
+                        <span class="cat-code">@c.Code</span>
+                        <span class="cat-name">
+                            @c.Name
+                            <span class="text-muted" style="font-size:0.71875rem">
+                                · @(c.SampleType == "None" ? "no sample" : c.SampleType)
+                                · @(c.TatMinutes >= 60 ? $"{c.TatMinutes / 60} h" : $"{c.TatMinutes} min")
+                            </span>
+                        </span>
+                        <span class="pill">@c.Dept</span>
+                        <span class="cat-price">@Ui.Money(c.Price)</span>
+                        <button type="submit" class="cat-add" asp-page-handler="Add"
+                                name="catalogId" value="@c.Id" title="Add @c.Name" aria-label="Add @c.Name">
+                            <span class="icon icon-sm" aria-hidden="true">add</span>
+                        </button>
+                    </div>
+                }
+                @if (Model.Catalog.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span class="icon" aria-hidden="true">science</span>
+                        No test has a price effective today. Load the test catalog under Administration.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-clip sticky-top">
+        <div class="card-head">
+            Test order
+            <span class="spacer"></span>
+            <span class="card-hint">@(Model.PatientName ?? "No patient selected")</span>
+        </div>
+
+        @if (Model.Cart.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="icon" aria-hidden="true">biotech</span>
+                No tests yet — add them from the catalogue.
+            </div>
+        }
+        else
+        {
+            @for (var i = 0; i < Model.Cart.Count; i++)
+            {
+                <div class="cart-line">
+                    <span class="cart-name">@Model.Cart[i].Name</span>
+                    <span class="cart-price">@Ui.Money(Model.Cart[i].Price)</span>
+                    <button type="submit" class="cart-del" asp-page-handler="Remove"
+                            name="index" value="@i" title="Remove" aria-label="Remove @Model.Cart[i].Name">
+                        <span class="icon icon-sm" aria-hidden="true">close</span>
+                    </button>
+                </div>
+            }
+            <div class="alert info" style="margin:10px 16px">
+                <span class="icon icon-sm" aria-hidden="true">schedule</span>
+                <span>
+                    Report promised by <b>@Ui.DateTimeShort(Model.PromisedAt)</b>
+                    — the slowest test in this order takes
+                    @(Model.SlowestTat >= 60 ? $"{Model.SlowestTat / 60} hours" : $"{Model.SlowestTat} minutes").
+                </span>
+            </div>
+        }
+
+        <div class="totals">
+            <div class="total-line">
+                <span>Gross total</span><span class="val">@Ui.Money(Model.Gross)</span>
+            </div>
+            <div class="total-line">
+                <label for="DiscountFlat">Discount (৳)</label>
+                <input id="DiscountFlat" class="input input-sm input-num" style="width:100px"
+                       asp-for="DiscountFlat" data-discount inputmode="numeric" />
+            </div>
+            <div class="total-line total-net">
+                <span>Net payable</span><span class="val" data-net-out>@Ui.Money(net)</span>
+            </div>
+
+            <div class="tender-row">
+                <span>
+                    <span class="micro-label">Paid now</span>
+                    <input class="input input-sm input-num" asp-for="PaidNow" data-paid inputmode="numeric" />
+                </span>
+                <span>
+                    <span class="micro-label">Mode</span>
+                    <select class="select input-sm" asp-for="Tender">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bkash">bKash</option>
+                        <option value="nagad">Nagad</option>
+                        <option value="corporate">Corporate credit</option>
+                    </select>
+                </span>
+            </div>
+
+            <div class="total-line total-due">
+                <span>Due after payment</span><span data-due-out>@Ui.Money(net)</span>
+            </div>
+
+            @if (Model.Session is null)
+            {
+                <a class="btn btn-cta btn-block" href="/billing/session">
+                    <span class="icon icon-sm" aria-hidden="true">lock</span> Open your counter to bill
+                </a>
+            }
+            else
+            {
+                <button type="submit" asp-page-handler="Save" class="btn btn-primary btn-cta btn-block" data-pay>
+                    <span class="icon icon-sm" aria-hidden="true">print</span> Save &amp; print receipt + labels
+                </button>
+            }
+        </div>
+        <div class="pos-note">Barcode labels print for each sample tube once the bill is paid in full.</div>
+    </div>
+</form>

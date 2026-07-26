@@ -1,0 +1,132 @@
+@page "/lis/report/{id:long}"
+@model Hms.Web.Pages.Lis.ReportModel
+@{
+    ViewData["Title"] = "Investigation Report";
+    ViewData["Crumb"] = "Laboratory";
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/lis/board")
+    </div>
+
+    @if (!Model.FullyVerified)
+    {
+        <div class="alert warn" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">warning</span>
+            <span>
+                <b>Provisional — not yet verified.</b> This copy is for internal checking only.
+                A final report exists once a pathologist has signed it.
+            </span>
+        </div>
+    }
+    @if (Model.Due > 0)
+    {
+        <div class="alert bad" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">block</span>
+            <span><b>@Ui.Money(Model.Due) outstanding.</b> Collect the balance before handing the report over.</span>
+        </div>
+    }
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead(Model.FullyVerified ? "Investigation Report" : "Provisional Report",
+                Model.OrderNo, Model.CreatedAt))
+
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>
+            <div><span class="k">Reg no:</span> @Model.Uhid</div>
+            <div><span class="k">Age / Sex:</span> @Model.Age · @Ui.SexWord(Model.Sex)</div>
+            <div><span class="k">Order:</span> @Model.OrderNo</div>
+            <div>
+                <span class="k">Sample collected:</span>
+                @(Model.CollectedAt is { } c ? Ui.DateTimeShort(c) : "—")
+            </div>
+            <div>
+                <span class="k">Reported:</span>
+                @(Model.Sections.FirstOrDefault(s => s.VerifiedAt is not null)?.VerifiedAt is { } reportedAt
+                    ? Ui.DateTimeShort(reportedAt) : "pending verification")
+            </div>
+        </div>
+
+        @foreach (var part in Model.Sections)
+        {
+            <div style="margin-top:16px">
+                <div style="text-align:center;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+                            border-bottom:1px solid var(--ink);padding-bottom:4px">
+                    @part.TestName
+                    @if (part.Version > 1)
+                    {
+                        <text> — amended (v@part.Version)</text>
+                    }
+                </div>
+
+                @if (part.Values.Count > 0)
+                {
+                    <table class="sheet-table">
+                        <thead>
+                        <tr>
+                            <th>Test</th>
+                            <th class="num" style="width:90px">Result</th>
+                            <th style="width:50px">Flag</th>
+                            <th style="width:90px">Unit</th>
+                            <th style="width:110px">Reference</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var v in part.Values)
+                        {
+                            var abnormal = v.Flag is "H" or "L";
+                            <tr style="@(abnormal ? "font-weight:800" : "")">
+                                <td>@v.Name</td>
+                                <td class="num">@v.Value</td>
+                                <td class="@(v.Flag == "H" ? "text-danger" : v.Flag == "L" ? "text-primary" : "text-muted")">
+                                    @(v.Flag == "H" ? "High" : v.Flag == "L" ? "Low" : "—")
+                                </td>
+                                <td>@v.Unit</td>
+                                <td class="tabular">@v.Range</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(part.Narrative))
+                {
+                    <div class="sheet-words">@part.Narrative</div>
+                }
+            </div>
+        }
+
+        @if (Model.Sections.Count == 0)
+        {
+            <div class="sheet-words">No results recorded for this order yet.</div>
+        }
+
+        <div class="sheet-words" style="color:var(--muted-1)">
+            Results relate only to the sample received. Kindly correlate clinically.
+        </div>
+
+        @if (Model.FullyVerified)
+        {
+            var signer = Model.Sections.First(x => x.Verified);
+            <div class="sheet-signs">
+                <div class="sheet-sign">
+                    <b>@(signer.VerifiedBy ?? "Pathologist")</b><br />
+                    MBBS, MD (Pathology) — e-signed<br />
+                    <span style="font-size:0.5625rem;color:var(--muted-3)">
+                        Signature ref @(signer.EsignHash?[..12] ?? "—")
+                    </span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="sheet-words" style="color:var(--danger);font-weight:700">
+                Not valid without a pathologist's signature.
+            </div>
+        }
+
+        @await Html.PartialAsync("_SheetFooter")
+    </div>
+</div>

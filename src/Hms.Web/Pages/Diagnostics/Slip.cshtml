@@ -1,0 +1,83 @@
+@page "/diagnostics/order/{id:long}"
+@model Hms.Web.Pages.Diagnostics.SlipModel
+@{
+    ViewData["Title"] = "Test Order & Labels";
+    ViewData["Crumb"] = "Diagnostics";
+    var (css, word) = Ui.Status(Model.State);
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/diagnostics/order")
+    </div>
+
+    @if (Model.Due > 0)
+    {
+        <div class="alert warn" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">block</span>
+            <span>
+                <b>@Ui.Money(Model.Due) still due.</b> Samples and labels are released when the bill
+                is paid in full — collect the balance at
+                <a href="/billing/dues">Due Collection</a>.
+            </span>
+        </div>
+    }
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead("Test Order", "LB-" + Model.OrderId.ToString("D5"), Model.CreatedAt))
+
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>
+            <div><span class="k">Reg no:</span> @Model.Uhid</div>
+            <div><span class="k">Age / Sex:</span> @Model.Age · @Ui.SexWord(Model.Sex)</div>
+            <div><span class="k">Status:</span> <span class="pill @css">@word</span></div>
+            <div><span class="k">Invoice:</span> @(Model.InvoiceNo ?? "—")</div>
+            <div><span class="k">Report promised:</span> <b>@Ui.DateTimeShort(Model.PromisedAt)</b></div>
+        </div>
+
+        <table class="sheet-table">
+            <thead><tr><th>Test</th><th class="num" style="width:110px">Amount ৳</th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Tests)
+            {
+                <tr><td>@t.Name</td><td class="num">@Ui.Group(t.Amount)</td></tr>
+            }
+            </tbody>
+        </table>
+
+        @if (Model.Labels.Count > 0)
+        {
+            <div style="margin-top:18px;font-weight:800;font-size:0.75rem;text-transform:uppercase;letter-spacing:.05em">
+                Sample labels — one per tube
+            </div>
+            <div class="label-sheet">
+                @foreach (var l in Model.Labels)
+                {
+                    <div class="label-tile">
+                        <div class="who">@Model.PatientName · @Model.Uhid</div>
+                        <div class="what">@l.SampleType · @string.Join(" · ", l.Tests)</div>
+                        <div class="barcode" style="height:26px"></div>
+                        <div class="barcode-text">@l.Barcode</div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="sheet-words" style="color:var(--muted-1)">
+                No tube labels for this order — the tests are imaging or cardiology studies that
+                take no sample. The patient goes straight to the department.
+            </div>
+        }
+
+        @if (Model.InvoiceId is { } invId)
+        {
+            <div class="sheet-words no-print">
+                <a href="/billing/invoice/@invId">Open the money receipt →</a>
+            </div>
+        }
+
+        @await Html.PartialAsync("_SheetFooter")
+    </div>
+</div>

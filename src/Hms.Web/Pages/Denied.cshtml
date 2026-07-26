@@ -1,0 +1,25 @@
+@page "/denied"
+@model Hms.Web.Pages.DeniedModel
+@{
+    ViewData["Title"] = "Not allowed";
+    ViewData["Crumb"] = "Access";
+}
+
+<div class="empty-card narrower">
+    <span class="icon" aria-hidden="true">lock</span>
+    <div style="font-size:1rem;font-weight:700;color:var(--ink)">This screen is not part of your role</div>
+    <div style="margin-top:6px">
+        @if (Model.Attempted is not null)
+        {
+            <text>You signed in as <b>@Model.ActorName</b>, and <code>@Model.Attempted</code> belongs to another role.</text>
+        }
+        else
+        {
+            <text>You signed in as <b>@Model.ActorName</b>, and this screen belongs to another role.</text>
+        }
+        <br />Ask the administrator if you need it — nothing has been changed.
+    </div>
+    <div class="btn-row" style="justify-content:center;margin-top:16px">
+        <a class="btn btn-primary" href="/">Back to my work</a>
+    </div>
+</div>

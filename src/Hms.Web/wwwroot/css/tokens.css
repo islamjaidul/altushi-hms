@@ -1,5 +1,7 @@
-/* 05 §1 — the binding design tokens (Altushi reference). Screens must not hardcode
-   colours/fonts (lint: eng/check-ui-tokens.sh). */
+/* 05 §1 — the binding design tokens, extracted from the approved reference
+   (docs/architecture/assets/altushi-hms-demo.html). This is the ONLY file allowed to contain
+   literal colours; screens go through the custom properties (lint: eng/check-ui-tokens.sh). */
+
 @font-face {
   font-family: "Public Sans";
   src: url("/fonts/PublicSans-Regular.woff2") format("woff2");
@@ -24,48 +26,125 @@
   font-weight: 100 900;
   font-display: swap;
 }
+/* Icon font, subset to the glyphs the MVP screens use (8 KB) and served from our own origin —
+   no CDN, ever (edge 1; gate: eng/check-no-external-hosts.sh). */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  src: url("/fonts/MaterialSymbolsOutlined-subset.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
 
 :root {
-  /* type */
-  --font-ui: "Public Sans", system-ui, sans-serif;
+  /* ---- type ---------------------------------------------------------- */
+  --font-ui: "Public Sans", "Segoe UI", Tahoma, system-ui, sans-serif;
   --font-bn: "Noto Sans Bengali", var(--font-ui);
+  --font-icon: "Material Symbols Outlined";
   --text-base: 16px;                 /* §7 U3 floor */
 
-  /* neutrals */
+  /* ---- neutrals & surfaces ------------------------------------------- */
   --ink: #17211f;
   --ink-2: #44524e;
   --muted-1: #5b6a66;
   --muted-2: #7c8b87;
-  --muted-3: #9daca7;
+  --muted-3: #98a5a1;
+  --muted-4: #b9c4c0;
+  --disabled: #c4cfcb;
+  --border-input: #9daca7;
   --border-1: #c4cdc9;
   --border-2: #e3e8e5;
-  --surface-1: #e9eeec;
-  --surface-2: #edf1ef;
+  --border-3: #e7ebe9;
+  --app-bg: #e9edeb;
+  --surface-1: #edf1ef;
+  --surface-2: #eef1f0;
   --paper: #ffffff;
+  --zebra: #f5f7f6;
 
-  /* brand */
+  /* ---- brand --------------------------------------------------------- */
   --primary: #1b5e9c;
-  --primary-active: #22456b;
   --primary-dark: #134a7d;
+  --primary-tint: #e7eff7;
+  --primary-tint-hover: #d3e4f3;
+  --row-hover: #edf3f9;
 
-  /* semantic — always paired with a word, never colour alone (§7 U12) */
-  --danger: #b3403f;
+  /* ---- sidebar (dark rail) ------------------------------------------- */
+  --rail: #16283a;
+  --rail-active: #22456b;
+  --rail-hover: #1e3b5c;
+  --rail-hover-ink: #e8eef5;
+  --rail-ink: #a9bacb;
+  --rail-muted: #748da4;
+  --rail-muted-2: #8598ab;
+  --rail-rule: rgba(255, 255, 255, 0.08);
+
+  /* ---- semantic — always colour + word (§7 U12) ----------------------- */
   --success: #2f7d4f;
-  --success-on-dark: #8fd3ab;
+  --success-bg: #e5f2e9;
+  --success-border: #bcdcc6;
   --warning: #a9711c;
+  --warning-bg: #f8efdc;
+  --warning-border: #e8d5ac;
+  --danger: #b3403f;
+  --danger-bg: #f9e7e6;
+  --danger-border: #e3b9b8;
+  --info: #3d6fb4;
+  --info-bg: #e8eff7;
+  --info-border: #b9cde8;
 
-  /* module accent dots (wayfinding only) */
-  --dept-registration: #1b5e9c;
-  --dept-appointments: #7c5cb0;
+  /* ---- table --------------------------------------------------------- */
+  --th-bg: #e9eeec;
+  --th-rule: #b9c4bf;
+  --td-rule: #e3e8e5;
+  --total-row-bg: #edf1ef;
+
+  /* ---- module accent dots (wayfinding only, never sole meaning) ------- */
+  --dept-dashboard: #1b5e9c;
+  --dept-registration: #2f7f97;
+  --dept-appointments: #5a7ca8;
   --dept-billing: #2f7d4f;
-  --dept-diagnostics: #a9711c;
+  --dept-diagnostics: #8e58b4;
   --dept-lis: #b3403f;
-  --dept-dashboard: #134a7d;
   --dept-admin: #5b6a66;
-  --dept-notifications: #44524e;
+  --dept-notifications: #a05a8c;
 
-  /* metrics */
-  --target-min: 44px;                /* §7 minimum hit target */
-  --radius: 6px;
-  --sidebar-w: 232px;
+  /* ---- pipeline stage colours (LIS board, 02 §2.8) -------------------- */
+  --stage-pending: #a9711c;
+  --stage-collected: #2c8fa6;
+  --stage-received: #3d6fb4;
+  --stage-resulted: #8e58b4;
+  --stage-verified: #2f7d4f;
+  --stage-delivered: #5b6a66;
+  --stage-rejected: #b3403f;
+
+  /* ---- chart series (dept split, income flow) ------------------------- */
+  --series-1: #3d6fb4;
+  --series-2: #8e58b4;
+  --series-3: #b45069;
+  --series-4: #2c8fa6;
+  --series-5: #6161c4;
+  --series-6: #3e8e5a;
+  --series-7: #a97b22;
+  --bar-idle: #c3d3e4;
+
+  /* ---- overlays & shadows -------------------------------------------- */
+  --overlay: rgba(19, 45, 42, 0.55);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.4);
+  --shadow-toast: 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-card: 0 4px 14px rgba(27, 94, 156, 0.12);
+  --focus-ring: 0 0 0 3px rgba(27, 94, 156, 0.18);
+  --toast-ink: #8fc0ea;
+  --barcode-ink: #17211f;
+  --scrollbar-thumb: #c4cfcb;
+
+  /* ---- metrics ------------------------------------------------------- */
+  --target-min: 44px;                /* §7 U3 minimum hit target */
+  --control-h: 38px;                 /* form control height */
+  --control-h-sm: 32px;
+  --btn-h: 36px;
+  --radius: 3px;
+  --radius-card: 4px;
+  --radius-pill: 2px;
+  --sidebar-w: 236px;
+  --content-min: 1080px;             /* 1366×768 first (§16.1 A2) */
 }

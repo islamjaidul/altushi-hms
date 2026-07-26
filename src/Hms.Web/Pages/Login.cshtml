@@ -1,5 +1,6 @@
 @page "/login"
 @model Hms.Web.Pages.LoginModel
+@inject Hms.Web.HospitalIdentity Hospital
 @{
     ViewData["Title"] = "Sign in";
     Layout = null;
@@ -9,31 +10,47 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sign in — Altushi HMS</title>
+    <title>Sign in — @Hospital.Name</title>
     <link rel="stylesheet" href="/css/tokens.css" />
     <link rel="stylesheet" href="/css/app.css" />
 </head>
 <body>
 <div class="login-wrap">
     <form method="post" class="login-card">
-        <h1>Altushi HMS — Sign in</h1>
+        <div class="login-brand">
+            <span class="brand-mark">@Hospital.Monogram</span>
+            <span>
+                <h1>@Hospital.Name</h1>
+                <div class="user-role">@Hospital.Tagline</div>
+            </span>
+        </div>
+
         @if (Model.Failed)
         {
-            <p class="error-note">Sign-in failed — check the username and password.</p>
+            <div class="alert bad">
+                <span class="icon icon-sm" aria-hidden="true">error</span>
+                <span>Sign-in failed — check the username and password.</span>
+            </div>
         }
         @if (Model.LockedOut)
         {
-            <p class="error-note">Account locked after repeated failures — try again in a few minutes.</p>
+            <div class="alert warn">
+                <span class="icon icon-sm" aria-hidden="true">lock</span>
+                <span>Account locked after repeated failures — try again in a few minutes.</span>
+            </div>
         }
+
         <label class="field">
             <span class="field-label">Username</span>
-            <input class="field-input" asp-for="Username" autofocus autocomplete="username" />
+            <input class="input" asp-for="Username" autofocus autocomplete="username" />
         </label>
         <label class="field">
             <span class="field-label">Password</span>
-            <input class="field-input" asp-for="Password" type="password" autocomplete="current-password" />
+            <input class="input" asp-for="Password" type="password" autocomplete="current-password" />
         </label>
-        <button type="submit" class="btn btn-primary" style="width:100%">Sign in</button>
+        <button type="submit" class="btn btn-primary btn-block btn-cta">
+            <span class="icon icon-sm" aria-hidden="true">lock</span> Sign in
+        </button>
     </form>
 </div>
 </body>

@@ -1,0 +1,164 @@
+@page "/billing/day-close"
+@model Hms.Web.Pages.Billing.DayCloseModel
+@{
+    ViewData["Title"] = "Counter Day-Close";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.Session is null)
+{
+    <div class="empty-card narrow">
+        <span class="icon" aria-hidden="true">savings</span>
+        <div>You have no open counter session. Nothing to close right now.</div>
+        <a class="btn btn-primary" style="margin-top:14px" href="/billing/session">Open a counter</a>
+    </div>
+}
+else
+{
+    <form method="post" class="grid grid-main-side narrow"
+          data-confirm="Close the counter? Receipts already taken stay on record; the counter must be reopened by a supervisor to take more.">
+        <div class="card">
+            <div class="card-head">
+                @Model.Session.CounterName — @Ui.DateLong(Model.Session.BusinessDay)
+                <span class="spacer"></span>
+                <span class="pill good">Open</span>
+            </div>
+
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Money taken by mode</th><th class="num">Receipts</th><th class="num">Amount ৳</th></tr></thead>
+                    <tbody>
+                    @foreach (var t in Model.Tenders)
+                    {
+                        <tr>
+                            <td>@Ui.Humanize(t.Tender)</td>
+                            <td class="num">@t.Count</td>
+                            <td class="num">@Ui.Group(t.Amount)</td>
+                        </tr>
+                    }
+                    @if (Model.Tenders.Count == 0)
+                    {
+                        <tr><td colspan="3"><div class="empty-state">No receipts on this session yet.</div></td></tr>
+                    }
+                    </tbody>
+                    <tfoot>
+                    <tr>
+                        <td>Invoiced this session</td>
+                        <td class="num">@Model.InvoiceCount</td>
+                        <td class="num">@Ui.Group(Model.Net)</td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="card-body">
+                <div class="sheet-info" style="margin:0">
+                    <div><span class="k">Gross billed:</span> @Ui.Money(Model.Gross)</div>
+                    <div><span class="k">Discount given:</span> @Ui.Money(Model.Discount)</div>
+                    <div><span class="k">Net billed:</span> <b>@Ui.Money(Model.Net)</b></div>
+                    <div><span class="k">Still due from patients:</span>
+                        <span class="money-due">@Ui.Money(Model.DueOutstanding)</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">Count the drawer</div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+                <div class="total-line">
+                    <span>Opening float</span><span class="val">@Ui.Money(Model.OpeningFloat)</span>
+                </div>
+                <div class="total-line">
+                    <span>Cash taken today</span><span class="val">@Ui.Money(Model.CashTaken)</span>
+                </div>
+                <div class="total-line total-net">
+                    <span>Cash expected</span><span class="val">@Ui.Money(Model.ExpectedCash)</span>
+                </div>
+
+                <label class="field">
+                    <span class="field-label">Cash counted in the drawer (৳) <span class="req">*</span></span>
+                    <input class="input input-num" asp-for="CountedCash" data-counted
+                           inputmode="numeric" autofocus />
+                </label>
+
+                <div class="alert info" style="margin:0" data-variance-box>
+                    <span class="icon icon-sm" aria-hidden="true">info</span>
+                    <span>
+                        Difference: <b data-variance>@Ui.Money(-Model.ExpectedCash)</b>.
+                        A difference does not stop the close — it is recorded against your name and
+                        shows on the MD dashboard.
+                    </span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-cta btn-block">
+                    <span class="icon icon-sm" aria-hidden="true">savings</span> Close counter &amp; print statement
+                </button>
+            </div>
+        </div>
+    </form>
+}
+
+@if (Model.Recent.Count > 0)
+{
+    <div class="card card-clip narrow" style="margin-top:14px">
+        <div class="card-head">Recent day-closes</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th>Business day</th><th>Counter</th><th class="num">Net ৳</th><th class="num">Variance ৳</th><th></th></tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Recent)
+                {
+                    <tr>
+                        <td>@Ui.DateLong(r.BusinessDay)</td>
+                        <td>@r.Counter</td>
+                        <td class="num">@Ui.Group(r.Net)</td>
+                        <td class="num">
+                            @if (r.Variance == 0)
+                            {
+                                <span class="pill good">Matched</span>
+                            }
+                            else if (r.Variance < 0)
+                            {
+                                <span class="pill bad">Short @Ui.Group(-r.Variance)</span>
+                            }
+                            else
+                            {
+                                <span class="pill warn">Over @Ui.Group(r.Variance)</span>
+                            }
+                        </td>
+                        <td class="num"><a class="btn-tint" href="/billing/statement/@r.SummaryId">Statement</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+  // Variance updates as the operator counts — the number they must explain, before they commit.
+  (function () {
+    const counted = document.querySelector("[data-counted]");
+    const out = document.querySelector("[data-variance]");
+    const box = document.querySelector("[data-variance-box]");
+    if (!counted || !out) return;
+    const expected = @Model.ExpectedCash;
+    counted.addEventListener("input", () => {
+      const v = (Number(counted.value) || 0) - expected;
+      out.textContent = "৳ " + v.toLocaleString("en-IN");
+      box.className = "alert " + (v === 0 ? "good" : v < 0 ? "bad" : "warn");
+    });
+  })();
+</script>
+}

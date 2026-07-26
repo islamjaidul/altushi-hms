@@ -1,0 +1,136 @@
+@page "/lis/board"
+@using Hms.Lis.Data
+@model Hms.Web.Pages.Lis.BoardModel
+@{
+    ViewData["Title"] = "Work Board";
+    ViewData["Crumb"] = "Laboratory";
+    ViewData["FKeys"] = "Scan a tube barcode to advance it";
+}
+
+<div class="row" style="margin-bottom:14px">
+    <span class="card-hint">
+        Every order moves left to right. Scanning a tube at each bench advances it — no typing.
+    </span>
+    <span class="spacer"></span>
+    <span class="pill info">
+        <span class="icon icon-sm" aria-hidden="true">barcode_scanner</span> Scanner ready
+    </span>
+</div>
+
+<div class="board">
+    @foreach (var (key, label) in Hms.Web.LabBoard.Stages)
+    {
+        var cards = Model.InStage(key).ToList();
+        <div class="board-col">
+            <div class="board-head">
+                <span class="board-title ink-@key">@label</span>
+                <span class="board-count">@cards.Count</span>
+            </div>
+
+            @foreach (var c in cards)
+            {
+                <div class="board-card stage-@key" data-barcode="@(c.Samples.FirstOrDefault()?.Barcode)">
+                    <div class="top">
+                        <span class="board-id">@c.OrderNo</span>
+                        <span class="board-time tabular">@Ui.Time(c.CreatedAt)</span>
+                    </div>
+                    <div class="board-patient">@c.PatientName</div>
+                    <div class="board-tests">@c.TestList</div>
+
+                    @if (c.Held)
+                    {
+                        <div class="board-hold">
+                            <span class="icon icon-sm" aria-hidden="true">block</span>
+                            Held — due @Ui.Money(c.Due)
+                        </div>
+                    }
+
+                    @if (key == Hms.Web.LabBoard.PendingCollection)
+                    {
+                        foreach (var sample in c.Samples.Where(x => x.State == SampleState.PendingCollection && Model.Can("lis.sample.collect")))
+                        {
+                            <form method="post" asp-page-handler="Collect">
+                                <input type="hidden" name="sampleId" value="@sample.Id" />
+                                <button type="submit" class="board-advance" data-advance-btn>
+                                    Collect @sample.SampleType →
+                                </button>
+                            </form>
+                        }
+                    }
+                    else if (key == Hms.Web.LabBoard.Collected)
+                    {
+                        foreach (var sample in c.Samples.Where(x => x.State == SampleState.Collected && Model.Can("lis.sample.collect")))
+                        {
+                            <form method="post" asp-page-handler="Receive">
+                                <input type="hidden" name="sampleId" value="@sample.Id" />
+                                <button type="submit" class="board-advance" data-advance-btn>
+                                    Receive at lab →
+                                </button>
+                            </form>
+                        }
+                    }
+                    else if (key == Hms.Web.LabBoard.Received)
+                    {
+                        if (Model.Can("lis.result.enter"))
+                        {
+                            <a class="board-advance" href="/lis/results?orderId=@c.OrderId">Enter result →</a>
+                        }
+                        @* §11: rejection is a real exit from Received, and it must never be a dead
+                           end — it spawns a recollection child on the same tests (02 §2.8). *@
+                        foreach (var sample in c.Samples.Where(x => x.State == SampleState.Received && Model.Can("lis.sample.collect")))
+                        {
+                            <form method="post" asp-page-handler="Reject" style="margin-top:6px"
+                                  data-confirm="Reject this tube? The tests stay on the order and a fresh label prints for re-collection.">
+                                <input type="hidden" name="sampleId" value="@sample.Id" />
+                                <label class="sr-only" for="rej-@sample.Id">Rejection reason</label>
+                                <select id="rej-@sample.Id" name="reason" class="select input-sm" style="width:100%">
+                                    <option value="">Reject @sample.SampleType…</option>
+                                    <option value="Haemolysed">Haemolysed</option>
+                                    <option value="Insufficient sample">Insufficient sample</option>
+                                    <option value="Clotted">Clotted</option>
+                                    <option value="Wrong container">Wrong container</option>
+                                    <option value="Label unreadable">Label unreadable</option>
+                                </select>
+                                <button type="submit" class="board-advance" style="margin-top:4px">
+                                    Reject &amp; re-collect
+                                </button>
+                            </form>
+                        }
+                    }
+                    else if (key == Hms.Web.LabBoard.Resulted)
+                    {
+                        if (Model.Can("lis.result.verify"))
+                        {
+                            <a class="board-advance" href="/lis/verify?orderId=@c.OrderId">Verify →</a>
+                        }
+                        else
+                        {
+                            <div class="board-tests">Waiting for the pathologist</div>
+                        }
+                    }
+                    else if (key == Hms.Web.LabBoard.Verified)
+                    {
+                        <a class="board-advance" href="/diagnostics/delivery?orderId=@c.OrderId">Deliver →</a>
+                    }
+                    else
+                    {
+                        <a class="board-advance" href="/lis/report/@c.OrderId">View report</a>
+                    }
+                </div>
+            }
+
+            @if (cards.Count == 0)
+            {
+                <div class="board-tests" style="padding:8px 4px;color:var(--muted-3)">Nothing here.</div>
+            }
+        </div>
+    }
+</div>
+
+@if (Model.Cards.Count == 0)
+{
+    <div class="empty-card" style="margin-top:14px">
+        <span class="icon" aria-hidden="true">biotech</span>
+        No lab work yet. A paid diagnostic order lands here automatically.
+    </div>
+}

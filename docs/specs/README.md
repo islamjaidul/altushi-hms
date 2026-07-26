@@ -62,5 +62,6 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0009-admin-hardening](0009-admin-hardening/spec.md) | S5: dashboard, admin, import, hardening | Done | §9A.2, §8, §12 | 2026-07-26 |
 | [0010-demo-kit](0010-demo-kit/spec.md) | S6: demo kit + performance | In Progress | §9A.4, §14, §8 | 2026-07-26 |
 | [0011-release-candidate](0011-release-candidate/spec.md) | S7: buffer, rehearsals, release candidate | Draft | §9A | 2026-07-26 |
+| [0012-ui-pass](0012-ui-pass/spec.md) | UI pass: working screens per Altushi reference | Done | §7, §9A.2 | 2026-07-26 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

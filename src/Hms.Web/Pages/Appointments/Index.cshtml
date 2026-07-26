@@ -1,0 +1,150 @@
+@page "/appointments"
+@using Hms.Appointments.Data
+@model Hms.Web.Pages.Appointments.IndexModel
+@{
+    ViewData["Title"] = "Serials / Queue";
+    ViewData["Crumb"] = "Appointments";
+    ViewData["FKeys"] = "F2 New patient · Enter advances";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="tile-row" style="margin-bottom:14px">
+    @foreach (var d in Model.Doctors)
+    {
+        <div class="tile">
+            <div class="row" style="gap:9px">
+                <span class="avatar">@Ui.Initials(d.Name)</span>
+                <span>
+                    <div style="font-size:0.78125rem;font-weight:700">@d.Name</div>
+                    <div class="tile-sub" style="margin:0">@(d.Room ?? "Chamber")</div>
+                </span>
+            </div>
+            <div class="row" style="margin-top:10px">
+                <span class="tile-sub" style="margin:0">Capacity @d.MaxSerials</span>
+                <span class="spacer"></span>
+                <span class="text-primary" style="font-weight:700;font-size:0.8125rem">@d.TodayCount today</span>
+            </div>
+        </div>
+    }
+    @if (Model.Doctors.Count == 0)
+    {
+        <div class="empty-card" style="grid-column:1/-1">
+            <span class="icon" aria-hidden="true">calendar_month</span>
+            No doctor schedules configured yet. Add them under Administration.
+        </div>
+    }
+</div>
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Today's serial — @Ui.DateLong(Model.Today)
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Done done · @Model.Waiting waiting</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th style="width:60px">SL</th>
+                    <th>Patient</th>
+                    <th>Reg No</th>
+                    <th>Doctor</th>
+                    <th>Issued</th>
+                    <th>Status</th>
+                    <th class="num">Action</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var q in Model.Queue)
+                {
+                    var (css, word) = Ui.Status(q.State);
+                    <tr>
+                        <td class="id-cell">@q.SerialNo</td>
+                        <td><b>@q.PatientName</b></td>
+                        <td>@q.Uhid</td>
+                        <td>@q.DoctorName</td>
+                        <td class="tabular">@Ui.Time(q.CreatedAt)</td>
+                        <td><span class="pill @css">@word</span></td>
+                        <td class="num">
+                            @if (q.State is AppointmentState.Booked or AppointmentState.Arrived)
+                            {
+                                <form method="post" asp-page-handler="Advance" style="display:inline">
+                                    <input type="hidden" name="id" value="@q.Id" />
+                                    <input type="hidden" name="from" value="@q.State" />
+                                    <input type="hidden" name="to" value="@AppointmentState.InChamber" />
+                                    <button type="submit" class="btn-tint">Call in</button>
+                                </form>
+                            }
+                            else if (q.State == AppointmentState.InChamber)
+                            {
+                                <form method="post" asp-page-handler="Advance" style="display:inline">
+                                    <input type="hidden" name="id" value="@q.Id" />
+                                    <input type="hidden" name="from" value="@AppointmentState.InChamber" />
+                                    <input type="hidden" name="to" value="@AppointmentState.Done" />
+                                    <button type="submit" class="btn-tint">Finish</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="dash">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Queue.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <span class="icon" aria-hidden="true">calendar_month</span>
+                                No serials issued today yet.
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Issue" class="card">
+        <div class="card-head">New appointment</div>
+        <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Patient <span class="req">*</span></span>
+                <select class="select" asp-for="PatientId" data-advance>
+                    <option value="">— Select patient —</option>
+                    @foreach (var p in Model.Patients)
+                    {
+                        <option value="@p.Id">@p.Label</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Doctor <span class="req">*</span></span>
+                <select class="select" asp-for="DoctorId" data-advance>
+                    <option value="0">— Select doctor —</option>
+                    @foreach (var d in Model.Doctors)
+                    {
+                        <option value="@d.DoctorId">@d.Name — next serial @(d.TodayCount + 1)</option>
+                    }
+                </select>
+            </label>
+            <button type="submit" class="btn btn-primary btn-block btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">event_available</span> Add to serial
+            </button>
+            <div class="help-text">
+                The serial number is assigned by the system — two counters issuing at once can never
+                land on the same number. An SMS confirmation goes to the patient's mobile.
+            </div>
+        </div>
+    </form>
+</div>

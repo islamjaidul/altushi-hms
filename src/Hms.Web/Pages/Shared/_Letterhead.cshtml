@@ -1,0 +1,13 @@
+@model Hms.Web.Letterhead
+@inject Hms.Web.HospitalIdentity Hospital
+<div class="sheet-head">
+    <span class="sheet-mark">@Hospital.Monogram</span>
+    <span>
+        <div class="sheet-hospital">@Hospital.Name</div>
+        <div class="sheet-contact">@Hospital.Address · @Hospital.Phone</div>
+    </span>
+    <span class="sheet-doc">
+        <div class="sheet-doc-title">@Model.DocTitle</div>
+        <div class="sheet-doc-no">@Model.DocNo · @Ui.DateTimeShort(Model.At)</div>
+    </span>
+</div>

@@ -2,16 +2,31 @@
 @model Hms.Web.Pages.IndexModel
 @{
     ViewData["Title"] = "Home";
+    ViewData["Crumb"] = "Overview";
 }
-<h1 style="margin-top:0">Welcome, @Model.DisplayName</h1>
-<p style="color:var(--muted-1)">Role home — your modules are in the sidebar. Screens arrive sprint by sprint.</p>
-<div class="tile-row">
-    @foreach (var g in Model.Groups)
+
+<div class="card" style="padding:16px 18px;margin-bottom:14px">
+    <div style="font-size:1.0625rem;font-weight:800">Welcome, @Model.DisplayName</div>
+    <div class="card-hint" style="margin-top:3px">
+        Your daily work is below. Everything else your role can reach is in the left menu.
+    </div>
+</div>
+
+<div class="action-grid">
+    @foreach (var item in Model.Actions)
     {
-        <div class="tile">
-            <div class="tile-label">@g.Module</div>
-            <div class="tile-value">@g.Items.Count</div>
-            <div class="tile-label">screens available</div>
-        </div>
+        <a class="action-card" href="@item.Url">
+            <span class="action-icon"><span class="icon icon-lg" aria-hidden="true">@item.Icon</span></span>
+            <span class="action-title">@item.Title</span>
+            <span class="action-desc">@Hms.Web.Pages.IndexModel.Describe(item.Url)</span>
+        </a>
     }
 </div>
+
+@if (Model.Actions.Count == 0)
+{
+    <div class="empty-card">
+        <span class="icon" aria-hidden="true">lock</span>
+        Your account has no modules enabled yet. Ask the administrator to assign your role.
+    </div>
+}

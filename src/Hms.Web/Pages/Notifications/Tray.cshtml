@@ -1,0 +1,103 @@
+@page "/notifications/tray"
+@model Hms.Web.Pages.Notifications.TrayModel
+@{
+    ViewData["Title"] = "SMS Tray";
+    ViewData["Crumb"] = "Notifications";
+}
+
+<div class="tile-row" style="margin-bottom:14px">
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Messages sent</span>
+            <span class="icon" aria-hidden="true">send</span>
+        </div>
+        <div class="tile-value text-success">@Model.Sent</div>
+        <div class="tile-sub">@Model.Segments billable segment(s)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">No phone on file</span>
+            <span class="icon" aria-hidden="true">phone</span>
+        </div>
+        <div class="tile-value">@Model.Skipped</div>
+        <div class="tile-sub">recorded, not failed</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Gateway</span>
+            <span class="icon" aria-hidden="true">sms</span>
+        </div>
+        <div class="tile-value">@(Model.AnyLive ? "Live" : "Simulation")</div>
+        <div class="tile-sub">@(Model.AnyLive ? "operator gateway connected" : "no SIM or gateway needed")</div>
+    </div>
+</div>
+
+@if (!Model.AnyLive)
+{
+    <div class="alert info">
+        <span class="icon icon-sm" aria-hidden="true">info</span>
+        <span>
+            Simulation mode: these are the exact messages the gateway would send. Procuring an SMS
+            gateway later changes nothing on this screen except the stamp.
+        </span>
+    </div>
+}
+
+<form method="get" class="row" style="margin-bottom:14px">
+    <label class="sr-only" for="Event">Event</label>
+    <select id="Event" name="event" class="select" style="width:220px">
+        <option value="">All messages</option>
+        <option value="registration" selected="@(Model.Event == "registration")">Registration</option>
+        <option value="appointment" selected="@(Model.Event == "appointment")">Appointment</option>
+        <option value="report_ready" selected="@(Model.Event == "report_ready")">Report ready</option>
+    </select>
+    <button type="submit" class="btn">Filter</button>
+</form>
+
+<div class="card card-clip">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th style="width:150px">Queued</th>
+                <th style="width:130px">Event</th>
+                <th style="width:140px">To</th>
+                <th>Message</th>
+                <th style="width:70px" class="num">Parts</th>
+                <th style="width:150px">Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var m in Model.Rows)
+            {
+                var (css, word) = Ui.Status(m.State);
+                <tr>
+                    <td class="tabular">@Ui.DateTimeShort(m.QueuedAt)</td>
+                    <td>@Ui.Humanize(m.Event)</td>
+                    <td>@(m.Recipient ?? "—")</td>
+                    <td>@m.Body</td>
+                    <td class="num">@m.Segments</td>
+                    <td>
+                        <span class="pill @css">@word</span>
+                        @if (m.Simulated)
+                        {
+                            <span class="pill">Simulated</span>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <span class="icon" aria-hidden="true">sms</span>
+                            No messages yet. Registering a patient or verifying a report puts one here.
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

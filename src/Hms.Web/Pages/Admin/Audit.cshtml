@@ -1,0 +1,59 @@
+@page "/admin/audit"
+@model Hms.Web.Pages.Admin.AuditModel
+@{
+    ViewData["Title"] = "Audit Viewer";
+    ViewData["Crumb"] = "Administration";
+}
+
+<form method="get" class="row" style="margin-bottom:14px">
+    <span class="global-search" style="width:320px">
+        <span class="icon" aria-hidden="true">search</span>
+        <label class="sr-only" for="Q">Search the audit trail</label>
+        <input id="Q" name="q" value="@Model.Q" class="input" style="padding-left:36px;height:38px"
+               placeholder="User, entity or value…" autocomplete="off" />
+    </span>
+    <label class="sr-only" for="Action">Action</label>
+    <select id="Action" name="action" class="select" style="width:220px">
+        <option value="">All actions</option>
+        @foreach (var a in Model.Actions)
+        {
+            <option value="@a" selected="@(Model.Action == a)">@a</option>
+        }
+    </select>
+    <button type="submit" class="btn">Filter</button>
+    <span class="spacer"></span>
+    <span class="card-hint">@Model.Total event(s) recorded · showing the most recent @Model.Rows.Count</span>
+</form>
+
+<div class="card card-clip">
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th style="width:150px">When</th><th style="width:150px">Who</th><th style="width:160px">Action</th><th style="width:170px">Record</th><th>Details</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                <tr>
+                    <td class="tabular">@Ui.DateTimeShort(r.At)</td>
+                    <td><b>@r.Actor</b></td>
+                    <td><span class="pill info">@r.Action</span></td>
+                    <td class="text-muted">@r.Entity #@r.EntityId</td>
+                    <td class="text-muted" style="font-size:0.71875rem;word-break:break-all">@r.After</td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <span class="icon" aria-hidden="true">history</span>
+                            No audit events match this filter.
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
