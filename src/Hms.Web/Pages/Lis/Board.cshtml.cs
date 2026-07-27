@@ -10,15 +10,29 @@ namespace Hms.Web.Pages.Lis;
 /// UPDATE, so two benches scanning the same tube cannot both "win" (ADR-0015 #4).
 /// </summary>
 [Authorize(Policy = Perm.LisWorklistRead)]
-public class BoardModel(HmsTx tx, LisService lis) : HmsPageModel
+public class BoardModel(HmsTx tx, LisService lis, TimeProvider clock) : HmsPageModel
 {
+    /// <summary>§5 M9 [M]: "worklists by department / status".</summary>
+    [BindProperty(SupportsGet = true)] public string? Dept { get; set; }
+    [BindProperty(SupportsGet = true)] public bool LateOnly { get; set; }
+
     public IReadOnlyList<LabCard> Cards { get; private set; } = [];
+    public IReadOnlyList<string> Departments { get; private set; } = [];
+    public DateTimeOffset Now { get; private set; }
+    public int BreachedCount => Cards.Count(c => c.Breached(Now));
 
     public IEnumerable<LabCard> InStage(string stage) => Cards.Where(c => c.Stage == stage);
 
     public async Task OnGetAsync()
     {
-        Cards = await tx.RunAsync(s => LabBoard.LoadAsync(s));
+        Now = clock.GetUtcNow();
+        var all = await tx.RunAsync(s => LabBoard.LoadAsync(s));
+        Departments = all.SelectMany(c => c.Departments).Distinct().OrderBy(d => d).ToList();
+
+        Cards = all
+            .Where(c => string.IsNullOrEmpty(Dept) || c.Departments.Contains(Dept))
+            .Where(c => !LateOnly || c.Breached(Now))
+            .ToList();
     }
 
     /// <summary>

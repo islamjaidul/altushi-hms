@@ -7,15 +7,28 @@
     ViewData["FKeys"] = "Scan a tube barcode to advance it";
 }
 
-<div class="row" style="margin-bottom:14px">
+<form method="get" class="row" style="margin-bottom:14px">
     <span class="card-hint">
         Every order moves left to right. Scanning a tube at each bench advances it — no typing.
     </span>
     <span class="spacer"></span>
+    <label class="sr-only" for="Dept">Department</label>
+    <select id="Dept" name="dept" class="select input-sm" style="width:180px" onchange="this.form.submit()">
+        <option value="">All departments</option>
+        @foreach (var d in Model.Departments)
+        {
+            <option value="@d" selected="@(Model.Dept == d)">@d</option>
+        }
+    </select>
+    <label class="chip-toggle @(Model.LateOnly ? "on" : "")" style="cursor:pointer">
+        <input type="checkbox" name="lateOnly" value="true" checked="@Model.LateOnly"
+               onchange="this.form.submit()" style="margin-right:6px" />
+        Past promised time (@Model.BreachedCount)
+    </label>
     <span class="pill info">
         <span class="icon icon-sm" aria-hidden="true">barcode_scanner</span> Scanner ready
     </span>
-</div>
+</form>
 
 <div class="board">
     @foreach (var (key, label) in Hms.Web.LabBoard.Stages)
@@ -36,6 +49,17 @@
                     </div>
                     <div class="board-patient">@c.PatientName</div>
                     <div class="board-tests">@c.TestList</div>
+                    @* US9.4: elapsed against the promise, so a delay is attributable to a stage. *@
+                    <div class="board-tests">
+                        @if (c.Breached(Model.Now))
+                        {
+                            <span class="pill bad" style="padding:1px 6px">Late · @c.TatText(Model.Now)</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@c.TatText(Model.Now) elapsed · due @Ui.Time(c.PromisedAt)</span>
+                        }
+                    </div>
 
                     @if (c.Held)
                     {

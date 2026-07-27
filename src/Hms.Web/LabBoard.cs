@@ -12,10 +12,20 @@ public sealed record LabCard(
     long OrderId, string OrderNo, string PatientName, string Uhid, string? Phone,
     char Sex, short? AgeYears,
     IReadOnlyList<LabTest> Tests, IReadOnlyList<LabSample> Samples,
-    string Stage, long Due, DateTimeOffset PromisedAt, DateTimeOffset CreatedAt)
+    string Stage, long Due, DateTimeOffset PromisedAt, DateTimeOffset CreatedAt,
+    IReadOnlyList<string> Departments)
 {
     public bool Held => Due > 0;
     public string TestList => string.Join(" · ", Tests.Select(t => t.Name));
+
+    /// <summary>US9.4: turnaround is measured against the promise the patient was given.</summary>
+    public TimeSpan Elapsed(DateTimeOffset now) => now - CreatedAt;
+    public bool Breached(DateTimeOffset now) => Stage != LabBoard.Delivered && now > PromisedAt;
+    public string TatText(DateTimeOffset now)
+    {
+        var span = Elapsed(now);
+        return span.TotalHours >= 1 ? $"{(int)span.TotalHours} h {span.Minutes} m" : $"{span.Minutes} m";
+    }
 }
 
 /// <summary>
@@ -60,9 +70,10 @@ public static class LabBoard
         var orderTestIds = orderTests.Select(ot => ot.Id).ToList();
 
         var catalogIds = orderTests.Select(ot => ot.TestCatalogId).Distinct().ToList();
-        var names = await s.Adm.TestCatalog.AsNoTracking()
+        var catalog = await s.Adm.TestCatalog.AsNoTracking()
             .Where(t => catalogIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Name, ct);
+            .ToDictionaryAsync(t => t.Id, ct);
+        var names = catalog.ToDictionary(kv => kv.Key, kv => kv.Value.Name);
 
         var results = await s.Lis.Results.AsNoTracking()
             .Where(r => orderTestIds.Contains(r.OrderTestId)).ToListAsync(ct);
@@ -115,7 +126,9 @@ public static class LabBoard
                 patient?.Sex ?? 'O', AgeYearsOf(patient),
                 tests, mySamples,
                 StageOf(order.Id, tests, mySamples, delivered),
-                due, order.PromisedAt, order.CreatedAt));
+                due, order.PromisedAt, order.CreatedAt,
+                mine.Select(ot => catalog.TryGetValue(ot.TestCatalogId, out var c) ? c.Dept : "Other")
+                    .Distinct().OrderBy(d => d).ToList()));
         }
         return cards;
     }
