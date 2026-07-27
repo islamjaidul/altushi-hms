@@ -457,6 +457,38 @@ public class IpdFolioTests : IAsyncLifetime
         });
     }
 
+    /// <summary>
+    /// Spec 0021: a patient blocked (R4) at the moment of settlement keeps the blocked state
+    /// through it, so nothing promotes them to "financially settled". On release they return
+    /// to `clinically_cleared` with a locked, already-invoiced folio — and used to be stuck in
+    /// the ward forever, because a folio cannot be settled twice. Discharge must recognise the
+    /// settlement that plainly happened.
+    /// </summary>
+    [Fact]
+    public async Task A_folio_settled_while_blocked_can_still_be_discharged_after_release()
+    {
+        var (admissionId, folioId, bedId) = await AdmitPatientAsync();
+        await InTxAsync(async (ipd, bill, pharm, kernel) =>
+        {
+            await _ipd.InitiateDischargeAsync(ipd, kernel, admissionId, "well", 7, "t");
+            await _ipd.ClinicallyClearAsync(ipd, kernel, admissionId, 7, "t");
+            // Settled, but the admission never reached financially_settled (it was blocked).
+            await ipd.Database.ExecuteSqlAsync(
+                $"UPDATE ipd.folio SET state = 'locked', settlement_invoice_id = 4242 WHERE id = {folioId}");
+            return 0;
+        });
+
+        await InTxAsync(async (ipd, bill, pharm, kernel) =>
+        {
+            await _ipd.DischargeAsync(ipd, kernel, admissionId, 0, null, 7, "t");
+            var admission = await ipd.Admissions.AsNoTracking().SingleAsync(a => a.Id == admissionId);
+            Assert.Equal(AdmissionState.Discharged, admission.State);
+            var bed = await ipd.Beds.AsNoTracking().SingleAsync(b => b.Id == bedId);
+            Assert.Equal(BedState.Cleaning, bed.State);          // the bed is freed, not stuck
+            return 0;
+        });
+    }
+
     // ------------------------------------------------ indoor return restocks
 
     [Fact]

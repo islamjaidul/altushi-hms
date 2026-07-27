@@ -33,6 +33,8 @@ public class PosModel(
     [BindProperty] public string? DiscountReason { get; set; }
     [BindProperty] public bool StaffSale { get; set; }
     [BindProperty] public long PaidNow { get; set; }
+    /// <summary>Spec 0021: one prepared sale, one invoice — survives a double-click.</summary>
+    [BindProperty] public Guid SubmissionToken { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
     [BindProperty] public long PaidNow2 { get; set; }
     [BindProperty] public string Tender2 { get; set; } = "card";
@@ -51,7 +53,11 @@ public class PosModel(
 
     public long Gross => Cart.Sum(c => c.Qty * c.UnitMrp);
 
-    public async Task OnGetAsync() => await LoadAsync();
+    public async Task OnGetAsync()
+    {
+        SubmissionToken = Submission.NewToken();      // one per visit to the counter screen
+        await LoadAsync();
+    }
     public async Task<IActionResult> OnPostAsync() { await LoadAsync(); return Page(); }
 
     public async Task<IActionResult> OnPostAddAsync(long productId)
@@ -206,15 +212,26 @@ public class PosModel(
         {
             var invoiceId = await tx.RunAsync(async s =>
             {
+                // Spec 0021: resolve a repeat before any stock leaves the shelf.
+                if (await Submission.ExistingAsync(s, SubmissionToken) is { } already)
+                    return already.Id;
+
                 var patientId = PatientId is > 0
                     ? PatientId.Value
                     : await PharmacySale.EnsureWalkInPatientAsync(s, BranchId, ActorId);
                 return await PharmacySale.SaveAsync(
                     s, billing, stock, clock, BranchId, OutletId!.Value, Session!, patientId,
-                    items, discount, approvalId, tenders, ActorId, ActorName);
+                    items, discount, approvalId, tenders, ActorId, ActorName, SubmissionToken);
             });
             Toast("Sale saved — receipt ready", "receipt_long");
             return Redirect($"/billing/invoice/{invoiceId}");
+        }
+        catch (DbUpdateException e) when (Submission.IsDuplicateSubmission(e))
+        {
+            var existing = await tx.RunAsync(s => Submission.ExistingAsync(s, SubmissionToken));
+            if (existing is not null) return Redirect($"/billing/invoice/{existing.Id}");
+            Fail("That sale was just saved — reload the counter screen to see it.");
+            return Page();
         }
         catch (PharmacyException e) { Fail(e.Message); return Page(); }
         catch (BillingException e) { Fail(e.Message); return Page(); }

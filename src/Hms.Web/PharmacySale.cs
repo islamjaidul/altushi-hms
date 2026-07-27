@@ -44,7 +44,7 @@ public static class PharmacySale
         long branchId, long outletId, OpenSession session, long patientId,
         IReadOnlyList<SaleItem> items, long discount, long? discountApprovalId,
         IReadOnlyList<(long Amount, string Mode, string? Reference)> tenders,
-        long actorId, string actorName)
+        long actorId, string actorName, Guid? submissionToken = null)
     {
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
         var encounter = await CounterContext.GetOrCreateEncounterAsync(
@@ -70,7 +70,8 @@ public static class PharmacySale
 
         var invoice = await billing.CreateInvoiceAsync(
             s.Bill, s.Kernel, branchId, encounter.Id, session.Id, patientId,
-            0m, discount, discountApprovalId, actorId, actorName);
+            0m, discount, discountApprovalId, actorId, actorName,
+            submissionToken: submissionToken);
 
         foreach (var (a, chargeLineId) in lineAllocations)
             s.Pharm.SaleAllocations.Add(new SaleAllocation

@@ -334,6 +334,18 @@ public sealed class IpdService(
                 "being released with a due — the reason goes on the record with your name.");
 
         var admission = await GetAdmissionAsync(ipd, admissionId, ct);
+
+        // "Financially settled" is a FACT about the folio, not a flag someone remembered to
+        // set. A patient blocked (R4) at the moment of settlement keeps their blocked state
+        // through it, and on release returns to `clinically_cleared` — with a locked folio and
+        // a settlement invoice already raised. Without this, they could never be discharged
+        // and their bed never freed: the folio cannot be settled twice. Recognise the fact.
+        var settledFolio = await ipd.Folios.AsNoTracking().AnyAsync(f =>
+            f.AdmissionId == admissionId && f.State == FolioState.Locked
+            && f.SettlementInvoiceId != null, ct);
+        if (settledFolio && admission.State == AdmissionState.ClinicallyCleared)
+            await MarkFinanciallySettledAsync(ipd, admissionId, ct);
+
         var affected = await ipd.Database.ExecuteSqlAsync($"""
             UPDATE ipd.admission SET state = 'discharged', discharged_at = {clock.GetUtcNow()}
             WHERE id = {admissionId} AND state = 'financially_settled'

@@ -149,6 +149,7 @@ else if (admission.State == AdmissionState.ClinicallyCleared && folio is not nul
                                     <span class="field-label">Discount reason</span>
                                     <input class="input" asp-for="DiscountReason" placeholder="required when discounting" />
                                 </label>
+                                <input type="hidden" name="SubmissionToken" value="@Model.SubmissionToken" />
                                 <button type="submit" class="btn btn-primary btn-cta">
                                     Create settlement invoice
                                 </button>
@@ -230,6 +231,82 @@ else if (admission.State == AdmissionState.FinanciallySettled && folio is not nu
                 <form method="post" asp-page-handler="Discharge">
                     <button type="submit" class="btn btn-primary btn-cta">Discharge — print gate pass</button>
                 </form>
+            }
+        </div>
+    </div>
+}
+@* Spec 0021: death and absconding are exits too, and their bills must still be closable —
+   otherwise the charges are stranded on an open folio and nobody can ever be billed. The
+   wording says "close the bill", never "discharge": the clinical fact stands. *@
+else if (admission.State is AdmissionState.Death or AdmissionState.Absconded
+         && folio is not null && folio.State != FolioState.Locked)
+{
+    <div class="card" style="max-width:760px">
+        <div class="card-head">
+            Close the bill — patient @(admission.State == AdmissionState.Death ? "died" : "absconded")
+        </div>
+        <div class="card-body stack" style="gap:10px;padding-top:0">
+            <p class="card-hint">
+                The patient has left, but the charges on this folio are real. Closing the bill
+                turns them into an invoice so the balance can be collected or followed up
+                (§11 names this "due follow-up"). The admission stays
+                <b>@Ui.Humanize(admission.State)</b> — nobody is being discharged.
+            </p>
+            @if (!Model.CanSettle)
+            {
+                <p class="card-hint">A billing operator closes the bill.</p>
+            }
+            else if (folio.State == FolioState.Open)
+            {
+                <form method="post" asp-page-handler="Prepare">
+                    <button type="submit" class="btn btn-primary">Prepare the final bill</button>
+                </form>
+            }
+            else if (folio.State == FolioState.SettlementDraft)
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Description</th><th>Source</th><th>Qty</th><th>Amount</th></tr></thead>
+                        <tbody>
+                        @foreach (var line in Model.Draft)
+                        {
+                            <tr>
+                                <td>@line.Description</td>
+                                <td><span class="pill">@line.Source</span></td>
+                                <td class="tabular">@line.Qty</td>
+                                <td class="tabular">@Ui.Money(line.Amount)</td>
+                            </tr>
+                        }
+                        </tbody>
+                        <tfoot>
+                            <tr><td colspan="3"><b>Gross</b></td><td class="tabular"><b>@Ui.Money(Model.Gross)</b></td></tr>
+                            <tr><td colspan="3">Advance held</td><td class="tabular">− @Ui.Money(Model.AdvanceHeld)</td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+                @if (Model.Session is null)
+                {
+                    <div class="card-hint">Open your counter session first — any advance refund moves through the drawer.</div>
+                    <a class="btn" href="/billing/session">Open counter…</a>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="Confirm" class="stack" style="gap:10px">
+                        <input type="hidden" name="SubmissionToken" value="@Model.SubmissionToken" />
+                        <label class="field">
+                            <span class="field-label">Discount (৳, flat)</span>
+                            <input class="input input-num" asp-for="DiscountFlat" inputmode="numeric" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Discount reason</span>
+                            <input class="input" asp-for="DiscountReason" placeholder="required when discounting" />
+                        </label>
+                        <button type="submit" class="btn btn-primary btn-cta">Close the bill</button>
+                        <div class="card-hint">
+                            Any balance becomes a normal due on the collection screen.
+                        </div>
+                    </form>
+                }
             }
         </div>
     </div>

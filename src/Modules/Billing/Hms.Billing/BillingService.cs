@@ -183,8 +183,18 @@ public sealed class BillingService(
         BillDbContext bill, KernelDbContext kernel,
         long branchId, long folioId, long sessionId, long patientId,
         decimal discountPercent, long discountFlat, long? discountApprovalId,
-        long actorId, string actorName, CancellationToken ct = default)
+        long actorId, string actorName, CancellationToken ct = default,
+        Guid? submissionToken = null)
     {
+        // Spec 0021: a repeat of the same submission returns what it already produced.
+        if (await FindBySubmissionAsync(bill, submissionToken, ct) is { } already)
+        {
+            var applied = await bill.Dues.AsNoTracking()
+                .Where(d => d.InvoiceId == already.Id)
+                .Select(d => already.Net - d.Balance).FirstOrDefaultAsync(ct);
+            return (already, applied);
+        }
+
         var charges = await bill.ChargeLines
             .Where(c => c.FolioId == folioId && c.InvoiceId == null)
             .ToListAsync(ct);
@@ -219,6 +229,7 @@ public sealed class BillingService(
             Net = net,
             State = advanceApplied == net ? InvoiceState.Paid
                   : advanceApplied > 0 ? InvoiceState.PartiallyPaid : InvoiceState.Billed,
+            SubmissionToken = Normalise(submissionToken),
             CreatedAt = clock.GetUtcNow(),
             CreatedBy = actorId,
         };
@@ -250,6 +261,27 @@ public sealed class BillingService(
         return (invoice, advanceApplied);
     }
 
+    /// <summary>
+    /// The invoice a given submission already produced, if any (spec 0021). Screens call this
+    /// before doing any work, so a re-post lands the operator on their existing invoice
+    /// instead of billing the patient twice — and callers that create other records first
+    /// (a test order, a stock issue) never create them a second time either.
+    /// </summary>
+    public static Task<Invoice?> FindBySubmissionAsync(
+        BillDbContext bill, Guid? submissionToken, CancellationToken ct = default)
+        => Normalise(submissionToken) is not { } token
+            ? Task.FromResult<Invoice?>(null)
+            : bill.Invoices.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.SubmissionToken == token, ct);
+
+    /// <summary>
+    /// A form that carries no token binds to <see cref="Guid.Empty"/>, which is a VALUE — storing
+    /// it would make the first tokenless invoice claim the unique index and refuse every one
+    /// after it. Absent means absent: normalise it to null before it can reach a column.
+    /// </summary>
+    private static Guid? Normalise(Guid? submissionToken)
+        => submissionToken is null || submissionToken == Guid.Empty ? null : submissionToken;
+
     /// <summary>03 §6 step 2: percentage discounts round half-up to whole taka, ONCE, at the total.</summary>
     public static long RoundHalfUp(decimal value) => (long)Math.Floor(value + 0.5m);
 
@@ -261,8 +293,12 @@ public sealed class BillingService(
         BillDbContext bill, KernelDbContext kernel,
         long branchId, long encounterId, long sessionId, long patientId,
         decimal discountPercent, long discountFlat, long? discountApprovalId,
-        long actorId, string actorName, CancellationToken ct = default)
+        long actorId, string actorName, CancellationToken ct = default,
+        Guid? submissionToken = null)
     {
+        // Spec 0021: a repeat of the same submission returns what it already produced.
+        if (await FindBySubmissionAsync(bill, submissionToken, ct) is { } already) return already;
+
         var charges = await bill.ChargeLines
             .Where(c => c.EncounterId == encounterId && c.InvoiceId == null)
             .ToListAsync(ct);
@@ -292,6 +328,7 @@ public sealed class BillingService(
             DiscountApprovalId = discountApprovalId,
             Net = net,
             State = InvoiceState.Billed,
+            SubmissionToken = Normalise(submissionToken),
             CreatedAt = clock.GetUtcNow(),
             CreatedBy = actorId,
         };

@@ -106,6 +106,13 @@ public class Invoice
     public long Net { get; set; }
     public short RoundingAdj { get; set; }             // 03 §6: MVP keeps 0; column is the audit seam
     public string State { get; set; } = InvoiceState.Billed;
+    /// <summary>
+    /// One prepared bill = one invoice (spec 0021). The issuing screen mints this per render
+    /// and carries it through cart postbacks; a double-click, a browser resend or a retried
+    /// request arrives with the same token and resolves to the invoice that already exists.
+    /// The UNIQUE index is what makes that true under concurrency — the check alone is a race.
+    /// </summary>
+    public Guid? SubmissionToken { get; set; }
     public int Version { get; set; }                   // optimistic (ADR-0015 #3)
     public DateTimeOffset CreatedAt { get; set; }
     public long CreatedBy { get; set; }
@@ -200,6 +207,8 @@ public class BillDbContext(DbContextOptions<BillDbContext> options) : DbContext(
                     "ck_invoice_parent", "num_nonnulls(encounter_id, folio_id) = 1");        // M6 seam
             });
             e.HasIndex(x => x.InvoiceNo).IsUnique();
+            e.HasIndex(x => x.SubmissionToken).IsUnique()
+                .HasFilter("submission_token IS NOT NULL");     // spec 0021: one submit, one invoice
             e.Property(x => x.Version).IsConcurrencyToken();
         });
         b.Entity<InvoiceLine>(e => e.ToTable("invoice_line"));

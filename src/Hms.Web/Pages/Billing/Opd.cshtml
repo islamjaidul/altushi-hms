@@ -66,6 +66,8 @@
                            value="@Model.PatientName"
                            placeholder="Type name, UHID or phone…" />
                     <input type="hidden" id="PatientId" name="PatientId" value="@Model.PatientId" />
+                    @* Spec 0021: one prepared bill, one invoice — survives a double-click. *@
+                    <input type="hidden" name="SubmissionToken" value="@Model.SubmissionToken" />
                 </label>
                 <div class="field">
                     <span class="field-label">Counter</span>

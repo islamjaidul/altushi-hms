@@ -27,6 +27,8 @@ public class OrderModel(
     [BindProperty] public List<long> Items { get; set; } = [];
     [BindProperty] public long DiscountFlat { get; set; }
     [BindProperty] public long PaidNow { get; set; }
+    /// <summary>Spec 0021: one prepared order, one invoice — survives a double-click.</summary>
+    [BindProperty] public Guid SubmissionToken { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
     /// <summary>§5 M8 [M]: referrer captured on every order — a master row, never free text.</summary>
     [BindProperty] public long? ReferrerId { get; set; }
@@ -43,7 +45,11 @@ public class OrderModel(
 
     public sealed record ReferrerPick(long Id, string Label);
 
-    public async Task OnGetAsync() => await LoadAsync();
+    public async Task OnGetAsync()
+    {
+        SubmissionToken = Submission.NewToken();      // one per visit to the screen
+        await LoadAsync();
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
@@ -130,6 +136,17 @@ public class OrderModel(
         {
             var (orderId, released) = await tx.RunAsync(async s =>
             {
+                // Spec 0021: resolve a repeat before anything is created — otherwise a
+                // second post would leave a duplicate test order behind even if the
+                // invoice were deduplicated.
+                if (await Submission.ExistingAsync(s, SubmissionToken) is { } already)
+                {
+                    var priorOrder = await s.Diag.Orders.AsNoTracking()
+                        .Where(o => o.InvoiceId == already.Id)
+                        .Select(o => o.Id).FirstOrDefaultAsync();
+                    return (priorOrder, 0);
+                }
+
                 var poster = new ChargePoster(s.Bill, billing);
                 var diagnostics = new DiagnosticsService(poster, clock);
 
@@ -145,7 +162,7 @@ public class OrderModel(
 
                 var invoice = await billing.CreateInvoiceAsync(
                     s.Bill, s.Kernel, BranchId, encounter.Id, Session.Id, PatientId.Value,
-                    0m, discount, null, ActorId, ActorName);
+                    0m, discount, null, ActorId, ActorName, submissionToken: SubmissionToken);
 
                 await diagnostics.MarkInvoicedAsync(s.Diag, order.Id, invoice.Id);
 
@@ -169,6 +186,15 @@ public class OrderModel(
                     : "Order invoiced — labels print once the balance is paid",
                   "receipt_long");
             return Redirect($"/diagnostics/order/{orderId}");
+        }
+        catch (DbUpdateException e) when (Submission.IsDuplicateSubmission(e))
+        {
+            var existing = await tx.RunAsync(s => Submission.ExistingAsync(s, SubmissionToken));
+            var prior = existing is null ? null : await tx.RunAsync(s => s.Diag.Orders.AsNoTracking()
+                .Where(o => o.InvoiceId == existing.Id).Select(o => (long?)o.Id).FirstOrDefaultAsync());
+            if (prior is long id) return Redirect($"/diagnostics/order/{id}");
+            Fail("That order was just saved — reload the screen to see it.");
+            return Page();
         }
         catch (BillingException e) { Fail(e.Message); return Page(); }
         catch (DiagnosticsException e) { Fail(e.Message); return Page(); }

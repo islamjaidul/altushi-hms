@@ -165,3 +165,29 @@
     }
   }
 })();
+
+// Spec 0021 — visible half of "one submission, one invoice". The guarantee is the unique
+// submission token in the database; this only stops the operator watching a second click do
+// nothing while the first request is still in flight (§7: fast, non-technical hands).
+//
+// It latches the CLICKED BUTTON, never the form: these screens post back to add and remove
+// cart lines, and latching the form would disable the save button the moment a line is added.
+// Disabling happens a tick after submission so the button's own value still posts.
+(function () {
+  document.addEventListener("submit", function (e) {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!form.querySelector('input[name="SubmissionToken"]')) return;
+    const button = e.submitter;
+    if (!(button instanceof HTMLButtonElement)) return;
+    if (button.dataset.submitting === "1") {
+      e.preventDefault();          // the same button, clicked twice
+      return;
+    }
+    button.dataset.submitting = "1";
+    setTimeout(function () {
+      button.disabled = true;
+      if (button.classList.contains("btn-cta")) button.textContent = "Saving…";
+    }, 0);
+  });
+})();

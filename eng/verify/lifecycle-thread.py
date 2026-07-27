@@ -221,10 +221,60 @@ url, _ = op.post("/billing/opd?handler=Save", {
     "PaidNow": g3.group(1) if g3 else "0", "Tender": "cash"}, opd)
 check("/billing/invoice/" in url, "the patient can return as an outpatient")
 
+# 9b — spec 0021: one submission, one invoice ------------------------------
+step(10, "A re-submitted bill does not bill the patient twice (spec 0021)")
+opd = op.get(f"/billing/opd?PatientId={pid}")
+tok = re.search(r'name="SubmissionToken" value="([0-9a-fA-F-]+)"', opd)
+check(tok is not None, "the bill form carries a submission token")
+svc3 = re.search(r'name="catalogId" value="(\d+)"', opd)
+opd = op.post("/billing/opd?handler=Add",
+              {"catalogId": svc3.group(1), "PatientId": pid,
+               "SubmissionToken": tok.group(1)}, opd)[1]
+g4 = re.search(r'data-gross="(\d+)"', opd)
+fields = {"PatientId": pid, "Items": [svc3.group(1)], "SubmissionToken": tok.group(1),
+          "PaidNow": g4.group(1) if g4 else "0", "Tender": "cash"}
+u_a, _ = op.post("/billing/opd?handler=Save", dict(fields), opd)
+u_b, _ = op.post("/billing/opd?handler=Save", dict(fields), opd)   # the double-click
+check("/billing/invoice/" in u_a and u_a == u_b,
+      f"both posts land on the same invoice ({u_a.rstrip('/').split('/')[-1]})")
+
+# 9c — spec 0021: a terminal exit can still be billed -----------------------
+step(11, "A patient who absconds still leaves a due to follow up (spec 0021)")
+fd.post("/registration/new", {
+    "FullName": name + " B", "Sex": "M", "AgeOrDob": "45", "Phone": phone_digits[:-1] + "9",
+    "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})
+h2 = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(name + " B")))
+pid2 = str(h2[0]["value"])
+admit2 = fd.get("/ipd/admit")
+bed2 = re.search(r'<option value="(\d+)">GW[MF]-\d+', admit2)
+u2, _ = fd.post("/ipd/admit", {"PatientId": pid2, "Source": "direct", "BedId": bed2.group(1),
+                               "ServiceChargePct": "0", "ReserveOnly": "false"}, admit2)
+adm2 = re.search(r"/ipd/folio/(\d+)", u2).group(1)
+op.get(f"/ipd/folio/{adm2}")                       # catch the bed day up
+fd.post(f"/ipd/folio/{adm2}?handler=Absconded", {"AdmissionId": adm2},
+        fd.get(f"/ipd/folio/{adm2}"))
+dis2 = op.get(f"/ipd/discharge/{adm2}")
+check("Close the bill" in dis2, "the screen offers to close an absconded patient's bill")
+op.post(f"/ipd/discharge/{adm2}?handler=Prepare", {"AdmissionId": adm2}, dis2)
+dis2 = op.get(f"/ipd/discharge/{adm2}")
+tok2 = re.search(r'name="SubmissionToken" value="([0-9a-fA-F-]+)"', dis2)
+u3, _ = op.post(f"/ipd/discharge/{adm2}?handler=Confirm",
+                {"AdmissionId": adm2, "DiscountFlat": "0",
+                 "SubmissionToken": tok2.group(1) if tok2 else ""}, dis2)
+check("/billing/invoice/" in u3, "the absconded patient's bill closed into an invoice")
+inv2 = u3.rstrip("/").split("/")[-1]
+dues2 = op.get("/billing/dues?Q=" + urllib.parse.quote(name + " B"))
+check(f'name="InvoiceId" value="{inv2}"' in dues2,
+      "the balance is a normal due on the collection screen (§11 due follow-up)")
+state2 = fd.get(f"/ipd/admissions?Tab=closed")
+check("Absconded" in state2, "the admission stays Absconded — nobody was 'discharged'")
+board2 = fd.get("/ipd/board")
+fd.post("/ipd/board?handler=CleaningDone", {"BedId": bed2.group(1)}, board2)
+
 # 10 — housekeeping --------------------------------------------------------
 # The discharge left the bed in Cleaning (§11); hand it back so repeated runs (and the
 # upgrade gate) never exhaust the ward.
-step(10, "Housekeeping: the vacated bed returns to the ward")
+step(12, "Housekeeping: the vacated bed returns to the ward")
 board = fd.get("/ipd/board")
 fd.post("/ipd/board?handler=CleaningDone", {"BedId": bed.group(1)}, board)
 check("Free" in fd.get("/ipd/board"), "bed free again for the next patient")

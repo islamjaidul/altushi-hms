@@ -8,6 +8,14 @@ public class NumberSeriesTests(PostgresFixture pg)
 {
     private readonly NumberSeriesService _svc = new();
 
+    /// <summary>
+    /// A series key of this class's own. The shared Postgres fixture is one database, so
+    /// borrowing the real "invoice" series makes these assertions depend on whether some
+    /// other test class happened to raise an invoice first — a trap that only springs when
+    /// someone adds a test elsewhere.
+    /// </summary>
+    private const string Series = "test-number-series";
+
     [Fact]
     public async Task Parallel_issuance_is_collision_free_and_contiguous()
     {
@@ -18,7 +26,7 @@ public class NumberSeriesTests(PostgresFixture pg)
         {
             await using var db = pg.CreateKernelContext();
             await using var tx = await db.Database.BeginTransactionAsync(ct);
-            var v = await _svc.IssueValueAsync(db, 1, "invoice", "2026-27", "INV-{fy}-{n:D6}", ct);
+            var v = await _svc.IssueValueAsync(db, 1, Series, "2026-27", "INV-{fy}-{n:D6}", ct);
             await tx.CommitAsync(ct);
             lock (issued) issued.Add(v);
         });
@@ -53,7 +61,7 @@ public class NumberSeriesTests(PostgresFixture pg)
     {
         await using var db = pg.CreateKernelContext();
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _svc.IssueValueAsync(db, 1, "invoice", "2026-27", "X-{n}"));
+            () => _svc.IssueValueAsync(db, 1, Series, "2026-27", "X-{n}"));
     }
 
     [Fact]
@@ -61,7 +69,7 @@ public class NumberSeriesTests(PostgresFixture pg)
     {
         await using var db = pg.CreateKernelContext();
         await using var tx = await db.Database.BeginTransactionAsync();
-        var a = await _svc.IssueValueAsync(db, 1, "invoice", "2027-28", "INV-{fy}-{n:D6}");
+        var a = await _svc.IssueValueAsync(db, 1, Series, "2027-28", "INV-{fy}-{n:D6}");
         await tx.CommitAsync();
         Assert.Equal(1, a);                                           // fresh series per fiscal year
     }

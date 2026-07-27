@@ -36,6 +36,8 @@ public class OpdModel(
     [BindProperty] public string? TenderRef2 { get; set; }
     /// <summary>§5 M4 [M]: discounts carry an operator-stated reason, not a generated one.</summary>
     [BindProperty] public string? DiscountReason { get; set; }
+    /// <summary>Spec 0021: one prepared bill, one invoice — survives a double-click.</summary>
+    [BindProperty] public Guid SubmissionToken { get; set; }
 
     public OpenSession? Session { get; private set; }
     public IReadOnlyList<CatalogItem> Catalog { get; private set; } = [];
@@ -52,7 +54,11 @@ public class OpdModel(
     public long UnbilledTotal => Unbilled.Sum(u => u.Amount);
     public long Gross => CartTotal + UnbilledTotal;
 
-    public async Task OnGetAsync() => await LoadAsync();
+    public async Task OnGetAsync()
+    {
+        SubmissionToken = Submission.NewToken();      // one per visit to the screen
+        await LoadAsync();
+    }
 
     /// <summary>Patient change / catalogue filter: re-render with the cart intact.</summary>
     public async Task<IActionResult> OnPostAsync()
@@ -231,6 +237,10 @@ public class OpdModel(
         {
             var invoiceId = await tx.RunAsync(async s =>
             {
+                // Spec 0021: a re-post of this same prepared bill lands on its invoice.
+                if (await Submission.ExistingAsync(s, SubmissionToken) is { } already)
+                    return already.Id;
+
                 // R4 (spec 0017): a due-blocked patient takes no new charges at any counter.
                 await IpdBilling.EnsureNotBlockedAsync(s, PatientId!.Value);
 
@@ -249,7 +259,8 @@ public class OpdModel(
 
                 var invoice = await billing.CreateInvoiceAsync(
                     s.Bill, s.Kernel, BranchId, encounter.Id, Session.Id, PatientId.Value,
-                    0m, discount, approvalId, ActorId, ActorName);
+                    0m, discount, approvalId, ActorId, ActorName,
+                    submissionToken: SubmissionToken);
 
                 foreach (var (amount, mode, reference) in tenders)
                     await billing.CollectAsync(s.Bill, s.Kernel, BranchId, invoice.Id, Session.Id,
@@ -260,6 +271,15 @@ public class OpdModel(
 
             Toast("Invoice saved — money receipt ready", "receipt_long");
             return Redirect($"/billing/invoice/{invoiceId}");
+        }
+        catch (DbUpdateException e) when (Submission.IsDuplicateSubmission(e))
+        {
+            // Lost the race to a concurrent post of the same submission: the winner's invoice
+            // is the right answer, not a second bill.
+            var existing = await tx.RunAsync(s => Submission.ExistingAsync(s, SubmissionToken));
+            if (existing is not null) return Redirect($"/billing/invoice/{existing.Id}");
+            Fail("That bill was just saved — reload the screen to see it.");
+            return Page();
         }
         catch (BillingException e)
         {

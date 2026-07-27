@@ -29,6 +29,8 @@ public class DischargeModel(
     [BindProperty] public string? DiscountReason { get; set; }
     /// <summary>Spec 0020: releasing a patient who still owes money is a stated decision.</summary>
     [BindProperty] public string? OutstandingReason { get; set; }
+    /// <summary>Spec 0021: one prepared settlement, one invoice.</summary>
+    [BindProperty] public Guid SubmissionToken { get; set; }
 
     public Admission? Admission { get; private set; }
     public Folio? Folio { get; private set; }
@@ -49,7 +51,10 @@ public class DischargeModel(
     public bool CanManage => Can("ipd.manage");
 
     public async Task<IActionResult> OnGetAsync()
-        => await LoadAsync() ? Page() : NotFound();
+    {
+        SubmissionToken = Submission.NewToken();
+        return await LoadAsync() ? Page() : NotFound();
+    }
 
     private async Task<bool> LoadAsync()
     {
@@ -217,11 +222,17 @@ public class DischargeModel(
         {
             var result = await tx.RunAsync(s => IpdBilling.ConfirmSettlementAsync(
                 s, billing, folios, ipd, BranchId, AdmissionId, Session!.Id,
-                0m, discount, approvalId, ActorId, ActorName));
+                0m, discount, approvalId, ActorId, ActorName, submissionToken: SubmissionToken));
             Toast(result.AdvanceReturned > 0
                     ? $"Settled — return {Ui.Money(result.AdvanceReturned)} excess advance from the drawer"
                     : "Settled — collect the balance on the invoice", "receipt_long");
             return Redirect($"/billing/invoice/{result.InvoiceId}");
+        }
+        catch (DbUpdateException e) when (Submission.IsDuplicateSubmission(e))
+        {
+            var existing = await tx.RunAsync(s => Submission.ExistingAsync(s, SubmissionToken));
+            if (existing is not null) return Redirect($"/billing/invoice/{existing.Id}");
+            return await Reshow("That settlement was just saved — reload to see it.");
         }
         catch (IpdException e) { return await Reshow(e.Message); }
         catch (BillingException e) { return await Reshow(e.Message); }

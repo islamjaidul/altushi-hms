@@ -171,17 +171,28 @@ public static class IpdBilling
     public const string ServiceChargeCode = "IPD-SVC-PCT";
 
     /// <summary>
+    /// The admission states from which a folio may be closed. Discharge is the ordinary one;
+    /// **death and absconding are exits too, and their bills must still be closable** — before
+    /// spec 0021 a deceased patient's charges were stranded on an Open folio forever, and an
+    /// absconded patient left no due for the follow-up §11 explicitly asks for.
+    /// </summary>
+    public static bool CanSettle(string admissionState) => admissionState is
+        AdmissionState.ClinicallyCleared or AdmissionState.Death or AdmissionState.Absconded;
+
+    /// <summary>
     /// Step 1: freeze the bill. Catches up bed days, posts the service-charge % line over the
     /// eligible base (everything except the package line — a package price is all-inclusive),
-    /// then moves the folio to settlement draft. Requires a clinically-cleared admission (§11).
+    /// then moves the folio to settlement draft.
     /// </summary>
     public static async Task PrepareSettlementAsync(
         TxScope s, BillingService billing, FolioService folios, RateResolver rates,
         TimeProvider clock, long branchId, long admissionId, long actorId, CancellationToken ct = default)
     {
         var admission = await s.Ipd.Admissions.AsNoTracking().SingleAsync(a => a.Id == admissionId, ct);
-        if (admission.State != AdmissionState.ClinicallyCleared)
-            throw new IpdException("Settlement needs a clinically-cleared admission first (§11).");
+        if (!CanSettle(admission.State))
+            throw new IpdException(
+                "The bill can be closed once the patient is clinically cleared for discharge, "
+                + "or has died or absconded (§11).");
 
         var folio = await s.Ipd.Folios.AsNoTracking().SingleAsync(f => f.AdmissionId == admissionId, ct);
         var state = await folios.LockAsync(s.Ipd, folio.Id, ct);
@@ -230,7 +241,8 @@ public static class IpdBilling
         TxScope s, BillingService billing, FolioService folios, IpdService ipd,
         long branchId, long admissionId, long sessionId,
         decimal discountPercent, long discountFlat, long? discountApprovalId,
-        long actorId, string actorName, CancellationToken ct = default)
+        long actorId, string actorName, CancellationToken ct = default,
+        Guid? submissionToken = null)
     {
         var folio = await s.Ipd.Folios.AsNoTracking().SingleAsync(f => f.AdmissionId == admissionId, ct);
         var state = await folios.LockAsync(s.Ipd, folio.Id, ct);
@@ -239,7 +251,8 @@ public static class IpdBilling
 
         var (invoice, advanceApplied) = await billing.CreateFolioInvoiceAsync(
             s.Bill, s.Kernel, branchId, folio.Id, sessionId, folio.PatientId,
-            discountPercent, discountFlat, discountApprovalId, actorId, actorName, ct);
+            discountPercent, discountFlat, discountApprovalId, actorId, actorName, ct,
+            submissionToken);
 
         var held = await billing.AdvanceHeldAsync(s.Bill, folio.Id, ct);
         var excess = held - advanceApplied;
@@ -249,7 +262,14 @@ public static class IpdBilling
 
         await folios.LockAtSettlementAsync(s.Ipd, s.Kernel, folio.Id, invoice.Id, advanceApplied,
             actorId, actorName, ct);
-        await ipd.MarkFinanciallySettledAsync(s.Ipd, admissionId, ct);
+
+        // Only a living, cleared patient advances to "financially settled" on the way out of
+        // the gate. Death and absconding are terminal clinical facts (§11) — closing their
+        // bill must never overwrite them with a state that implies a normal discharge.
+        var admissionState = await s.Ipd.Admissions.AsNoTracking()
+            .Where(a => a.Id == admissionId).Select(a => a.State).SingleAsync(ct);
+        if (admissionState == AdmissionState.ClinicallyCleared)
+            await ipd.MarkFinanciallySettledAsync(s.Ipd, admissionId, ct);
 
         return new SettlementResult(invoice.Id, advanceApplied, excess > 0 ? excess : 0,
             invoice.Net - advanceApplied);
