@@ -57,7 +57,7 @@ public class TemplatesModel(HmsTx tx) : HmsPageModel
 
             Parameters = (template?.Parameters ?? []).Select(p =>
             {
-                ReferenceBand? Band(char? sex) => p.Bands.FirstOrDefault(b =>
+                ReferenceBand? Band(char? sex) => p.SafeBands.FirstOrDefault(b =>
                     b.Sex == sex && b.AgeFrom is null && b.AgeTo is null);
                 var general = Band(null);
                 var male = Band('M');

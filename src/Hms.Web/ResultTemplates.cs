@@ -39,12 +39,19 @@ public sealed record ReferenceBand(
 
 /// <summary>One measured line on a lab report, with the bands its flag is judged against.</summary>
 public sealed record ResultParameter(
-    string Code, string Name, string Unit, IReadOnlyList<ReferenceBand> Bands)
+    string Code, string Name, string Unit, IReadOnlyList<ReferenceBand>? Bands)
 {
+    /// <summary>
+    /// A template written before bands existed deserialises with a null list. Treat it as
+    /// "no reference range" rather than throwing — an upgraded database must keep working,
+    /// and an unbanded parameter is still enterable, just unflagged.
+    /// </summary>
+    public IReadOnlyList<ReferenceBand> SafeBands => Bands ?? [];
+
     /// <summary>§5 M9 [M]: "reference ranges by age/sex". The chosen band is stored with the
     /// value, so a range revised next year cannot re-flag a report issued today (edge 22).</summary>
     public ReferenceBand? BandFor(char sex, short? ageYears) =>
-        Bands.Where(b => b.Matches(sex, ageYears))
+        SafeBands.Where(b => b.Matches(sex, ageYears))
              .OrderByDescending(b => b.Specificity)
              .FirstOrDefault();
 }
@@ -116,8 +123,25 @@ public static class ResultTemplates
     public static ResultTemplate? Parse(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
-        try { return JsonSerializer.Deserialize<ResultTemplate>(json); }
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<ResultTemplate>(json);
+            if (parsed?.Parameters is null) return null;
+            // Normalise on the way in so no caller has to think about the older shape.
+            return parsed with
+            {
+                Parameters = parsed.Parameters
+                    .Select(p => p.Bands is null ? p with { Bands = [] } : p).ToList(),
+            };
+        }
         catch (JsonException) { return null; }   // a hand-edited template must not break the bench
+    }
+
+    /// <summary>True when a stored template predates reference bands and should be refreshed.</summary>
+    public static bool NeedsUpgrade(string? json)
+    {
+        var t = Parse(json);
+        return t is not null && t.Parameters.Count > 0 && t.Parameters.All(p => p.SafeBands.Count == 0);
     }
 
     /// <summary>

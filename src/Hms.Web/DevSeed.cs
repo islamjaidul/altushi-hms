@@ -223,10 +223,14 @@ public static class DevSeed
         // Backfill for catalogs seeded before result templates existed. Without this a database
         // created by an earlier build keeps `template = null`, and result entry silently renders
         // a test with no parameter rows — a blank screen with no error to explain it.
-        var untemplated = await adm.TestCatalog.Where(t => t.Template == null).ToListAsync();
+        // Also refresh templates written before reference bands existed: their parameters carry
+        // no bands at all, which would leave result entry unable to judge anything. An upgraded
+        // database has to keep working, so the shipped template is re-applied by code.
+        var candidates = await adm.TestCatalog.ToListAsync();
         var backfilled = 0;
-        foreach (var t in untemplated)
+        foreach (var t in candidates)
         {
+            if (t.Template is not null && !ResultTemplates.NeedsUpgrade(t.Template)) continue;
             var template = ResultTemplates.For(t.Code);
             if (template is null) continue;          // imaging/cardiology report a narrative
             t.Template = template;
