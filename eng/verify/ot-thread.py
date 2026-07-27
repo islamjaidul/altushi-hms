@@ -12,6 +12,7 @@ usage: python3 eng/verify/ot-thread.py       (from the repo root, app on :5199)
 """
 import http.cookiejar
 import json
+import os
 import re
 import sys
 import time
@@ -19,7 +20,9 @@ import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 
-BASE = "http://localhost:5199"
+# Overridable so the same thread can be run against a deployed instance
+# (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
+BASE = os.environ.get("BASE_URL", "http://localhost:5199")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 MONEY_RE = re.compile(r"(?:৳|&#x9F3;)\s*([\d,]+)")
 

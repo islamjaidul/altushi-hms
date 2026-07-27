@@ -76,7 +76,9 @@ the runbook says. Everything except that instruction is now removed as an excuse
   instead of `Username`, so every "page" timing was a 302 to `/login` at ~1 ms. Split into
   `eng/verify/page-timings.py`, which asserts it landed on a page and fails otherwise. A
   suspiciously good number is a bug report.
-- Follow-up: run `MODE=vm eng/verify/measure-rss.sh` on the VM at each wave's deploy and append
-  the figure; the Mac number is the fast loop, the VM number is what the budget is judged on.
+- **VM measured at the Wave-3 deploy (2026-07-28):** app 210 MiB, Postgres 55 MiB, backup 0.7 MiB
+  — ~266 MiB for the stack, against a 2,200 MB abort line. Recorded in `06-deployment.md` §2a.
+  Keep appending the figure at each wave's deploy; the Mac number is the fast loop, the VM number
+  is what the budget is judged on.
 - Follow-up: the diagnostics stream should grow a counter-originated order path if a future
   measurement needs the full §14 band.

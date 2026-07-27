@@ -59,6 +59,21 @@ Measuring on an empty database would have told us nothing about a hospital's sec
 `/admin/audit` 30 ms · `/billing/reports` 51 ms · `/dashboard` 55 ms. Slowest single response
 across all samples: **244 ms**.
 
+**Measured on the VM** (2026-07-28, amd64, after the Wave-3 deploy and a full live thread run):
+
+| Container | Measured | Limit |
+|---|---|---|
+| `hms-app-1` | **210 MiB** | 800 MB |
+| `hms-db-1` | **55 MiB** | 550 MB |
+| `hms-backup-1` | **0.7 MiB** idle | 128 MB |
+| **HMS stack total** | **~266 MiB** | |
+
+The VM figure is the one the budget is judged on; the Mac figure above is the fast feedback
+loop. Postgres reads far lower here than on the developer machine because the dev container
+serves several databases including the 112 MB history fixture — the VM's working set is the
+demo's. Note the VM currently hosts unrelated applications as well, so host-level `free` is not
+a reading of this product.
+
 **Abort criterion** (`11-build-plan-phase2.md` §2.9 — sustained RSS above 2.2 GB on the VM
 profile forces a consolidation stop): **clear**, with roughly 4.5× headroom on this profile. The
 measurement is re-run at every wave's deploy; the script exits non-zero if the line is crossed,

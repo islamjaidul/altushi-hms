@@ -11,13 +11,16 @@ usage: python3 eng/verify/radiology-thread.py     (from the repo root, app on :5
 """
 import http.cookiejar
 import json
+import os
 import re
 import sys
 import time
 import urllib.parse
 import urllib.request
 
-BASE = "http://localhost:5199"
+# Overridable so the same thread can be run against a deployed instance
+# (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
+BASE = os.environ.get("BASE_URL", "http://localhost:5199")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 
