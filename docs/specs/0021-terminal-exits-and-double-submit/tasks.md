@@ -14,4 +14,9 @@
 - [x] 5 integration tests (repeat, concurrent, tokenless, folio settlement, blocked-then-released)
 - [x] lifecycle-thread steps 10–11; `spec-0021.spec.ts` (4 UI tests)
 - [x] Test isolation: `NumberSeriesTests` no longer borrows the real `invoice` series
-- [x] Full verification: 116 .NET · 6 end-to-end scripts · 181 UI tests · upgrade gate · 4 CI gates
+- [x] `eng/verify/edge-cases.py` — the probe promoted to a permanent 8-case suite (death,
+      abscond, double-submit, over-issue, R4 freeze, settled-while-blocked, over-discount,
+      public-surface leak), wired into the upgrade gate and repeat-run safe
+- [x] Message fix the suite caught: a blocked patient was told they were not "clinically
+      cleared" instead of being told about the block
+- [x] Full verification: 116 .NET · 7 end-to-end scripts · 181 UI tests · upgrade gate · 4 CI gates

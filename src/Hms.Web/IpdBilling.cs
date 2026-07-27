@@ -189,6 +189,10 @@ public static class IpdBilling
         TimeProvider clock, long branchId, long admissionId, long actorId, CancellationToken ct = default)
     {
         var admission = await s.Ipd.Admissions.AsNoTracking().SingleAsync(a => a.Id == admissionId, ct);
+        if (admission.State == AdmissionState.Blocked)
+            throw new IpdException(
+                "This patient is blocked for dues (R4) — the folio is frozen. Release them "
+                + "(Admissions → Block list) and the bill can be closed.");
         if (!CanSettle(admission.State))
             throw new IpdException(
                 "The bill can be closed once the patient is clinically cleared for discharge, "
