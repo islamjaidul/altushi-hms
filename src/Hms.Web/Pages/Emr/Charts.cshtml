@@ -1,0 +1,232 @@
+@page "/emr/charts/{AdmissionId:long?}"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.ChartsModel
+@{
+    ViewData["Title"] = "Nursing Charts";
+    ViewData["Crumb"] = "Clinical";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.AdmissionId is null)
+{
+    <div class="card card-clip">
+        <div class="card-head">
+            Patients in the ward
+            <span class="spacer"></span>
+            <span class="card-hint">5A-7 · medicine chart, diabetic chart, receive note</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Admission</th><th>Patient</th><th>Bed</th><th class="num"></th></tr></thead>
+                <tbody>
+                @foreach (var w in Model.Ward)
+                {
+                    <tr>
+                        <td class="id-cell">@w.AdmissionNo</td>
+                        <td>@w.Patient</td>
+                        <td>@w.Bed</td>
+                        <td class="num"><a class="btn-tint" href="/emr/charts/@w.AdmissionId">Open charts</a></td>
+                    </tr>
+                }
+                @if (Model.Ward.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">No patients in the ward.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-head">
+            @Model.PatientName
+            <span class="card-hint" style="margin-left:8px">@Model.AdmissionNo</span>
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/emr/charts">Back to ward</a>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">
+            Medicine chart (MAR)
+            <span class="spacer"></span>
+            <span class="card-hint">a dose is recorded once, by name, at the time it happened</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th>Due</th><th>Medicine</th><th>Dose</th><th>Route</th><th>Status</th><th class="num"></th></tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model.Doses)
+                {
+                    var status = Ui.Status(d.State);
+                    <tr>
+                        <td>@Ui.DateTimeShort(d.ScheduledAt)</td>
+                        <td><b>@d.DrugName</b></td>
+                        <td>@(d.Dose ?? "—")</td>
+                        <td>@(d.Route ?? "—")</td>
+                        <td>
+                            <span class="pill @status.Css">@status.Word</span>
+                            @if (d.AdministeredAt is not null)
+                            {
+                                <div class="card-hint">
+                                    @Ui.Time(d.AdministeredAt.Value)
+                                    · @(d.AdministeredBy is not null && Model.Nurses.ContainsKey(d.AdministeredBy.Value)
+                                          ? Model.Nurses[d.AdministeredBy.Value] : "—")
+                                    @(d.StateReason is not null ? $"· {d.StateReason}" : "")
+                                </div>
+                            }
+                        </td>
+                        <td class="num">
+                            @* U7: only a dose still waiting offers the recording controls. *@
+                            @if (d.State == DoseState.Scheduled)
+                            {
+                                <form method="post" asp-page-handler="Administer" class="row" style="gap:6px;justify-content:flex-end">
+                                    <input type="hidden" name="DoseId" value="@d.Id" />
+                                    <select class="input input-sm" name="Outcome" style="width:104px">
+                                        <option value="given">Given</option>
+                                        <option value="missed">Missed</option>
+                                        <option value="refused">Refused</option>
+                                    </select>
+                                    <input class="input input-sm" name="Reason" placeholder="reason if not given" style="width:150px" />
+                                    <button type="submit" class="btn-tint">Record</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Doses.Count == 0)
+                {
+                    <tr><td colspan="6" class="empty">Nothing scheduled yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Schedule" class="card">
+        <div class="card-head">Schedule a dose</div>
+        <div class="card-body">
+            <div class="field-grid cols-5">
+                <label class="field">
+                    <span class="field-label">Medicine <span class="req">*</span></span>
+                    <input class="input" name="DrugName" autocomplete="off" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Dose</span>
+                    <input class="input" name="Dose" placeholder="1 tab" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Route</span>
+                    <input class="input" name="Route" placeholder="oral" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Date</span>
+                    <input class="input" name="ScheduledDate" hms-date placeholder="today" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Time</span>
+                    <input class="input" name="ScheduledTime" placeholder="now (HH:mm)" />
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-cta" style="margin-top:12px">
+                <span class="icon icon-sm" aria-hidden="true">schedule</span> Schedule
+            </button>
+        </div>
+    </form>
+
+    <div class="card card-clip">
+        <div class="card-head">Diabetic chart</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>When</th><th>Timing</th><th class="num">Glucose (mmol/L)</th><th>Insulin</th><th>By</th></tr></thead>
+                <tbody>
+                @foreach (var g in Model.Glucoses)
+                {
+                    <tr>
+                        <td>@Ui.DateTimeShort(g.At)</td>
+                        <td>@(g.Timing ?? "—")</td>
+                        <td class="num tabular">@((g.GlucoseTenths / 10m).ToString("0.0"))</td>
+                        <td>@(g.InsulinUnits is null ? "—" : $"{g.InsulinUnits} u {g.InsulinRoute}")</td>
+                        <td class="card-hint">@(Model.Nurses.ContainsKey(g.RecordedBy) ? Model.Nurses[g.RecordedBy] : "—")</td>
+                    </tr>
+                }
+                @if (Model.Glucoses.Count == 0)
+                {
+                    <tr><td colspan="5" class="empty">No readings recorded.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Glucose" class="card">
+        <div class="card-head">Record a reading</div>
+        <div class="card-body">
+            <div class="field-grid cols-4">
+                <label class="field">
+                    <span class="field-label">Glucose (mmol/L) <span class="req">*</span></span>
+                    <input class="input input-num" name="Glucose" inputmode="decimal" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Timing</span>
+                    <select class="input" name="Timing">
+                        <option value="fasting">Fasting</option>
+                        <option value="pre-meal">Pre-meal</option>
+                        <option value="post-meal">Post-meal</option>
+                        <option value="bedtime">Bedtime</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Insulin (units)</span>
+                    <input class="input input-num" name="InsulinUnits" inputmode="numeric" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Route</span>
+                    <input class="input" name="InsulinRoute" placeholder="s/c" />
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-cta" style="margin-top:12px">
+                <span class="icon icon-sm" aria-hidden="true">save</span> Record
+            </button>
+        </div>
+    </form>
+
+    <form method="post" asp-page-handler="Handover" class="card">
+        <div class="card-head">
+            Patient receive note
+            <span class="spacer"></span>
+            <span class="card-hint">@(Model.Handover is null ? "not recorded yet" : $"recorded {Ui.DateTimeShort(Model.Handover.ReceivedAt)}")</span>
+        </div>
+        <div class="card-body">
+            <div class="field-grid cols-3">
+                <label class="field">
+                    <span class="field-label">Received from</span>
+                    <input class="input" name="ReceivedFrom" value="@Model.Handover?.ReceivedFrom"
+                           placeholder="OPD / Emergency / OT" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Condition on arrival</span>
+                    <input class="input" name="Condition" value="@Model.Handover?.Condition" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Belongings handed over</span>
+                    <input class="input" name="Belongings" value="@Model.Handover?.Belongings" />
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-cta" style="margin-top:12px">
+                <span class="icon icon-sm" aria-hidden="true">save</span> Save receive note
+            </button>
+        </div>
+    </form>
+}

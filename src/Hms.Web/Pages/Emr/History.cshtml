@@ -1,0 +1,162 @@
+@page "/emr/history/{PatientId:long?}"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.HistoryModel
+@{
+    ViewData["Title"] = "Patient Record";
+    ViewData["Crumb"] = "Clinical";
+}
+
+@if (Model.PatientId is null)
+{
+    <form method="get" class="card">
+        <div class="card-head">Find a patient</div>
+        <div class="card-body row" style="gap:10px;align-items:end">
+            <label class="field" style="flex:1">
+                <span class="field-label">Name, UHID or phone</span>
+                <input class="input" name="Q" value="@Model.Q" autofocus autocomplete="off" />
+            </label>
+            <button type="submit" class="btn btn-primary">
+                <span class="icon icon-sm" aria-hidden="true">search</span> Search
+            </button>
+        </div>
+    </form>
+
+    @if (Model.Matches.Count > 0)
+    {
+        <div class="card card-clip">
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>UHID</th><th>Patient</th><th>Phone</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var (id, uhid, name, phone) in Model.Matches)
+                    {
+                        <tr>
+                            <td class="id-cell">@uhid</td>
+                            <td>@name</td>
+                            <td>@(phone ?? "—")</td>
+                            <td class="num"><a class="btn-tint" href="/emr/history/@id">Open record</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Model.Q))
+    {
+        <div class="card"><div class="card-body empty-state">Nobody matched that.</div></div>
+    }
+}
+else
+{
+    <div class="card">
+        <div class="card-head">
+            @Model.PatientName
+            <span class="card-hint" style="margin-left:8px">@Model.Uhid · @Model.AgeSex</span>
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/emr/history">Another patient</a>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">Visits and prescriptions</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>When</th><th>Doctor</th><th>Diagnosis</th><th>Medicines</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var v in Model.Visits)
+                {
+                    <tr>
+                        <td>@Ui.DateTimeShort(v.At)</td>
+                        <td>@v.Doctor</td>
+                        <td>
+                            @(v.Diagnosis ?? "—")
+                            @if (v.State == NoteState.Superseded)
+                            {
+                                <span class="pill warn" style="margin-left:6px">Corrected</span>
+                            }
+                            @if (v.SupersedesId is not null)
+                            {
+                                <span class="pill" style="margin-left:6px">Correction</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(v.Complaint))
+                            {
+                                <div class="card-hint">@v.Complaint</div>
+                            }
+                        </td>
+                        <td>
+                            @foreach (var d in v.Drugs)
+                            {
+                                <div>@d</div>
+                            }
+                        </td>
+                        <td class="num"><a class="btn-tint" href="/emr/prescription/@v.NoteId">Open</a></td>
+                    </tr>
+                }
+                @if (Model.Visits.Count == 0)
+                {
+                    <tr><td colspan="5" class="empty">No consultations recorded yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">
+            Verified results
+            <span class="spacer"></span>
+            <span class="card-hint">verified only — an unverified number is not a clinical fact</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Test</th><th>Parameter</th><th class="num">Value</th><th>When</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Results)
+                {
+                    <tr>
+                        <td>@r.Test</td>
+                        <td>@r.Parameter</td>
+                        <td class="num tabular">
+                            @r.Value @r.Unit
+                            @if (r.Flag is "high" or "low" or "critical" or "abnormal")
+                            {
+                                <span class="pill bad" style="margin-left:6px">@Ui.Humanize(r.Flag)</span>
+                            }
+                        </td>
+                        <td class="card-hint">@Ui.DateTimeShort(r.At)</td>
+                    </tr>
+                }
+                @if (Model.Results.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">No verified results.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.Admissions.Count > 0)
+    {
+        <div class="card card-clip">
+            <div class="card-head">Admissions</div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Admission</th><th>Admitted</th><th>Discharged</th><th>State</th></tr></thead>
+                    <tbody>
+                    @foreach (var a in Model.Admissions)
+                    {
+                        var status = Ui.Status(a.State);
+                        <tr>
+                            <td class="id-cell">@a.AdmissionNo</td>
+                            <td>@Ui.DateTimeShort(a.AdmittedAt)</td>
+                            <td>@(a.DischargedAt is null ? "—" : Ui.DateTimeShort(a.DischargedAt.Value))</td>
+                            <td><span class="pill @status.Css">@status.Word</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}

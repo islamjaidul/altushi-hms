@@ -1,0 +1,292 @@
+@page "/emr/consult/{EncounterId:long}"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.ConsultModel
+@{
+    ViewData["Title"] = "Consultation";
+    ViewData["Crumb"] = "Clinical";
+    var signed = Model.NoteState == NoteState.Final;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        @Model.PatientName
+        <span class="card-hint" style="margin-left:8px">@Model.Uhid · @Model.AgeSex</span>
+        <span class="spacer"></span>
+        @if (Model.VitalsSummary is not null)
+        {
+            <span class="pill good">@Model.VitalsSummary</span>
+        }
+        else
+        {
+            <span class="pill warn">Vitals not taken</span>
+        }
+        <a class="btn-tint" href="/emr/history/@Model.PatientId">Full record</a>
+    </div>
+</div>
+
+@if (signed)
+{
+    @* U7: once signed there is no edit control on this page at all — the only offered action
+       is the one that is legal, which is writing a correcting prescription. *@
+    <div class="alert">
+        <span class="icon icon-sm" aria-hidden="true">verified</span>
+        <span>
+            This prescription is signed and part of the record.
+            <a href="/emr/prescription/@Model.NoteId">Open it</a> to print, or write a correction from there.
+        </span>
+    </div>
+}
+
+<div class="card">
+        <div class="card-head">Recent results &amp; last visits</div>
+        <div class="card-body">
+            @if (Model.RecentResults.Count > 0)
+            {
+                <table class="data">
+                    <tbody>
+                    @foreach (var r in Model.RecentResults)
+                    {
+                        <tr>
+                            <td>@r.Test</td>
+                            <td class="tabular">
+                                @r.Value
+                                @if (r.Abnormal)
+                                {
+                                    <span class="pill bad" style="margin-left:6px">Out of range</span>
+                                }
+                            </td>
+                            <td class="card-hint">@Ui.DateTimeShort(r.At)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="card-hint">No verified results on record.</p>
+            }
+
+            @if (Model.PastVisits.Count > 0)
+            {
+                <div class="card-head" style="padding-left:0">Previous visits</div>
+                <ul>
+                    @foreach (var v in Model.PastVisits)
+                    {
+                        <li>
+                            <a href="/emr/prescription/@v.NoteId">@Ui.DateTimeShort(v.At)</a>
+                            — @(v.Diagnosis ?? "no diagnosis recorded") <span class="card-hint">· @v.Doctor</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+
+<div class="card">
+    <div class="card-head">
+        Investigations raised on this visit
+        <span class="spacer"></span>
+        <span class="card-hint">payable at any counter — nothing is re-typed</span>
+    </div>
+    <div class="card-body">
+        @if (Model.Orders.Count > 0)
+        {
+            <table class="data">
+                <thead><tr><th>Order</th><th>Tests</th><th class="num">Amount</th><th>State</th></tr></thead>
+                <tbody>
+                @foreach (var o in Model.Orders)
+                {
+                    var raisedStatus = Ui.Status(o.State);
+                    <tr>
+                        <td class="tabular">#@o.OrderId</td>
+                        <td>@string.Join(", ", o.Tests)</td>
+                        <td class="num tabular">@Ui.Money(o.Total)</td>
+                        <td><span class="pill @raisedStatus.Css">@raisedStatus.Word</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="card-hint">Nothing ordered on this visit yet.</p>
+        }
+    </div>
+</div>
+
+@if (!signed)
+{
+<form method="post" asp-page-handler="Save" class="stack">
+    <input type="hidden" name="EncounterId" value="@Model.EncounterId" />
+
+    <div class="card">
+        <div class="card-head">Today's note</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            @if (Model.Templates.Count > 0 && !signed)
+            {
+                <div class="row" style="gap:6px;align-items:end">
+                    <label class="field" style="flex:1">
+                        <span class="field-label">Start from a template</span>
+                        <select class="input" name="TemplateId">
+                            @foreach (var t in Model.Templates)
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <button type="submit" class="btn-tint" formaction="/emr/consult/@Model.EncounterId?handler=ApplyTemplate">
+                        Apply
+                    </button>
+                </div>
+            }
+
+            <label class="field">
+                <span class="field-label">Chief complaint</span>
+                <textarea class="input" name="Complaint" rows="2">@Model.Complaint</textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">On examination</span>
+                <textarea class="input" name="OnExamination" rows="2">@Model.OnExamination</textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Diagnosis</span>
+                <textarea class="input" name="Diagnosis" rows="2">@Model.Diagnosis</textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Advice</span>
+                <textarea class="input" name="Advice" rows="2">@Model.Advice</textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Follow-up on</span>
+                <input class="input" name="FollowUp" hms-date value="@Model.FollowUp"
+                       placeholder="e.g. 7 days" />
+            </label>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">Medicines</div>
+        <div class="card-body">
+            @if (Model.Favourites.Count > 0 && !signed)
+            {
+                <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                    <span class="card-hint">Favourites:</span>
+                    @foreach (var f in Model.Favourites)
+                    {
+                        <button type="button" class="btn-tint" data-favourite
+                                data-name="@f.DrugName" data-dose="@f.Dose"
+                                data-frequency="@f.Frequency" data-duration="@f.Duration"
+                                data-product="@f.ProductId">@f.DrugName</button>
+                    }
+                </div>
+            }
+            <div class="table-wrap">
+                <table class="data" id="drug-table">
+                    <thead>
+                    <tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Note</th></tr>
+                    </thead>
+                    <tbody>
+                    @{ var rows = Model.Drugs.ToList(); }
+                    @for (var i = 0; i < rows.Count; i++)
+                    {
+                        <tr>
+                            <td class="typeahead-host">
+                                <input type="hidden" name="DrugProductId" id="drug-prod-@i" value="@rows[i].ProductId" />
+                                <input class="input" name="DrugName" value="@rows[i].Name"
+                                       data-typeahead="/api/typeahead/products" data-target="#drug-prod-@i"
+                                       autocomplete="off" />
+                            </td>
+                            <td><input class="input input-sm" name="DrugDose" value="@rows[i].Dose" /></td>
+                            <td><input class="input input-sm" name="DrugFrequency" value="@rows[i].Frequency" /></td>
+                            <td><input class="input input-sm" name="DrugDuration" value="@rows[i].Duration" /></td>
+                            <td><input class="input input-sm" name="DrugInstruction" value="@rows[i].Instruction" /></td>
+                        </tr>
+                    }
+                    @for (var i = 0; i < 4; i++)
+                    {
+                            <tr>
+                                <td class="typeahead-host">
+                                    <input type="hidden" name="DrugProductId" id="drug-new-@i" value="" />
+                                    <input class="input" name="DrugName" autocomplete="off"
+                                           data-typeahead="/api/typeahead/products" data-target="#drug-new-@i" />
+                                </td>
+                                <td><input class="input input-sm" name="DrugDose" /></td>
+                                <td><input class="input input-sm" name="DrugFrequency" placeholder="1+0+1" /></td>
+                                <td><input class="input input-sm" name="DrugDuration" placeholder="7 days" /></td>
+                                <td><input class="input input-sm" name="DrugInstruction" /></td>
+                            </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            Order investigations
+            <span class="spacer"></span>
+            <span class="card-hint">they reach the counter as unbilled charges</span>
+        </div>
+        <div class="card-body">
+            <div class="row" style="gap:6px;flex-wrap:wrap">
+                @foreach (var (id, name) in Model.TestCatalog.Take(40))
+                {
+                    <label class="pill">
+                        <input type="checkbox" name="Tests" value="@id" /> @name
+                    </label>
+                }
+            </div>
+        </div>
+    </div>
+
+        <div class="card">
+            <div class="card-body row" style="gap:10px;align-items:end">
+                <button type="submit" class="btn-tint">
+                    <span class="icon icon-sm" aria-hidden="true">save</span> Save without signing
+                </button>
+                <button type="submit" class="btn btn-primary btn-cta"
+                        formaction="/emr/consult/@Model.EncounterId?handler=Finalise">
+                    <span class="icon icon-sm" aria-hidden="true">verified</span> Sign &amp; print
+                </button>
+                <span class="spacer"></span>
+                <label class="field" style="width:220px">
+                    <span class="field-label">Save this as a template</span>
+                    <input class="input" name="TemplateName" placeholder="e.g. URTI adult" autocomplete="off" />
+                </label>
+                <button type="submit" class="btn-tint"
+                        formaction="/emr/consult/@Model.EncounterId?handler=SaveTemplate">
+                    <span class="icon icon-sm" aria-hidden="true">edit_note</span> Save template
+                </button>
+            </div>
+        </div>
+</form>
+}
+
+<script>
+    // US5.1 AC: a favourite is one click — it fills the first empty medicine row.
+    document.querySelectorAll('[data-favourite]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var rows = document.querySelectorAll('#drug-table tbody tr');
+            for (var i = 0; i < rows.length; i++) {
+                var name = rows[i].querySelector('input[name="DrugName"]');
+                if (name && !name.value) {
+                    name.value = btn.dataset.name || '';
+                    rows[i].querySelector('input[name="DrugProductId"]').value = btn.dataset.product || '';
+                    rows[i].querySelector('input[name="DrugDose"]').value = btn.dataset.dose || '';
+                    rows[i].querySelector('input[name="DrugFrequency"]').value = btn.dataset.frequency || '';
+                    rows[i].querySelector('input[name="DrugDuration"]').value = btn.dataset.duration || '';
+                    return;
+                }
+            }
+        });
+    });
+</script>

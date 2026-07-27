@@ -1,0 +1,75 @@
+@page "/emr/queue"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.QueueModel
+@{
+    ViewData["Title"] = "Consultation Queue";
+    ViewData["Crumb"] = "Clinical";
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        Today's visits — @Ui.DateLong(Model.Today)
+        <span class="spacer"></span>
+        <span class="card-hint">a visit appears here once the counter has opened it</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>UHID</th><th>Patient</th><th>Vitals</th><th>Prescription</th><th class="num"></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="id-cell">@row.Uhid</td>
+                    <td>
+                        <b>@row.Patient</b>
+                        <div class="card-hint">@row.AgeSex · @Ui.Humanize(row.Type)</div>
+                    </td>
+                    <td>
+                        @if (row.VitalsSummary is not null)
+                        {
+                            <span>@row.VitalsSummary</span>
+                        }
+                        else
+                        {
+                            @* U12: colour plus words — "not taken" is a fact the doctor acts on. *@
+                            <span class="pill warn">Vitals not taken</span>
+                        }
+                    </td>
+                    <td>
+                        @if (row.NoteState == NoteState.Final)
+                        {
+                            <span class="pill good">Signed</span>
+                        }
+                        else if (row.NoteState == NoteState.Draft)
+                        {
+                            <span class="pill">In progress</span>
+                        }
+                        else
+                        {
+                            <span class="card-hint">—</span>
+                        }
+                    </td>
+                    <td class="num">
+                        @if (Model.Can("emr.note.write"))
+                        {
+                            <a class="btn btn-primary" href="/emr/consult/@row.EncounterId">
+                                <span class="icon icon-sm" aria-hidden="true">stethoscope</span>
+                                @(row.NoteId is null ? "Start" : "Open")
+                            </a>
+                        }
+                        <a class="btn-tint" href="/emr/history/@row.PatientId">Record</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="5" class="empty">No visits opened today yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

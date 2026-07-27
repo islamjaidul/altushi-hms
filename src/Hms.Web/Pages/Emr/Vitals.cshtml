@@ -1,0 +1,97 @@
+@page "/emr/vitals"
+@model Hms.Web.Pages.Emr.VitalsModel
+@{
+    ViewData["Title"] = "Pre-checkup Vitals";
+    ViewData["Crumb"] = "Clinical";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" class="card">
+    <div class="card-head">Record vitals</div>
+    <div class="card-body">
+        <div class="field-grid cols-4">
+            <label class="field">
+                <span class="field-label">Visit</span>
+                <select class="input" name="EncounterId" required>
+                    @foreach (var row in Model.Rows.Where(r => r.Summary is null))
+                    {
+                        <option value="@row.EncounterId">@row.Patient — @row.Uhid</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">BP systolic</span>
+                <input class="input input-num" name="Systolic" inputmode="numeric" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">BP diastolic</span>
+                <input class="input input-num" name="Diastolic" inputmode="numeric" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Pulse (/min)</span>
+                <input class="input input-num" name="Pulse" inputmode="numeric" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Temperature (°C)</span>
+                <input class="input input-num" name="Temperature" inputmode="decimal" placeholder="37.0" />
+            </label>
+            <label class="field">
+                <span class="field-label">Weight (kg)</span>
+                <input class="input input-num" name="Weight" inputmode="decimal" />
+            </label>
+            <label class="field">
+                <span class="field-label">SpO₂ (%)</span>
+                <input class="input input-num" name="SpO2" inputmode="numeric" />
+            </label>
+            <div class="field" style="justify-content:end">
+                <button type="submit" class="btn btn-primary btn-cta btn-block">
+                    <span class="icon icon-sm" aria-hidden="true">save</span> Record
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Today's visits — @Ui.DateLong(Model.Today)
+        <span class="spacer"></span>
+        <span class="card-hint">a repeat reading is a new row; the doctor sees the sequence</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>UHID</th><th>Patient</th><th>Vitals</th><th>Taken</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="id-cell">@row.Uhid</td>
+                    <td>@row.Patient</td>
+                    <td>
+                        @if (row.Summary is not null)
+                        {
+                            <span>@row.Summary</span>
+                        }
+                        else
+                        {
+                            <span class="pill warn">Not taken</span>
+                        }
+                    </td>
+                    <td class="card-hint">@(row.At is null ? "—" : Ui.Time(row.At.Value))</td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="4" class="empty">No visits opened today yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

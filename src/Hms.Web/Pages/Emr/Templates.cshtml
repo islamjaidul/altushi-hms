@@ -1,0 +1,141 @@
+@page "/emr/templates"
+@model Hms.Web.Pages.Emr.TemplatesModel
+@{
+    ViewData["Title"] = "My Templates";
+    ViewData["Crumb"] = "Clinical";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" asp-page-handler="Save" class="card">
+    <div class="card-head">
+        New template
+        <span class="spacer"></span>
+        <span class="card-hint">saving a name that already exists replaces it</span>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+        <label class="field">
+            <span class="field-label">Name <span class="req">*</span></span>
+            <input class="input" name="Name" placeholder="e.g. URTI adult" autocomplete="off" data-advance />
+        </label>
+        <div class="field-grid cols-2">
+            <label class="field">
+                <span class="field-label">Chief complaint</span>
+                <textarea class="input" name="Complaint" rows="2"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">On examination</span>
+                <textarea class="input" name="OnExamination" rows="2"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Diagnosis</span>
+                <textarea class="input" name="Diagnosis" rows="2"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Advice</span>
+                <textarea class="input" name="Advice" rows="2"></textarea>
+            </label>
+        </div>
+        <table class="data">
+            <thead><tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th></tr></thead>
+            <tbody>
+            @for (var i = 0; i < 5; i++)
+            {
+                <tr>
+                    <td><input class="input" name="DrugName" autocomplete="off" /></td>
+                    <td><input class="input input-sm" name="DrugDose" /></td>
+                    <td><input class="input input-sm" name="DrugFrequency" placeholder="1+0+1" /></td>
+                    <td><input class="input input-sm" name="DrugDuration" placeholder="5 days" /></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary btn-cta">
+            <span class="icon icon-sm" aria-hidden="true">save</span> Save template
+        </button>
+    </div>
+</form>
+
+<div class="card card-clip">
+    <div class="card-head">My templates</div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Name</th><th>Diagnosis</th><th>Medicines</th><th class="num"></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Rows)
+            {
+                <tr>
+                    <td><b>@t.Name</b></td>
+                    <td>@(t.Diagnosis ?? "—")</td>
+                    <td>
+                        @foreach (var d in Hms.Web.Pages.Emr.TemplatesModel.Lines(t))
+                        {
+                            <div>@d.DrugName @d.Dose @d.Frequency @d.Duration</div>
+                        }
+                    </td>
+                    <td class="num">
+                        <form method="post" asp-page-handler="Retire" style="display:inline"
+                              data-confirm="Retire this template? Prescriptions written from it are unaffected.">
+                            <input type="hidden" name="Id" value="@t.Id" />
+                            <button type="submit" class="btn-tint">Retire</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="4" class="empty">No templates yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<form method="post" asp-page-handler="Favourite" class="card">
+    <div class="card-head">
+        Favourite medicines
+        <span class="spacer"></span>
+        <span class="card-hint">one click on the consultation screen</span>
+    </div>
+    <div class="card-body">
+        <div class="field-grid cols-4">
+            <label class="field typeahead-host">
+                <span class="field-label">Medicine <span class="req">*</span></span>
+                <input type="hidden" name="FavouriteProductId" id="fav-product" />
+                <input class="input" name="FavouriteName" autocomplete="off"
+                       data-typeahead="/api/typeahead/products" data-target="#fav-product" />
+            </label>
+            <label class="field">
+                <span class="field-label">Dose</span>
+                <input class="input" name="FavouriteDose" />
+            </label>
+            <label class="field">
+                <span class="field-label">Frequency</span>
+                <input class="input" name="FavouriteFrequency" placeholder="1+0+1" />
+            </label>
+            <label class="field">
+                <span class="field-label">Duration</span>
+                <input class="input" name="FavouriteDuration" placeholder="7 days" />
+            </label>
+        </div>
+        <button type="submit" class="btn-tint" style="margin-top:12px">
+            <span class="icon icon-sm" aria-hidden="true">add</span> Add favourite
+        </button>
+
+        @if (Model.Favourites.Count > 0)
+        {
+            <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:12px">
+                @foreach (var f in Model.Favourites)
+                {
+                    <span class="pill">@f.DrugName @f.Dose @f.Frequency</span>
+                }
+            </div>
+        }
+    </div>
+</form>

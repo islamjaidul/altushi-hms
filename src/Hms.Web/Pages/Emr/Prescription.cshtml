@@ -1,0 +1,131 @@
+@page "/emr/prescription/{Id:long}"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.PrescriptionModel
+@{
+    ViewData["Title"] = "Prescription";
+    ViewData["Crumb"] = "Clinical";
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/emr/queue")
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert bad" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">error</span>
+            <span>@Model.ErrorMessage</span>
+        </div>
+    }
+
+    @if (Model.State == NoteState.Superseded)
+    {
+        <div class="alert warn" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">history</span>
+            <span>
+                This prescription was corrected. It stays on the record exactly as it was signed;
+                <a href="/emr/prescription/@Model.SupersededById">the correction is here</a>.
+            </span>
+        </div>
+    }
+    else if (Model.State == NoteState.Draft)
+    {
+        <div class="alert warn" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">warning</span>
+            <span>Not signed yet — this is a draft, not a prescription.</span>
+        </div>
+    }
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead("Prescription", "RX-" + Model.Id.ToString("D5"), Model.At))
+
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>
+            <div><span class="k">Reg no:</span> @Model.Uhid</div>
+            <div><span class="k">Age / Sex:</span> @Model.AgeSex</div>
+            <div><span class="k">Date:</span> @Ui.DateTimeShort(Model.At)</div>
+            @if (Model.VitalsSummary is not null)
+            {
+                <div><span class="k">Vitals:</span> @Model.VitalsSummary</div>
+            }
+            @if (Model.SupersedesId is not null)
+            {
+                <div><span class="k">Corrects:</span> RX-@Model.SupersedesId.Value.ToString("D5")</div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Complaint))
+        {
+            <p><b>Complaint.</b> @Model.Complaint</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.OnExamination))
+        {
+            <p><b>On examination.</b> @Model.OnExamination</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Diagnosis))
+        {
+            <p><b>Diagnosis.</b> @Model.Diagnosis</p>
+        }
+
+        @if (Model.Drugs.Count > 0)
+        {
+            <table class="sheet-table">
+                <thead>
+                <tr><th style="width:34px">℞</th><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th></tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < Model.Drugs.Count; i++)
+                {
+                    var d = Model.Drugs[i];
+                    <tr>
+                        <td class="tabular">@(i + 1)</td>
+                        <td>
+                            <b>@d.Name</b>
+                            @if (!string.IsNullOrWhiteSpace(d.Instruction))
+                            {
+                                <div class="card-hint">@d.Instruction</div>
+                            }
+                        </td>
+                        <td>@(d.Dose ?? "—")</td>
+                        <td>@(d.Frequency ?? "—")</td>
+                        <td>@(d.Duration ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Advice))
+        {
+            <p><b>Advice.</b> @Model.Advice</p>
+        }
+        @if (Model.FollowUpOn is not null)
+        {
+            <p><b>Follow-up:</b> @Ui.DateLong(Model.FollowUpOn.Value)</p>
+        }
+
+        <div class="sheet-signs" style="justify-content:flex-end">
+            <div class="sheet-sign">
+                <b>@Model.DoctorName</b>
+                @if (Model.DoctorRegistration is not null)
+                {
+                    <div>@Model.DoctorRegistration</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* U7: the correction control exists only where correcting is legal — on a signed note. *@
+    @if (Model.State == NoteState.Final && Model.Can("emr.note.write"))
+    {
+        <form method="post" asp-page-handler="Correct" style="width:640px;max-width:100%"
+              data-confirm="Write a correcting prescription? The original stays on the record.">
+            <button type="submit" class="btn-tint">
+                <span class="icon icon-sm" aria-hidden="true">edit_note</span>
+                Write a correction
+            </button>
+        </form>
+    }
+</div>
