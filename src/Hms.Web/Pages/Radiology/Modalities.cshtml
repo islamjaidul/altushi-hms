@@ -1,0 +1,75 @@
+@page "/radiology/modalities"
+@model Hms.Web.Pages.Radiology.ModalitiesModel
+@{
+    ViewData["Title"] = "Machines & Mapping";
+    ViewData["Crumb"] = "Radiology";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" asp-page-handler="Add" class="card">
+    <div class="card-head">Add a machine</div>
+    <div class="card-body row" style="gap:10px;align-items:end">
+        <label class="field" style="width:140px">
+            <span class="field-label">Code <span class="req">*</span></span>
+            <input class="input" name="Code" placeholder="CT" autocomplete="off" data-advance />
+        </label>
+        <label class="field" style="flex:1">
+            <span class="field-label">Name <span class="req">*</span></span>
+            <input class="input" name="Name" placeholder="CT Scan (second machine)" autocomplete="off" />
+        </label>
+        <button type="submit" class="btn btn-primary">
+            <span class="icon icon-sm" aria-hidden="true">add</span> Add
+        </button>
+    </div>
+</form>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Which machine performs which examination
+        <span class="spacer"></span>
+        <span class="card-hint">an unmapped examination appears on no worklist at all</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Code</th><th>Examination</th><th>Department</th><th>Machine</th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Tests)
+            {
+                <tr>
+                    <td class="id-cell">@t.Code</td>
+                    <td>@t.Name</td>
+                    <td>@t.Dept</td>
+                    <td>
+                        <form method="post" asp-page-handler="Map" class="row" style="gap:6px">
+                            <input type="hidden" name="TestId" value="@t.Id" />
+                            <select class="input input-sm" name="ModalityId" style="width:170px">
+                                <option value="0">— not mapped —</option>
+                                @foreach (var m in Model.Modalities)
+                                {
+                                    <option value="@m.Id" selected="@(m.Name == t.Machine)">@m.Name</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn-tint">Save</button>
+                        </form>
+                        @if (t.Machine is null)
+                        {
+                            <span class="pill warn">On no worklist</span>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Tests.Count == 0)
+            {
+                <tr><td colspan="4" class="empty">No imaging examinations in the catalogue.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

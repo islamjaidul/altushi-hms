@@ -1,0 +1,106 @@
+@page "/radiology/worklist"
+@using Hms.Radiology.Data
+@model Hms.Web.Pages.Radiology.WorklistModel
+@{
+    ViewData["Title"] = "Modality Worklist";
+    ViewData["Crumb"] = "Radiology";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.Unassigned > 0)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">warning</span>
+        <span>
+            @Model.Unassigned imaging test(s) are not mapped to any machine, so they appear on no
+            worklist. Map them in the modality master before they are ordered.
+        </span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        Machines
+        <span class="spacer"></span>
+        <a class="btn-tint @(Model.ShowReported ? "primary" : "")"
+           href="/radiology/worklist?ModalityId=@Model.ModalityId&ShowReported=@(!Model.ShowReported)">
+            @(Model.ShowReported ? "Hide reported" : "Show reported")
+        </a>
+    </div>
+    <div class="card-body row" style="gap:6px;flex-wrap:wrap">
+        <a class="btn-tint @(Model.ModalityId is null ? "primary" : "")"
+           href="/radiology/worklist?ShowReported=@Model.ShowReported">All</a>
+        @foreach (var m in Model.Modalities)
+        {
+            <a class="btn-tint @(Model.ModalityId == m.Id ? "primary" : "")"
+               href="/radiology/worklist?ModalityId=@m.Id&ShowReported=@Model.ShowReported">@m.Name</a>
+        }
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Studies
+        <span class="spacer"></span>
+        <span class="card-hint">paid orders only — an unpaid study never reaches the machine</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th>Accession</th><th>Patient</th><th>Examination</th><th>Ordered</th><th>State</th><th class="num"></th></tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                var status = Ui.Status(row.State);
+                <tr>
+                    <td class="id-cell">@row.Accession</td>
+                    <td>@row.Patient<div class="card-hint">@row.Uhid</div></td>
+                    <td>@row.Test</td>
+                    <td class="card-hint">@Ui.DateTimeShort(row.OrderedAt)</td>
+                    <td>
+                        <span class="pill @status.Css">@status.Word</span>
+                        @if (row.Signed)
+                        {
+                            <span class="pill good" style="margin-left:6px">Signed</span>
+                        }
+                        else if (row.HasResult)
+                        {
+                            <span class="pill warn" style="margin-left:6px">Unsigned</span>
+                        }
+                    </td>
+                    <td class="num">
+                        @* U7: the "mark done" form exists only where marking done is legal. *@
+                        @if (row.State == StudyState.Awaiting && Model.Can("radiology.study.perform"))
+                        {
+                            <form method="post" asp-page-handler="Done" class="row" style="gap:6px;justify-content:flex-end">
+                                <input type="hidden" name="StudyId" value="@row.StudyId" />
+                                <input type="hidden" name="ModalityId" value="@Model.ModalityId" />
+                                <input class="input input-sm" name="FilmSize" placeholder="film size" style="width:100px" />
+                                <input class="input input-sm input-num" name="FilmCount" value="1" style="width:60px" />
+                                <button type="submit" class="btn-tint">Done</button>
+                            </form>
+                        }
+                        @if (Model.Can("radiology.report.write"))
+                        {
+                            <a class="btn-tint" href="/radiology/report/@row.StudyId">Report</a>
+                        }
+                        <a class="btn-tint" href="/radiology/print/@row.StudyId">Print</a>
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="6" class="empty">Nothing waiting on this machine.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

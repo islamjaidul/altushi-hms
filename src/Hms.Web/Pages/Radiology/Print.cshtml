@@ -1,0 +1,86 @@
+@page "/radiology/print/{Id:long}"
+@model Hms.Web.Pages.Radiology.PrintModel
+@{
+    ViewData["Title"] = "Radiology Report";
+    ViewData["Crumb"] = "Radiology";
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", "/radiology/worklist")
+    </div>
+
+    @if (!Model.Signed)
+    {
+        <div class="alert warn" style="width:640px;max-width:100%">
+            <span class="icon icon-sm" aria-hidden="true">warning</span>
+            <span>
+                <b>Provisional — not signed.</b> This copy is for the department. It is not a
+                final report and must not be given to the patient.
+            </span>
+        </div>
+    }
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead",
+            new Hms.Web.Letterhead(Model.Signed ? "Radiology Report" : "Radiology Report (PROVISIONAL)",
+                Model.Study!.AccessionNo, Model.At))
+
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>
+            <div><span class="k">Reg no:</span> @Model.Uhid</div>
+            <div><span class="k">Age / Sex:</span> @Model.AgeSex</div>
+            <div><span class="k">Examination:</span> @Model.TestName</div>
+            <div><span class="k">Modality:</span> @Model.ModalityName</div>
+            @if (Model.Version > 1)
+            {
+                <div><span class="k">Version:</span> v@Model.Version (amended)</div>
+            }
+        </div>
+
+        @if (Model.Values.Count > 0)
+        {
+            <table class="sheet-table">
+                <thead><tr><th>Parameter</th><th class="num">Value</th><th>Reference</th></tr></thead>
+                <tbody>
+                @foreach (var v in Model.Values)
+                {
+                    <tr>
+                        <td>@v.Name</td>
+                        <td class="num tabular">
+                            @v.Value @v.Unit
+                            @if (v.Flag is "high" or "low" or "critical")
+                            {
+                                <b>@Ui.Humanize(v.Flag)</b>
+                            }
+                        </td>
+                        <td>@v.Ref</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Narrative))
+        {
+            <p style="white-space:pre-wrap">@Model.Narrative</p>
+        }
+        else
+        {
+            <p class="card-hint">No report has been written for this study yet.</p>
+        }
+
+        @if (Model.Signed)
+        {
+            <div class="sheet-signs" style="justify-content:flex-end">
+                <div class="sheet-sign">
+                    <b>@Model.VerifierName</b>
+                    @if (Model.VerifierLine is not null)
+                    {
+                        <div>@Model.VerifierLine</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

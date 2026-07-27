@@ -1,0 +1,91 @@
+@page "/radiology/report/{Id:long}"
+@model Hms.Web.Pages.Radiology.ReportModel
+@{
+    ViewData["Title"] = "Radiology Report";
+    ViewData["Crumb"] = "Radiology";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        @Model.TestName
+        <span class="card-hint" style="margin-left:8px">@Model.ModalityName · @Model.Study!.AccessionNo</span>
+        <span class="spacer"></span>
+        <a class="btn-tint" href="/radiology/print/@Model.Id">Print</a>
+    </div>
+    <div class="card-body">
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>
+            <div><span class="k">Reg no:</span> @Model.Uhid</div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Signed)
+{
+    @* U7: a signed report offers no editing control at all. Corrections go through M9's
+       approval-gated amendment, which is where every result correction already lives. *@
+    <div class="alert good">
+        <span class="icon icon-sm" aria-hidden="true">verified</span>
+        <span>
+            This report is signed and deliverable. A correction is an
+            <a href="/lis/amend">amendment</a> — version 1 stays on the record.
+        </span>
+    </div>
+    <div class="card">
+        <div class="card-head">Report as signed</div>
+        <div class="card-body" style="white-space:pre-wrap">@Model.ExistingNarrative</div>
+    </div>
+}
+else
+{
+    <form method="post" asp-page-handler="Save" class="card">
+        <div class="card-head">
+            Report
+            <span class="spacer"></span>
+            <span class="card-hint">saved unsigned prints as provisional; signing makes it final</span>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            @if (Model.Parameters.Count > 0)
+            {
+                <div class="field-grid cols-3">
+                    @foreach (var p in Model.Parameters)
+                    {
+                        <label class="field">
+                            <span class="field-label">@p.Name @(string.IsNullOrEmpty(p.Unit) ? "" : $"({p.Unit})")</span>
+                            <input class="input" name="Values[@p.Code]" value="@p.Value" autocomplete="off" />
+                        </label>
+                    }
+                </div>
+            }
+            <label class="field">
+                <span class="field-label">Findings <span class="req">*</span></span>
+                <textarea class="input" name="Findings" rows="6">@Model.ExistingNarrative</textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Impression</span>
+                <textarea class="input" name="Impression" rows="2"></textarea>
+            </label>
+            <div class="row" style="gap:10px">
+                <button type="submit" class="btn-tint">
+                    <span class="icon icon-sm" aria-hidden="true">save</span> Save without signing
+                </button>
+                @if (Model.HasResult)
+                {
+                    <button type="submit" class="btn btn-primary btn-cta"
+                            formaction="/radiology/report/@Model.Id?handler=Sign"
+                            data-confirm="Sign this report? It becomes final and deliverable.">
+                        <span class="icon icon-sm" aria-hidden="true">verified</span> Sign the report
+                    </button>
+                }
+            </div>
+        </div>
+    </form>
+}
