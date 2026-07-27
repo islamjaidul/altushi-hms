@@ -222,4 +222,103 @@ public sealed class BillingService(
         await kernel.SaveChangesAsync(ct);
         return receipt;
     }
+
+    // ---- reversals (§11: Cancelled⚿ pre-payment, Refunded⚿ post-payment) -----
+
+    /// <summary>
+    /// C5/G11 and hard rule 4: money is never deleted. A refund is a NEGATIVE receipt that
+    /// points at what it reverses, so the original receipt stays on the record and the two
+    /// together tell the truth. Approval-gated by the caller (§12 refund chain).
+    /// </summary>
+    public async Task<Receipt> RefundAsync(
+        BillDbContext bill, KernelDbContext kernel, long branchId, long invoiceId, long sessionId,
+        long amount, string reason, long actorId, string actorName, long approvalId,
+        CancellationToken ct = default)
+    {
+        if (amount <= 0) throw new BillingException("A refund amount must be positive.");
+        if (string.IsNullOrWhiteSpace(reason)) throw new BillingException("A refund needs a reason.");
+
+        // Same row lock as collection: a refund and a collection on one invoice serialize.
+        var balances = await bill.Database.SqlQuery<long>($"""
+            SELECT balance AS "Value" FROM bill.due WHERE invoice_id = {invoiceId} FOR UPDATE
+            """).ToListAsync(ct);
+        if (balances.Count == 0) throw new BillingException("No due row for this invoice.");
+
+        var receipts = await bill.Receipts.Where(r => r.InvoiceId == invoiceId).ToListAsync(ct);
+        var netPaid = receipts.Sum(r => r.Amount);
+        if (netPaid <= 0)
+            throw new BillingException("Nothing has been paid on this invoice — cancel it instead of refunding.");
+        if (amount > netPaid)
+            throw new BillingException($"Only {netPaid} has been paid — a refund cannot exceed it.");
+
+        var sessionStates = await bill.Database.SqlQuery<string>($"""
+            SELECT state AS "Value" FROM bill.counter_session WHERE id = {sessionId} FOR UPDATE
+            """).ToListAsync(ct);
+        if (sessionStates.Count == 0 ||
+            sessionStates[0] is not (SessionState.Active or SessionState.Reopened))
+            throw new BillingException("Refunds need an open counter session (02 §2.4).");
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var (_, receiptNo) = await numbers.IssueAsync(
+            kernel, branchId, "receipt", fiscal.FiscalYearOf(today), "RCP-{fy}-{n:D6}", ct);
+
+        var original = receipts.Where(r => r.Amount > 0).OrderByDescending(r => r.Amount).FirstOrDefault();
+        var refund = new Receipt
+        {
+            BranchId = branchId,
+            ReceiptNo = receiptNo,
+            InvoiceId = invoiceId,
+            CounterSessionId = sessionId,
+            Amount = -amount,                              // negative = money leaving the drawer
+            Tender = original?.Tender ?? "cash",
+            TenderRef = null,
+            OperatorId = actorId,
+            At = clock.GetUtcNow(),
+            RefundOfReceipt = original?.Id,
+            ApprovalId = approvalId,
+        };
+        bill.Receipts.Add(refund);
+
+        var invoice = await bill.Invoices.SingleAsync(i => i.Id == invoiceId, ct);
+        invoice.State = InvoiceState.Refunded;
+        await bill.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "receipt.refund", "bill.receipt", refund.Id,
+            after: new { receiptNo, invoiceId, amount, reason, approvalId }, tier: 2);
+        await kernel.SaveChangesAsync(ct);
+        return refund;
+    }
+
+    /// <summary>
+    /// §11: cancellation is the pre-payment exit. The invoice is never removed — it is marked
+    /// cancelled and its due cleared, so the number it consumed stays accounted for (ADR-0004).
+    /// </summary>
+    public async Task CancelInvoiceAsync(
+        BillDbContext bill, KernelDbContext kernel, long branchId, long invoiceId,
+        string reason, long actorId, string actorName, long approvalId,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason)) throw new BillingException("A cancellation needs a reason.");
+
+        var paid = await bill.Receipts.Where(r => r.InvoiceId == invoiceId)
+            .SumAsync(r => (long?)r.Amount, ct) ?? 0;
+        if (paid > 0)
+            throw new BillingException(
+                "Money has already been taken on this invoice — it must be refunded, not cancelled.");
+
+        // State-guarded: an invoice someone else just cancelled loses here, comprehensibly.
+        var affected = await bill.Database.ExecuteSqlAsync($"""
+            UPDATE bill.invoice SET state = 'cancelled'
+            WHERE id = {invoiceId} AND state IN ('billed', 'draft')
+            """, ct);
+        if (affected == 0)
+            throw new BillingException("This invoice is not in a cancellable state — refresh and check.");
+
+        await bill.Database.ExecuteSqlAsync(
+            $"UPDATE bill.due SET balance = 0 WHERE invoice_id = {invoiceId}", ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "invoice.cancel", "bill.invoice", invoiceId,
+            after: new { reason, approvalId }, tier: 2);
+        await kernel.SaveChangesAsync(ct);
+    }
 }

@@ -1,0 +1,205 @@
+@page "/billing/refund"
+@model Hms.Web.Pages.Billing.RefundModel
+@{
+    ViewData["Title"] = "Refund & Cancellation";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+@if (Model.Session is null)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">lock</span>
+        <span>
+            <b>Your counter is closed.</b> A cancellation can still be requested, but a refund
+            hands money back and needs an open drawer. <a href="/billing/session">Open counter →</a>
+        </span>
+    </div>
+}
+
+@if (Model.Approved.Count > 0)
+{
+    <div class="card card-clip" style="margin-bottom:14px">
+        <div class="card-head">
+            Approved — waiting for you to carry out
+            <span class="spacer"></span>
+            <span class="pill good">@Model.Approved.Count</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Invoice</th><th>Type</th><th class="num">Amount ৳</th><th>Reason</th><th>Requested by</th><th class="num">Action</th></tr></thead>
+                <tbody>
+                @foreach (var a in Model.Approved)
+                {
+                    <tr>
+                        <td class="id-cell">@a.InvoiceNo</td>
+                        <td><span class="pill info">@Ui.Humanize(a.Type)</span></td>
+                        <td class="num">@(a.Amount is { } m ? Ui.Group(m) : "—")</td>
+                        <td>@a.Reason</td>
+                        <td>@a.RequestedBy</td>
+                        <td class="num">
+                            <form method="post" asp-page-handler="Execute" style="display:inline"
+                                  data-confirm="Carry this out now? A refund pays money out of your drawer and cannot be undone — only reversed again.">
+                                <input type="hidden" name="requestId" value="@a.RequestId" />
+                                <button type="submit" class="btn-tint">Carry out</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Find the invoice
+            <span class="spacer"></span>
+            <form method="get" class="row" style="gap:6px">
+                <label class="sr-only" for="Q">Search invoices</label>
+                <input id="Q" name="q" value="@Model.Q" class="input input-sm" style="width:220px"
+                       placeholder="Invoice no, patient or reg no…" />
+                <button type="submit" class="btn-tint">Search</button>
+            </form>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th>Invoice</th><th>Patient</th><th>Billed</th><th class="num">Net ৳</th>
+                    <th class="num">Paid ৳</th><th class="num">Due ৳</th><th>Status</th><th class="num">Reverse</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var c in Model.Candidates)
+                {
+                    var (css, word) = Ui.Status(c.State);
+                    <tr>
+                        <td class="id-cell">@c.InvoiceNo</td>
+                        <td><b>@c.PatientName</b><div class="text-muted" style="font-size:0.71875rem">@c.Uhid</div></td>
+                        <td class="tabular">@Ui.DateTimeShort(c.CreatedAt)</td>
+                        <td class="num">@Ui.Group(c.Net)</td>
+                        <td class="num">@Ui.Group(c.Paid)</td>
+                        <td class="num">@(c.Balance > 0 ? Ui.Group(c.Balance) : "—")</td>
+                        <td><span class="pill @css">@word</span></td>
+                        <td class="num">
+                            @if (c.State == Hms.Billing.Data.InvoiceState.Refunded)
+                            {
+                                <span class="text-muted">reversed</span>
+                            }
+                            else
+                            {
+                                <a class="btn-tint" href="#raise" onclick="hmsPickInvoice(@c.InvoiceId, '@c.InvoiceNo', @c.Paid)">
+                                    Select
+                                </a>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Candidates.Count == 0)
+                {
+                    <tr><td colspan="8"><div class="empty-state">
+                        <span class="icon" aria-hidden="true">receipt_long</span>
+                        No invoice matches. Search by invoice number, patient name or registration no.
+                    </div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Request" class="card" id="raise"
+          data-confirm="Send this for approval? Nothing changes until a supervisor approves it.">
+        <div class="card-head">Request a reversal</div>
+        <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Invoice <span class="req">*</span></span>
+                <input class="input" asp-for="InvoiceId" id="InvoiceId" inputmode="numeric" readonly />
+                <span class="help-text" id="picked">Pick an invoice from the list.</span>
+            </label>
+
+            <label class="field">
+                <span class="field-label">What is happening</span>
+                <select class="select" asp-for="Action" id="Action">
+                    <option value="refund">Refund — money already taken goes back</option>
+                    <option value="cancel">Cancel — nothing was paid, void the invoice</option>
+                </select>
+            </label>
+
+            <label class="field" id="amount-field">
+                <span class="field-label">Refund amount (৳) <span class="req">*</span></span>
+                <input class="input input-num" asp-for="Amount" inputmode="numeric" />
+                <span class="help-text">Cannot exceed what was actually paid.</span>
+            </label>
+
+            <label class="field">
+                <span class="field-label">Reason <span class="req">*</span></span>
+                <textarea class="textarea" rows="3" asp-for="Reason"
+                          placeholder="e.g. Test cancelled by the doctor before sample collection"></textarea>
+                <span class="help-text">Prints on the reversal and is kept in the audit trail forever.</span>
+            </label>
+
+            <div class="alert info" style="margin:0">
+                <span class="icon icon-sm" aria-hidden="true">info</span>
+                <span>
+                    Nothing is deleted. A cancellation marks the invoice cancelled; a refund writes
+                    a negative receipt next to the original so both stay on the record.
+                </span>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">currency_exchange</span> Send for approval
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (Model.Pending.Count > 0)
+{
+    <div class="card card-clip" style="margin-top:14px">
+        <div class="card-head">Waiting for approval</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Invoice</th><th>Type</th><th class="num">Amount ৳</th><th>Reason</th><th>Requested by</th><th>Status</th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Pending)
+                {
+                    <tr>
+                        <td class="id-cell">@p.InvoiceNo</td>
+                        <td>@Ui.Humanize(p.Type)</td>
+                        <td class="num">@(p.Amount is { } m2 ? Ui.Group(m2) : "—")</td>
+                        <td>@p.Reason</td>
+                        <td>@p.RequestedBy</td>
+                        <td><span class="pill warn">Pending</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+  function hmsPickInvoice(id, no, paid) {
+    document.getElementById("InvoiceId").value = id;
+    document.getElementById("picked").textContent = no + " — " + paid.toLocaleString("en-IN") + " taka paid";
+    var action = document.getElementById("Action");
+    action.value = paid > 0 ? "refund" : "cancel";
+    action.dispatchEvent(new Event("change"));
+  }
+  (function () {
+    var action = document.getElementById("Action");
+    var amount = document.getElementById("amount-field");
+    function sync() { amount.style.display = action.value === "cancel" ? "none" : "block"; }
+    action.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+}

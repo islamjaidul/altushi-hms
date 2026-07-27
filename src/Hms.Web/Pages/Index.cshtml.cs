@@ -21,6 +21,7 @@ public class IndexModel(IReadOnlyList<NavItem> registry, EntitlementProvider ent
         "/appointments" => "Issue a serial and run today's doctor queue.",
         "/billing/opd" => "Bill consultations and services; take payment.",
         "/billing/dues" => "Collect outstanding balances against invoices.",
+        "/billing/refund" => "Reverse a bill: cancel before payment, refund after.",
         "/billing/session" => "Open your counter for the day with its cash float.",
         "/billing/day-close" => "Count the drawer and close the counter.",
         "/diagnostics/order" => "Invoice tests, promise a delivery time, print labels.",

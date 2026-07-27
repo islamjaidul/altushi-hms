@@ -23,6 +23,7 @@ public static class ModuleNav
 
         new("Billing", "OPD Invoice", "/billing/opd", "billing.invoice.create", "point_of_sale", "Billing & Cash"),
         new("Billing", "Due Collection", "/billing/dues", "billing.receipt.create", "payments", "Billing & Cash"),
+        new("Billing", "Refund & Cancel", "/billing/refund", "billing.receipt.create", "currency_exchange", "Billing & Cash"),
         new("Billing", "Counter Session", "/billing/session", "billing.session.open", "lock", "Billing & Cash"),
         new("Billing", "Counter Day-Close", "/billing/day-close", "billing.session.close", "savings", "Billing & Cash"),
 
