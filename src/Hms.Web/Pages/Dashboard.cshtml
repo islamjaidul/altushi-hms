@@ -140,7 +140,7 @@
         <div class="table-wrap">
             <table class="data">
                 <thead>
-                <tr><th>Invoice</th><th>Patient</th><th class="num">Discount ৳</th><th>Authorised by</th></tr>
+                <tr><th>Invoice</th><th>Patient</th><th class="num">Discount ৳</th><th>Authorised by</th><th>Reason given</th></tr>
                 </thead>
                 <tbody>
                 @foreach (var d in Model.Discounts)
@@ -150,12 +150,13 @@
                         <td>@d.PatientName</td>
                         <td class="num text-warning">@Ui.Group(d.Discount)</td>
                         <td>@d.ApprovedBy</td>
+                        <td class="text-muted">@d.Reason</td>
                     </tr>
                 }
                 @if (Model.Discounts.Count == 0)
                 {
                     <tr>
-                        <td colspan="4">
+                        <td colspan="5">
                             <div class="empty-state">
                                 <span class="icon" aria-hidden="true">task_alt</span>
                                 No discount given today.

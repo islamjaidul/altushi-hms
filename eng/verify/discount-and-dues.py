@@ -64,9 +64,16 @@ check(gross and gross.group(1) == "1200", f"gross ৳{gross.group(1)}")
 # Billing Operator's discount threshold is ৳200 (seeded policy) — ৳500 must escalate.
 url, html = bill.post("/billing/opd?handler=Save", {
     "PatientId": pid.group(1), "Items": [cat["CON-SPC"]],
-    "DiscountFlat": "500", "PaidNow": "0", "Tender": "cash"}, opd)
+    "DiscountFlat": "500", "DiscountReason": "Long-standing patient",
+    "PaidNow": "0", "Tender": "cash"}, opd)
 check("above your limit" in html, "discount above the limit is refused and escalated")
 check("approvals inbox" in html, "operator is told where the request went")
+
+# §5 M4 [M]: a discount without a stated reason is refused outright.
+_, no_reason = bill.post("/billing/opd?handler=Save", {
+    "PatientId": pid.group(1), "Items": [cat["CON-SPC"]],
+    "DiscountFlat": "500", "PaidNow": "0", "Tender": "cash"}, opd)
+check("needs a reason" in no_reason, "discount without a reason is refused")
 
 print("  2. Supervisor approves in the inbox")
 sup = Session("shahid", "Demo#1234")
@@ -85,7 +92,8 @@ opd = bill.post("/billing/opd", {"PatientId": pid.group(1), "Items": [cat["CON-S
                                  "catalogId": cat["CON-SPC"], "handler": "Add"}, opd)[1]
 url, html = bill.post("/billing/opd?handler=Save", {
     "PatientId": pid.group(1), "Items": [cat["CON-SPC"]],
-    "DiscountFlat": "500", "PaidNow": "300", "Tender": "cash"}, opd)
+    "DiscountFlat": "500", "DiscountReason": "Long-standing patient",
+    "PaidNow": "300", "Tender": "cash"}, opd)
 check("/billing/invoice/" in url, "invoice created")
 check("&#x9F3; 500" in html, "discount printed on the receipt")
 check("&#x9F3; 400" in html, "due of ৳400 carried (1200 − 500 − 300)")

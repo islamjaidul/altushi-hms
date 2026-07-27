@@ -148,11 +148,18 @@
                 <input id="DiscountFlat" class="input input-sm input-num" style="width:100px"
                        asp-for="DiscountFlat" data-discount inputmode="numeric" />
             </div>
+            <div id="discount-reason" style="display:none">
+                <span class="micro-label">Why the discount <span class="req">*</span></span>
+                <input class="input input-sm" asp-for="DiscountReason"
+                       placeholder="e.g. Hospital staff family" />
+            </div>
             <div class="total-line total-net">
                 <span>Net payable</span>
                 <span class="val" data-net-out>@Ui.Money(net)</span>
             </div>
 
+            @* 5A-4 [Must]: a bill can be settled with two tenders — cash plus card or mobile.
+               Each row becomes its own receipt, so day-close reports what really came in. *@
             <div class="tender-row">
                 <span>
                     <span class="micro-label">Paid now</span>
@@ -167,6 +174,30 @@
                         <option value="nagad">Nagad</option>
                         <option value="corporate">Corporate credit</option>
                     </select>
+                </span>
+            </div>
+
+            <button type="button" class="btn-tint" id="split-toggle" style="align-self:flex-start">
+                <span class="icon icon-sm" aria-hidden="true">add</span> Split across a second mode
+            </button>
+
+            <div class="tender-row" id="tender-2" style="display:none">
+                <span>
+                    <span class="micro-label">Also paid</span>
+                    <input class="input input-sm input-num" asp-for="PaidNow2" data-paid2 inputmode="numeric" />
+                </span>
+                <span>
+                    <span class="micro-label">Mode</span>
+                    <select class="select input-sm" asp-for="Tender2">
+                        <option value="card">Card</option>
+                        <option value="bkash">bKash</option>
+                        <option value="nagad">Nagad</option>
+                        <option value="cash">Cash</option>
+                    </select>
+                </span>
+                <span>
+                    <span class="micro-label">Txn no</span>
+                    <input class="input input-sm" asp-for="TenderRef2" placeholder="optional" />
                 </span>
             </div>
 

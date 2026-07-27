@@ -30,6 +30,12 @@ public class OpdModel(
     [BindProperty] public long DiscountFlat { get; set; }
     [BindProperty] public long PaidNow { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
+    /// <summary>5A-4 [Must]: a second tender on the same invoice — cash + card/mobile.</summary>
+    [BindProperty] public long PaidNow2 { get; set; }
+    [BindProperty] public string Tender2 { get; set; } = "card";
+    [BindProperty] public string? TenderRef2 { get; set; }
+    /// <summary>§5 M4 [M]: discounts carry an operator-stated reason, not a generated one.</summary>
+    [BindProperty] public string? DiscountReason { get; set; }
 
     public OpenSession? Session { get; private set; }
     public IReadOnlyList<CatalogItem> Catalog { get; private set; } = [];
@@ -177,6 +183,12 @@ public class OpdModel(
         var discount = Math.Max(0, Math.Min(gross, DiscountFlat));
         long? approvalId = null;
 
+        if (discount > 0 && string.IsNullOrWhiteSpace(DiscountReason))
+        {
+            Fail("A discount needs a reason — it is attributed to you and shows on the MD dashboard.");
+            return Page();
+        }
+
         if (discount > 0)
         {
             if (ApprovedDiscountId > 0 && ApprovedDiscountAmount >= discount)
@@ -189,7 +201,7 @@ public class OpdModel(
                 // returns approved synchronously, so ordinary small discounts never wait (§8 N1).
                 var raise = await tx.RunAsync(s => approvals.RaiseAsync(
                     s.Kernel, BranchId, "discount", "reg.patient", PatientId!.Value,
-                    ActorId, ActorRole, $"Discount on OPD bill for {PatientName}", discount));
+                    ActorId, ActorRole, DiscountReason!.Trim(), discount));
 
                 if (!raise.AutoApproved)
                 {
@@ -205,7 +217,18 @@ public class OpdModel(
         }
 
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
-        var paid = Math.Max(0, Math.Min(gross - discount, PaidNow));
+        var net = gross - discount;
+        // Split tender: each row becomes its own receipt against the one invoice, so the
+        // day-close tender breakdown stays truthful about what actually entered the drawer.
+        var tenders = new List<(long Amount, string Mode, string? Reference)>();
+        if (PaidNow > 0) tenders.Add((PaidNow, Tender, null));
+        if (PaidNow2 > 0) tenders.Add((PaidNow2, Tender2, TenderRef2));
+        if (tenders.Sum(x => x.Amount) > net)
+        {
+            Fail($"The payment adds up to more than the {Ui.Money(net)} payable. " +
+                 "Reduce a line — change is handled at the drawer, not on the invoice.");
+            return Page();
+        }
         var cartIds = Items.ToList();
 
         try
@@ -229,9 +252,9 @@ public class OpdModel(
                     s.Bill, s.Kernel, BranchId, encounter.Id, Session.Id, PatientId.Value,
                     0m, discount, approvalId, ActorId, ActorName);
 
-                if (paid > 0)
+                foreach (var (amount, mode, reference) in tenders)
                     await billing.CollectAsync(s.Bill, s.Kernel, BranchId, invoice.Id, Session.Id,
-                        paid, Tender, null, ActorId, ActorName);
+                        amount, mode, reference, ActorId, ActorName);
 
                 return invoice.Id;
             });

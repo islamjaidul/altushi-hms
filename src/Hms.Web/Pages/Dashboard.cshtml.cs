@@ -6,7 +6,8 @@ namespace Hms.Web.Pages;
 public sealed record DayBar(DateOnly Day, long Net);
 public sealed record DeptSlice(string Dept, long Amount);
 public sealed record VarianceRow(string Counter, string Operator, DateOnly Day, long Variance);
-public sealed record DiscountRow(string InvoiceNo, string PatientName, long Discount, string ApprovedBy);
+public sealed record DiscountRow(
+    string InvoiceNo, string PatientName, long Discount, string ApprovedBy, string Reason);
 
 /// <summary>
 /// 05 §5 screen 16 — the closing screen of the demo. Every number is a link to the register it
@@ -140,8 +141,9 @@ public class DashboardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
             {
                 var approval = approvals.FirstOrDefault(a => a.Id == i.DiscountApprovalId);
                 var by = approval?.DecidedBy is { } d ? deciders.GetValueOrDefault(d, "—") : "within limit";
+                // US4.4: a discount is tied to a named person AND the reason they gave.
                 return new DiscountRow(i.InvoiceNo, patients.GetValueOrDefault(i.PatientId, "—"),
-                    i.Discount, by);
+                    i.Discount, by, approval?.Reason ?? "—");
             }).ToList();
 
             return 0;

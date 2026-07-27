@@ -118,3 +118,50 @@
 
   inputs.forEach((input) => { input.addEventListener("input", () => paint(input)); paint(input); });
 })();
+
+// ---- split tender + discount reason on the POS (5A-4, §5 M4 [M]) --------
+(function () {
+  "use strict";
+  const toggle = document.getElementById("split-toggle");
+  const row2 = document.getElementById("tender-2");
+  if (toggle && row2) {
+    toggle.addEventListener("click", () => {
+      const open = row2.style.display !== "none";
+      row2.style.display = open ? "none" : "flex";
+      toggle.querySelector("span:last-child") ||
+        (toggle.lastChild.textContent = open ? " Split across a second mode" : " Remove the second mode");
+      if (!open) { const f = row2.querySelector("input"); if (f) f.focus(); }
+    });
+    // Keep it open on re-render when a second tender was already entered.
+    const paid2 = row2.querySelector("[data-paid2]");
+    if (paid2 && Number(paid2.value) > 0) row2.style.display = "flex";
+  }
+
+  // The reason box only exists once a discount is actually being given (§7 U7).
+  const discount = document.querySelector("[data-discount]");
+  const reason = document.getElementById("discount-reason");
+  if (discount && reason) {
+    const sync = () => { reason.style.display = Number(discount.value) > 0 ? "block" : "none"; };
+    discount.addEventListener("input", sync);
+    sync();
+  }
+
+  // The due line has to account for both tenders, not just the first.
+  const pos = document.querySelector("[data-pos]");
+  if (pos) {
+    const gross = Number(pos.dataset.gross || 0);
+    const d = pos.querySelector("[data-discount]");
+    const p1 = pos.querySelector("[data-paid]");
+    const p2 = pos.querySelector("[data-paid2]");
+    const dueOut = pos.querySelector("[data-due-out]");
+    if (p2 && dueOut) {
+      const recalc = () => {
+        const net = gross - Math.max(0, Math.min(gross, Number(d && d.value) || 0));
+        const paid = (Number(p1 && p1.value) || 0) + (Number(p2.value) || 0);
+        dueOut.textContent = "৳ " + Math.max(0, net - paid).toLocaleString("en-IN");
+      };
+      [d, p1, p2].forEach((el) => el && el.addEventListener("input", recalc));
+      recalc();
+    }
+  }
+})();
