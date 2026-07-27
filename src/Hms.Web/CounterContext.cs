@@ -3,7 +3,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hms.Web;
 
-public sealed record OpenSession(long Id, long CounterId, string CounterName, DateOnly BusinessDay, long OpeningFloat);
+public sealed record OpenSession(
+    long Id, long CounterId, string CounterName, string CounterKind,
+    DateOnly BusinessDay, long OpeningFloat)
+{
+    /// <summary>
+    /// §5 M4 [M]: emergency is its own encounter type, not an OPD variant. The counter the
+    /// operator opened decides it, so an ER clerk never has to remember to set it.
+    /// </summary>
+    public string EncounterType => CounterKind == "er" ? "ER" : "OPD";
+}
 
 /// <summary>
 /// Which counter the operator is signed in at (02 §2.4). Receipts require an open session, so
@@ -22,7 +31,7 @@ public static class CounterContext
                   && (s.State == SessionState.Active || s.State == SessionState.Opened
                       || s.State == SessionState.Reopened)
             orderby s.OpenedAt descending
-            select new OpenSession(s.Id, c.Id, c.Name, s.BusinessDay, s.OpeningFloat))
+            select new OpenSession(s.Id, c.Id, c.Name, c.Kind, s.BusinessDay, s.OpeningFloat))
             .FirstOrDefaultAsync(ct);
         return row;
     }

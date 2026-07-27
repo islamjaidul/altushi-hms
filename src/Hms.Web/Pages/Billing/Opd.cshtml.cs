@@ -236,7 +236,7 @@ public class OpdModel(
             var invoiceId = await tx.RunAsync(async s =>
             {
                 var encounter = await CounterContext.GetOrCreateEncounterAsync(
-                    s.Bill, BranchId, PatientId!.Value, Session!.CounterId, today, "OPD",
+                    s.Bill, BranchId, PatientId!.Value, Session!.CounterId, today, Session.EncounterType,
                     ActorId, clock.GetUtcNow());
 
                 foreach (var id in cartIds)

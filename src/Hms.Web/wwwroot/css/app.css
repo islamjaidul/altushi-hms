@@ -865,3 +865,30 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
   .sheet { width: auto; box-shadow: none; padding: 0; }
   body { background: var(--paper); }
 }
+
+/* ====================================================================== */
+/* Thermal receipt (§5 M4 [M]) — 80 mm roll. The same document, re-flowed  */
+/* for a counter POS printer instead of A4 (§7 U10, 05 §6).               */
+/* ====================================================================== */
+
+.sheet.thermal {
+  width: 80mm;
+  padding: 4mm 3mm;
+  font-size: 0.6875rem;
+  box-shadow: none;
+}
+.sheet.thermal .sheet-head { display: block; text-align: center; border-bottom-width: 1px; }
+.sheet.thermal .sheet-mark { display: none; }
+.sheet.thermal .sheet-doc { margin: 4px 0 0; text-align: center; }
+.sheet.thermal .sheet-hospital { font-size: 0.8125rem; }
+.sheet.thermal .sheet-info { grid-template-columns: 1fr; gap: 1px; margin: 6px 0; }
+.sheet.thermal .sheet-totals { width: 100%; }
+.sheet.thermal .sheet-signs { display: none; }
+.sheet.thermal table.sheet-table th,
+.sheet.thermal table.sheet-table td { font-size: 0.625rem; padding: 2px 0; }
+
+@media print {
+  /* The roll has no page furniture and no margins to spare. */
+  .sheet.thermal { width: auto; padding: 0; }
+  body:has(.sheet.thermal) { margin: 0; }
+}

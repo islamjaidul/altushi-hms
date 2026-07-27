@@ -1,0 +1,219 @@
+@page "/billing/reports"
+@model Hms.Web.Pages.Billing.ReportsModel
+@{
+    ViewData["Title"] = "Collection & Income Reports";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+<form method="get" class="row no-print" style="margin-bottom:14px">
+    <label class="sr-only" for="Range">Period</label>
+    <select id="Range" name="range" class="select" style="width:180px" onchange="this.form.submit()">
+        @foreach (var (value, label) in new[]
+        {
+            ("today", "Today"), ("yesterday", "Yesterday"), ("week", "Last 7 days"),
+            ("month", "This month"), ("custom", "Custom range…"),
+        })
+        {
+            <option value="@value" selected="@(Model.Range == value)">@label</option>
+        }
+    </select>
+    <label class="sr-only" for="From">From</label>
+    <input id="From" type="date" name="from" class="input" style="width:150px"
+           value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+    <label class="sr-only" for="To">To</label>
+    <input id="To" type="date" name="to" class="input" style="width:150px"
+           value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+    <button type="submit" class="btn">Apply</button>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+        <span class="icon icon-sm" aria-hidden="true">print</span> Print statement
+    </button>
+</form>
+
+<div class="card-hint" style="margin-bottom:14px">
+    @Ui.DateLong(Model.FromDate)@(Model.FromDate == Model.ToDate ? "" : " — " + Ui.DateLong(Model.ToDate))
+    · @Model.InvoiceCount invoice(s)
+</div>
+
+<div class="tile-row" style="margin-bottom:14px">
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Gross billed</span></div>
+        <div class="tile-value">@Ui.Money(Model.TotalGross)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Discount given</span></div>
+        <div class="tile-value text-warning">@Ui.Money(Model.TotalDiscount)</div>
+        <div class="tile-sub">@Model.DiscountRegister.Count invoice(s)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Collected</span></div>
+        <div class="tile-value text-success">@Ui.Money(Model.TotalCollected)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Outstanding due</span></div>
+        <div class="tile-value text-danger">@Ui.Money(Model.TotalDue)</div>
+        <div class="tile-sub">all time, @Model.OutstandingDues.Count invoice(s)</div>
+    </div>
+</div>
+
+<div class="grid grid-3">
+    @foreach (var (title, rows, note) in new[]
+    {
+        ("Collection by mode", Model.ByMode, "what entered the drawer"),
+        ("Collection by counter", Model.ByCounter, "per counter"),
+        ("Collection by operator", Model.ByOperator, "per person"),
+    })
+    {
+        <div class="card card-clip">
+            <div class="card-head">@title <span class="spacer"></span><span class="section-sub">@note</span></div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>@title.Replace("Collection by ", "")</th><th class="num">Receipts</th><th class="num">Amount ৳</th></tr></thead>
+                    <tbody>
+                    @foreach (var r in rows)
+                    {
+                        <tr><td>@r.Label</td><td class="num">@r.Receipts</td><td class="num">@Ui.Group(r.Amount)</td></tr>
+                    }
+                    @if (rows.Count == 0)
+                    {
+                        <tr><td colspan="3"><div class="empty-state">Nothing collected in this period.</div></td></tr>
+                    }
+                    </tbody>
+                    @if (rows.Count > 0)
+                    {
+                        <tfoot><tr><td>Total</td><td class="num">@rows.Sum(r => r.Receipts)</td><td class="num">@Ui.Group(rows.Sum(r => r.Amount))</td></tr></tfoot>
+                    }
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="grid grid-main-side" style="margin-top:14px">
+    <div class="card card-clip">
+        <div class="card-head">Department-wise income <span class="spacer"></span><span class="section-sub">§5 M8</span></div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Department</th><th class="num">Line items</th><th class="num">Income ৳</th></tr></thead>
+                <tbody>
+                @foreach (var d in Model.ByDept)
+                {
+                    <tr><td>@d.Dept</td><td class="num">@d.Items</td><td class="num">@Ui.Group(d.Amount)</td></tr>
+                }
+                @if (Model.ByDept.Count == 0)
+                {
+                    <tr><td colspan="3"><div class="empty-state">Nothing billed in this period.</div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">Referrer business</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Referrer</th><th class="num">Tests</th><th class="num">Business ৳</th><th class="num">Accrued ৳</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.ByReferrer)
+                {
+                    <tr>
+                        <td>@r.Referrer<div class="text-muted" style="font-size:0.71875rem">@r.CommissionPct% commission</div></td>
+                        <td class="num">@r.Orders</td>
+                        <td class="num">@Ui.Group(r.Business)</td>
+                        <td class="num">@(r.Commission == 0 ? "—" : Ui.Group(r.Commission))</td>
+                    </tr>
+                }
+                @if (Model.ByReferrer.Count == 0)
+                {
+                    <tr><td colspan="4"><div class="empty-state">No referred business in this period.</div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="pos-note">Commission is accrued for reporting; payouts belong to the referral module.</div>
+    </div>
+</div>
+
+<div class="card card-clip" style="margin-top:14px">
+    <div class="card-head">
+        Discount register
+        <span class="spacer"></span>
+        <span class="section-sub">every discount, who gave it and why (US4.4)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th>Invoice</th><th>When</th><th>Patient</th><th class="num">Gross ৳</th>
+                <th class="num">Discount ৳</th><th>Given by</th><th>Authorised by</th><th>Reason</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var d in Model.DiscountRegister)
+            {
+                <tr>
+                    <td class="id-cell">@d.InvoiceNo</td>
+                    <td class="tabular">@Ui.DateTimeShort(d.At)</td>
+                    <td>@d.Patient</td>
+                    <td class="num">@Ui.Group(d.Gross)</td>
+                    <td class="num text-warning">@Ui.Group(d.Discount)</td>
+                    <td>@d.Operator</td>
+                    <td>@d.AuthorisedBy</td>
+                    <td class="text-muted">@d.Reason</td>
+                </tr>
+            }
+            @if (Model.DiscountRegister.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">task_alt</span>
+                    No discount given in this period.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-clip" style="margin-top:14px">
+    <div class="card-head">
+        Outstanding dues by age
+        <span class="spacer"></span>
+        <span class="section-sub">oldest first — the follow-up list</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Invoice</th><th>Patient</th><th>Phone</th><th class="num">Balance ৳</th><th class="num">Age</th></tr></thead>
+            <tbody>
+            @foreach (var d in Model.OutstandingDues)
+            {
+                <tr>
+                    <td class="id-cell">@d.InvoiceNo</td>
+                    <td>@d.Patient</td>
+                    <td>@(d.Phone ?? "—")</td>
+                    <td class="num money-due">@Ui.Group(d.Balance)</td>
+                    <td class="num">
+                        @if (d.DaysOld >= 30)
+                        {
+                            <span class="pill bad">@d.DaysOld days</span>
+                        }
+                        else if (d.DaysOld >= 7)
+                        {
+                            <span class="pill warn">@d.DaysOld days</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@d.DaysOld days</span>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.OutstandingDues.Count == 0)
+            {
+                <tr><td colspan="5"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">task_alt</span>
+                    Nothing outstanding.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

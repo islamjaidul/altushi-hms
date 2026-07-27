@@ -24,6 +24,7 @@ public class IndexModel(IReadOnlyList<NavItem> registry, EntitlementProvider ent
         "/billing/refund" => "Reverse a bill: cancel before payment, refund after.",
         "/billing/session" => "Open your counter for the day with its cash float.",
         "/billing/day-close" => "Count the drawer and close the counter.",
+        "/billing/reports" => "Collection, department income, discounts and ageing dues.",
         "/diagnostics/order" => "Invoice tests, promise a delivery time, print labels.",
         "/diagnostics/delivery" => "Hand verified reports to patients.",
         "/lis/board" => "Move samples from collection through to delivery.",

@@ -26,6 +26,7 @@ public static class ModuleNav
         new("Billing", "Refund & Cancel", "/billing/refund", "billing.receipt.create", "currency_exchange", "Billing & Cash"),
         new("Billing", "Counter Session", "/billing/session", "billing.session.open", "lock", "Billing & Cash"),
         new("Billing", "Counter Day-Close", "/billing/day-close", "billing.session.close", "savings", "Billing & Cash"),
+        new("Billing", "Collection Reports", "/billing/reports", "billing.session.close", "bar_chart", "Billing & Cash"),
 
         new("Diagnostics", "Diagnostic Order", "/diagnostics/order", "diagnostics.order.create", "receipt_long", "Diagnostics"),
         new("Diagnostics", "Report Delivery", "/diagnostics/delivery", "diagnostics.order.create", "send", "Diagnostics"),

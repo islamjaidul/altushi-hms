@@ -31,6 +31,9 @@ public class InvoiceModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     public string State { get; private set; } = "";
     public IReadOnlyList<ReceiptLine> Lines { get; private set; } = [];
     public IReadOnlyList<ReceiptPayment> Payments { get; private set; } = [];
+    /// <summary>§5 M4 [M]: thermal roll for the counter POS, A4 for the file copy.</summary>
+    [BindProperty(SupportsGet = true)] public string? Paper { get; set; }
+    public bool Thermal => Paper == "thermal";
 
     public async Task<IActionResult> OnGetAsync(long id)
     {

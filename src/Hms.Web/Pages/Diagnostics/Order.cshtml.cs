@@ -142,7 +142,7 @@ public class OrderModel(
                 var diagnostics = new DiagnosticsService(poster, clock);
 
                 var encounter = await CounterContext.GetOrCreateEncounterAsync(
-                    s.Bill, BranchId, PatientId!.Value, Session!.CounterId, today, "OPD",
+                    s.Bill, BranchId, PatientId!.Value, Session!.CounterId, today, Session.EncounterType,
                     ActorId, clock.GetUtcNow());
 
                 var order = await diagnostics.CreateOrderAsync(

@@ -10,7 +10,13 @@
         @await Html.PartialAsync("_PrintTools", "/billing/opd")
     </div>
 
-    <div class="sheet">
+    @* §5 M4 [M]: the same receipt on an 80 mm roll or on A4 — one layout, two widths. *@
+    <div class="row no-print" style="width:640px;max-width:100%;justify-content:flex-end">
+        <a class="btn-tint" href="?paper=thermal">80 mm roll</a>
+        <a class="btn-tint" href="?paper=a4">A4 sheet</a>
+    </div>
+
+    <div class="sheet @(Model.Thermal ? "thermal" : "")">
         @await Html.PartialAsync("_Letterhead",
             new Hms.Web.Letterhead("Money Receipt", Model.InvoiceNo, Model.CreatedAt))
 
