@@ -30,14 +30,30 @@ public static class DevSeed
         // cell is "A(verify) + C", so verification and entry both belong to that role.
         ["Lab Technologist"] =
             ["registration.read", "lis.worklist.read", "lis.sample.collect", "lis.result.enter"],
+        // Spec 0026: a reporting consultant signs lab and imaging alike — one verifier, one
+        // e-sign path, two surfaces.
         ["Pathologist"] =
-            ["registration.read", "lis.worklist.read", "lis.result.enter", "lis.result.verify"],
+            ["registration.read", "lis.worklist.read", "lis.result.enter", "lis.result.verify",
+             "radiology.worklist.read", "radiology.report.write"],
+        ["Radiology Technician"] =
+            ["registration.read", "radiology.worklist.read", "radiology.study.perform"],
         ["Billing Supervisor"] =
             ["registration.read", "billing.invoice.create", "billing.receipt.create",
              "billing.session.close", "admin.approvals.decide", "ipd.read"],
         // §12 Nurse row: C on IPD service posting and requisitions, R elsewhere (US6.1).
+        // Spec 0024 adds the pre-checkup vitals (US5.3) and the 5A-7 nursing charts.
         ["Nurse"] =
-            ["registration.read", "ipd.read", "ipd.service.post"],
+            ["registration.read", "ipd.read", "ipd.service.post",
+             "emr.read", "emr.vitals.record", "emr.chart.record"],
+        // P4, the first non-operator persona: a consultant writes and signs prescriptions and
+        // orders tests from them (US5.4), and reads the patient's record — nothing financial.
+        ["OPD Consultant"] =
+            ["registration.read", "emr.read", "emr.note.write", "diagnostics.order.create",
+             "lis.worklist.read", "ipd.read", "ot.read"],
+        // §12 OT column: the in-charge schedules and records; money stays with billing.
+        ["OT In-charge"] =
+            ["registration.read", "ipd.read", "ot.read", "ot.schedule", "ot.record",
+             "pharmacy.read"],
         ["Admin"] =
             ["admin.users.manage", "admin.audit.read", "admin.approvals.decide",
              "admin.masters.manage", "notifications.read"],
@@ -63,6 +79,9 @@ public static class DevSeed
         ("md", "Dr. Chairman", "MD"),
         ("parvin", "Parvin Akter", "Pharmacist"),
         ("nasrin", "Nasrin Sultana", "Nurse"),
+        ("chowdhury", "Dr. A. K. Chowdhury", "OPD Consultant"),
+        ("shaheen", "Shaheen Akhter", "OT In-charge"),
+        ("moinul", "Moinul Haque", "Radiology Technician"),
     ];
 
     public const string DevPassword = "Demo#1234";   // on the demo card (07 §1)
@@ -263,6 +282,8 @@ public static class DevSeed
 
         await SeedPharmacyAsync(sp, kdb);
         await SeedIpdAsync(sp, kdb);
+        await SeedOtAsync(sp);
+        await SeedRadiologyAsync(sp);
     }
 
     /// <summary>Spec 0017: wards, beds with effective-dated class tariffs, the 5A-9 masters
@@ -309,13 +330,18 @@ public static class DevSeed
                 existing = new Service { Code = code, Name = name, Dept = dept, Kind = "procedure" };
                 adm.Services.Add(existing);
                 await adm.SaveChangesAsync();
-                if (price > 0)
-                    adm.RateVersions.Add(new RateVersion
-                    {
-                        BranchId = 1, CatalogKind = "service", CatalogId = existing.Id,
-                        Price = price, ValidFrom = from, AuthorId = 1,
-                    });
             }
+            // Spec 0023: an item priced at zero is a **priced** item. Skipping the rate version
+            // for the percentage-marker service left it looking unpriced, and RUNBOOK §9 step 4
+            // ("zero provisional prices") could then never pass — the go-live gate was unclearable.
+            // Written outside the creation branch so an upgraded database gains it too.
+            if (!await adm.RateVersions.AnyAsync(v =>
+                    v.CatalogKind == "service" && v.CatalogId == existing.Id && v.Scope == "standard"))
+                adm.RateVersions.Add(new RateVersion
+                {
+                    BranchId = 1, CatalogKind = "service", CatalogId = existing.Id,
+                    Price = price, ValidFrom = from, AuthorId = 1,
+                });
             serviceIds[code] = existing.Id;
         }
         await adm.SaveChangesAsync();
@@ -357,6 +383,94 @@ public static class DevSeed
             });
             await ipd.SaveChangesAsync();
         }
+    }
+
+    /// <summary>Spec 0025: two theatres and a small operation catalogue with the per-role fees,
+    /// so M7's workflow is demonstrable rather than hypothetical. Additive and idempotent — a
+    /// database seeded before spec 0025 gains the catalogue on its next boot.</summary>
+    private static async Task SeedOtAsync(IServiceProvider sp)
+    {
+        var ot = sp.GetRequiredService<Hms.Ot.Data.OtDbContext>();
+        var adm = sp.GetRequiredService<AdmDbContext>();
+        var from = new DateOnly(2026, 1, 1);
+
+        var otServices = new (string Code, string Name, long Price)[]
+        {
+            ("OT-APPY", "Appendicectomy", 22000),
+            ("OT-LSCS", "Caesarean Section (LSCS)", 28000),
+            ("OT-HERN", "Hernia Repair", 20000),
+            ("OT-CHOL", "Cholecystectomy (laparoscopic)", 45000),
+            ("OT-FEE-SURG", "Surgeon Fee", 8000),
+            ("OT-FEE-ASST", "Assistant Surgeon Fee", 2500),
+            ("OT-FEE-ANAE", "Anaesthetist Fee", 4000),
+            ("OT-THEATRE", "Theatre Charge", 6000),
+        };
+        foreach (var (code, name, price) in otServices)
+        {
+            var existing = await adm.Services.SingleOrDefaultAsync(x => x.Code == code);
+            if (existing is null)
+            {
+                existing = new Service { Code = code, Name = name, Dept = "OT", Kind = "procedure" };
+                adm.Services.Add(existing);
+                await adm.SaveChangesAsync();
+            }
+            if (!await adm.RateVersions.AnyAsync(v =>
+                    v.CatalogKind == "service" && v.CatalogId == existing.Id && v.Scope == "standard"))
+                adm.RateVersions.Add(new RateVersion
+                {
+                    BranchId = 1, CatalogKind = "service", CatalogId = existing.Id,
+                    Price = price, ValidFrom = from, AuthorId = 1,
+                });
+        }
+        await adm.SaveChangesAsync();
+
+        if (!await ot.Theatres.AnyAsync())
+        {
+            ot.Theatres.AddRange(
+                new Hms.Ot.Data.Theatre { BranchId = 1, Name = "OT-1 (General)" },
+                new Hms.Ot.Data.Theatre { BranchId = 1, Name = "OT-2 (Obstetric)" });
+            await ot.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>Spec 0026: the modality master and the mapping that turns an imaging order into a
+    /// worklist row. Additive and keyed by code, so an upgraded database gains it on next boot.</summary>
+    private static async Task SeedRadiologyAsync(IServiceProvider sp)
+    {
+        var radiology = sp.GetRequiredService<Hms.Radiology.Data.RadiologyDbContext>();
+        var adm = sp.GetRequiredService<AdmDbContext>();
+
+        var modalities = new (string Code, string Name, string[] TestCodes)[]
+        {
+            ("XR", "X-ray", ["XRAY-CH"]),
+            ("USG", "Ultrasound", ["USG-ABD"]),
+            ("ECG", "ECG / Echo", ["ECG"]),
+            ("CT", "CT Scan", []),
+            ("MRI", "MRI", []),
+        };
+
+        foreach (var (code, name, testCodes) in modalities)
+        {
+            var modality = await radiology.Modalities.SingleOrDefaultAsync(m => m.Code == code);
+            if (modality is null)
+            {
+                modality = new Hms.Radiology.Data.Modality { BranchId = 1, Code = code, Name = name };
+                radiology.Modalities.Add(modality);
+                await radiology.SaveChangesAsync();
+            }
+            foreach (var testCode in testCodes)
+            {
+                var testId = await adm.TestCatalog.AsNoTracking()
+                    .Where(t => t.Code == testCode).Select(t => (long?)t.Id).FirstOrDefaultAsync();
+                if (testId is null) continue;
+                if (await radiology.ModalityTests.AnyAsync(m => m.TestCatalogId == testId)) continue;
+                radiology.ModalityTests.Add(new Hms.Radiology.Data.ModalityTest
+                {
+                    ModalityId = modality.Id, TestCatalogId = testId.Value,
+                });
+            }
+        }
+        await radiology.SaveChangesAsync();
     }
 
     /// <summary>Spec 0016: enough pharmacy reality for the demo — companies, products, one

@@ -41,6 +41,19 @@ public static class Perm
     public const string PharmacyPurchaseManage = P + "pharmacy.purchase.manage";
     public const string PharmacyStockManage = P + "pharmacy.stock.manage";
 
+    public const string EmrRead = P + "emr.read";
+    public const string EmrNoteWrite = P + "emr.note.write";
+    public const string EmrVitalsRecord = P + "emr.vitals.record";
+    public const string EmrChartRecord = P + "emr.chart.record";
+
+    public const string RadiologyWorklistRead = P + "radiology.worklist.read";
+    public const string RadiologyStudyPerform = P + "radiology.study.perform";
+    public const string RadiologyReportWrite = P + "radiology.report.write";
+
+    public const string OtRead = P + "ot.read";
+    public const string OtSchedule = P + "ot.schedule";
+    public const string OtRecord = P + "ot.record";
+
     public const string IpdRead = P + "ipd.read";
     public const string IpdManage = P + "ipd.manage";
     public const string IpdServicePost = P + "ipd.service.post";

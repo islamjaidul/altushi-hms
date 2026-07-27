@@ -44,7 +44,11 @@ export const USERS: Record<string, { password: string; role: string; permissions
     role: "Pathologist",
     // registration.read + lis.result.enter added post-audit — §12's LIS cell for Pathologist is
     // "A(verify) + C", so entry and verification both belong to the role, not just verification.
-    permissions: ["registration.read", "lis.worklist.read", "lis.result.enter", "lis.result.verify"],
+    // Spec 0026: one reporting consultant signs lab and imaging alike.
+    permissions: [
+      "registration.read", "lis.worklist.read", "lis.result.enter", "lis.result.verify",
+      "radiology.worklist.read", "radiology.report.write",
+    ],
   },
   shahid: {
     password: PASSWORD,
@@ -94,7 +98,35 @@ export const USERS: Record<string, { password: string; role: string; permissions
     password: PASSWORD,
     role: "Nurse",
     // Spec 0017 (§12 Nurse row / US6.1): posts services and requisitions, never money.
-    permissions: ["registration.read", "ipd.read", "ipd.service.post"],
+    // Spec 0024 adds pre-checkup vitals (US5.3) and the 5A-7 nursing charts.
+    permissions: [
+      "registration.read", "ipd.read", "ipd.service.post",
+      "emr.read", "emr.vitals.record", "emr.chart.record",
+    ],
+  },
+  chowdhury: {
+    password: PASSWORD,
+    role: "OPD Consultant",
+    // Spec 0024 (P4): the first non-operator persona — writes prescriptions, orders tests,
+    // reads the record, touches no money.
+    permissions: [
+      "registration.read", "emr.read", "emr.note.write", "diagnostics.order.create",
+      "lis.worklist.read", "ipd.read", "ot.read",
+    ],
+  },
+  moinul: {
+    password: PASSWORD,
+    role: "Radiology Technician",
+    // Spec 0026 (§12 Radiology column): performs studies, never reports them.
+    permissions: ["registration.read", "radiology.worklist.read", "radiology.study.perform"],
+  },
+  shaheen: {
+    password: PASSWORD,
+    role: "OT In-charge",
+    // Spec 0025 (§12 OT column): schedules and records operations; money stays with billing.
+    permissions: [
+      "registration.read", "ipd.read", "ot.read", "ot.schedule", "ot.record", "pharmacy.read",
+    ],
   },
 };
 
@@ -160,6 +192,17 @@ export const ROUTES: RouteSpec[] = [
   { path: "/ipd/certificates", permission: "ipd.settle", user: "rasel", title: "Certificates" },
   { path: "/ipd/reports", permission: "ipd.read", user: "jashim", title: "IPD Reports" },
   { path: "/pharmacy/indents", permission: "pharmacy.stock.manage", user: "parvin", title: "Indoor Issue Queue" },
+  { path: "/emr/queue", permission: "emr.read", user: "chowdhury", title: "Consultation Queue" },
+  { path: "/emr/vitals", permission: "emr.vitals.record", user: "nasrin", title: "Pre-checkup Vitals" },
+  { path: "/emr/history", permission: "emr.read", user: "chowdhury", title: "Patient Record" },
+  { path: "/emr/templates", permission: "emr.note.write", user: "chowdhury", title: "My Templates" },
+  { path: "/emr/charts", permission: "emr.chart.record", user: "nasrin", title: "Nursing Charts" },
+  { path: "/radiology/worklist", permission: "radiology.worklist.read", user: "moinul", title: "Modality Worklist" },
+  { path: "/radiology/modalities", permission: "radiology.study.perform", user: "moinul", title: "Machines & Mapping" },
+  { path: "/ot/board", permission: "ot.read", user: "shaheen", title: "OT Board" },
+  { path: "/ot/schedule", permission: "ot.schedule", user: "shaheen", title: "Schedule an Operation" },
+  { path: "/ot/register", permission: "ot.read", user: "shaheen", title: "Operation Register" },
+  { path: "/ot/theatres", permission: "ot.schedule", user: "shaheen", title: "Theatres" },
 
   // spec 0018 — M2 Front Desk.
   { path: "/frontdesk", permission: "ipd.read", user: "jashim", title: "Help Desk" },

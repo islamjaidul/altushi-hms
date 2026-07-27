@@ -29,6 +29,9 @@
     <ProjectReference Include="..\..\src\Modules\Lis\Hms.Lis\Hms.Lis.csproj" />
     <ProjectReference Include="..\..\src\Modules\Pharmacy\Hms.Pharmacy\Hms.Pharmacy.csproj" />
     <ProjectReference Include="..\..\src\Modules\Ipd\Hms.Ipd\Hms.Ipd.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Emr\Hms.Emr\Hms.Emr.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Ot\Hms.Ot\Hms.Ot.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Radiology\Hms.Radiology\Hms.Radiology.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Hms.Billing.Data;
 using Hms.Kernel.Audit;
 using Hms.Kernel.Data;
+using Hms.Kernel.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hms.Billing;
@@ -11,7 +12,8 @@ namespace Hms.Billing;
 /// Variance is recorded, never blocking (edge 18). The session row lock serializes close
 /// against in-flight receipts (G7: day-close vs late receipt).
 /// </summary>
-public sealed class DayCloseService(AuditWriter audit, TimeProvider clock)
+public sealed class DayCloseService(
+    AuditWriter audit, BusinessDayCalendar businessDay, TimeProvider clock)
 {
     public async Task<DayCloseSummary> CloseAsync(
         BillDbContext bill, KernelDbContext kernel, long sessionId, long countedCash,
@@ -28,7 +30,11 @@ public sealed class DayCloseService(AuditWriter audit, TimeProvider clock)
 
         var session = await bill.Sessions.SingleAsync(s => s.Id == sessionId, ct);
         var isCarryClose = carryCloseApprovalId is not null;
-        if (session.BusinessDay != DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime) && !isCarryClose)
+        // Spec 0027: both sides must be business days. Comparing the session's Dhaka business
+        // day against a UTC calendar date made every session opened between 00:00 and 06:00
+        // Dhaka look stale — a night shift was told to fetch a supervisor to close its own
+        // drawer, and the test suite was only green for eighteen hours a day.
+        if (session.BusinessDay != businessDay.BusinessDayOf(clock.GetUtcNow()) && !isCarryClose)
         {
             // edge 17: a stale session needs the supervised carry-close path, not a silent merge.
             throw new BillingException(

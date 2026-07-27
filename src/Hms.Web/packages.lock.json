@@ -289,6 +289,14 @@
       "hms.diagnostics.contracts": {
         "type": "Project"
       },
+      "hms.emr": {
+        "type": "Project",
+        "dependencies": {
+          "EFCore.NamingConventions": "[10.0.1, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
+        }
+      },
       "hms.ipd": {
         "type": "Project",
         "dependencies": {
@@ -329,6 +337,14 @@
       "hms.notifications.contracts": {
         "type": "Project"
       },
+      "hms.ot": {
+        "type": "Project",
+        "dependencies": {
+          "EFCore.NamingConventions": "[10.0.1, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
+        }
+      },
       "hms.pharmacy": {
         "type": "Project",
         "dependencies": {
@@ -341,6 +357,14 @@
       },
       "hms.pharmacy.contracts": {
         "type": "Project"
+      },
+      "hms.radiology": {
+        "type": "Project",
+        "dependencies": {
+          "EFCore.NamingConventions": "[10.0.1, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
+        }
       },
       "hms.registration": {
         "type": "Project",

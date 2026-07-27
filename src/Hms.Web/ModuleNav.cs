@@ -44,6 +44,20 @@ public static class ModuleNav
         new("Ipd", "Certificates", "/ipd/certificates", "ipd.settle", "verified", "Indoor (IPD)"),
         new("Ipd", "IPD Reports", "/ipd/reports", "ipd.read", "bar_chart", "Indoor (IPD)"),
 
+        new("Emr", "Consultation Queue", "/emr/queue", "emr.read", "stethoscope", "Clinical"),
+        new("Emr", "Pre-checkup Vitals", "/emr/vitals", "emr.vitals.record", "monitoring", "Clinical"),
+        new("Emr", "Patient Record", "/emr/history", "emr.read", "history", "Clinical"),
+        new("Emr", "My Templates", "/emr/templates", "emr.note.write", "edit_note", "Clinical"),
+        new("Emr", "Nursing Charts", "/emr/charts", "emr.chart.record", "task_alt", "Clinical"),
+
+        new("Radiology", "Modality Worklist", "/radiology/worklist", "radiology.worklist.read", "science", "Radiology"),
+        new("Radiology", "Machines & Mapping", "/radiology/modalities", "radiology.study.perform", "sync_alt", "Radiology"),
+
+        new("Ot", "OT Board", "/ot/board", "ot.read", "monitoring", "Operation Theatre"),
+        new("Ot", "Schedule an Operation", "/ot/schedule", "ot.schedule", "calendar_add_on", "Operation Theatre"),
+        new("Ot", "Operation Register", "/ot/register", "ot.read", "history", "Operation Theatre"),
+        new("Ot", "Theatres", "/ot/theatres", "ot.schedule", "science", "Operation Theatre"),
+
         new("Pharmacy", "Pharmacy Sale", "/pharmacy/pos", "pharmacy.sale.create", "point_of_sale", "Pharmacy"),
         new("Pharmacy", "Stock & Expiry", "/pharmacy/stock", "pharmacy.stock.manage", "inventory_2", "Pharmacy"),
         new("Pharmacy", "Purchase Orders", "/pharmacy/purchase", "pharmacy.purchase.manage", "receipt_long", "Pharmacy"),

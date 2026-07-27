@@ -56,7 +56,10 @@ smoke admin  "Demo#1234" /admin/masters /admin/users /admin/audit
 smoke md     "Demo#1234" /dashboard
 smoke parvin "Demo#1234" /pharmacy/pos /pharmacy/stock /pharmacy/purchase /pharmacy/reports /pharmacy/dashboard /pharmacy/indents
 smoke jashim "Demo#1234" /ipd/board /ipd/admit /ipd/admissions /ipd/reports /frontdesk
-smoke nasrin "Demo#1234" /ipd/indents
+smoke nasrin "Demo#1234" /ipd/indents /emr/vitals /emr/charts
+smoke chowdhury "Demo#1234" /emr/queue /emr/history /emr/templates
+smoke shaheen "Demo#1234" /ot/board /ot/schedule /ot/register /ot/theatres
+smoke moinul "Demo#1234" /radiology/worklist
 smoke rasel  "Demo#1234" /ipd/certificates
 [ "$FAILED" = 0 ] || { echo "UPGRADE GATE FAILED — a route broke on old data"; exit 1; }
 
@@ -74,6 +77,15 @@ python3 eng/verify/lifecycle-thread.py
 
 echo "== every pharmacy feature on the upgraded database (spec 0022)"
 python3 eng/verify/pharmacy-full.py
+
+echo "== clinical record on the upgraded database (spec 0024)"
+python3 eng/verify/emr-thread.py
+
+echo "== operation theatre on the upgraded database (spec 0025)"
+python3 eng/verify/ot-thread.py
+
+echo "== radiology on the upgraded database (spec 0026)"
+python3 eng/verify/radiology-thread.py
 
 echo "== advanced edge cases on the upgraded database (specs 0020/0021)"
 python3 eng/verify/edge-cases.py

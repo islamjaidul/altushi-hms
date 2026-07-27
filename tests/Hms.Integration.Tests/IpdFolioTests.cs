@@ -318,7 +318,7 @@ public class IpdFolioTests : IAsyncLifetime
             var invoice = await bill.Invoices.AsNoTracking().SingleAsync(i => i.Id == invoiceId);
             Assert.Equal(InvoiceState.Paid, invoice.State);
 
-            var dayClose = new DayCloseService(new AuditWriter(TimeProvider.System), TimeProvider.System);
+            var dayClose = new DayCloseService(new AuditWriter(TimeProvider.System), new BusinessDayCalendar(TimeOnly.MinValue), TimeProvider.System);
             var summary = await dayClose.CloseAsync(bill, kernel, sessionId, countedCash: 1500, 7, "t");
             // Drawer: 500 float + 1500 advance − 500 returned = 1500. Variance zero.
             Assert.Equal(0, summary.Variance);

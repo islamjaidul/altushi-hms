@@ -39,6 +39,12 @@ builder.Services.AddDbContext<Hms.Pharmacy.Data.PharmDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "pharm")).UseSnakeCaseNamingConvention());
 builder.Services.AddDbContext<Hms.Ipd.Data.IpdDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "ipd")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Emr.Data.EmrDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "emr")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Ot.Data.OtDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "ot")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Radiology.Data.RadiologyDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "radiology")).UseSnakeCaseNamingConvention());
 
 builder.Services
     .AddIdentity<AppUser, AppRole>(o =>
@@ -105,6 +111,9 @@ builder.Services.AddSingleton<Hms.Pharmacy.PurchaseService>();
 builder.Services.AddSingleton<Hms.Ipd.IpdService>();
 builder.Services.AddSingleton<Hms.Ipd.FolioService>();
 builder.Services.AddSingleton<Hms.Ipd.CertificateService>();
+builder.Services.AddSingleton<Hms.Emr.EmrService>();
+builder.Services.AddSingleton<Hms.Ot.OtService>();
+builder.Services.AddSingleton<Hms.Radiology.RadiologyService>();
 builder.Services.AddSingleton(Hms.Notifications.SmsOptions.From(
     builder.Configuration["HMS_SMS_MODE"]));                                 // edge 3: simulation default
 builder.Services.AddSingleton<Hms.Notifications.SmsQueue>();
@@ -149,12 +158,27 @@ using (var scope = app.Services.CreateScope())
         await sp.GetRequiredService<Hms.Notifications.Data.NotifDbContext>().Database.MigrateAsync();
         await sp.GetRequiredService<Hms.Pharmacy.Data.PharmDbContext>().Database.MigrateAsync();
         await sp.GetRequiredService<Hms.Ipd.Data.IpdDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Emr.Data.EmrDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Ot.Data.OtDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Radiology.Data.RadiologyDbContext>().Database.MigrateAsync();
         await DevSeed.RunAsync(sp);
     }
     finally
     {
         await kdb.Database.ExecuteSqlRawAsync("SELECT pg_advisory_unlock(422026)");
         await kdb.Database.CloseConnectionAsync();
+    }
+
+    // Spec 0023: `dotnet run -- generate-history --days 90` populates §14-shaped history and
+    // exits. Migrations have just run, so the generator always meets a current schema. It is a
+    // command and not a config flag precisely because it back-dates the clock.
+    if (args.Length > 0 && args[0] == "generate-history")
+    {
+        var days = 90;
+        var i = Array.IndexOf(args, "--days");
+        if (i >= 0 && i + 1 < args.Length && int.TryParse(args[i + 1], out var parsed)) days = parsed;
+        Environment.ExitCode = await HistoryGenerator.RunAsync(sp, days);
+        return;
     }
 }
 
@@ -199,6 +223,30 @@ app.MapGet("/api/typeahead/patients", async (string? q, HmsTx tx) =>
         .ToListAsync());
     return Results.Json(hits);
 }).RequireAuthorization(Perm.RegistrationRead);
+
+// Spec 0024 (§5 M5 [S]): the prescription's drug picker is the pharmacy item master, so a
+// prescribed brand is a brand the pharmacy actually stocks. Same contract as the patient
+// endpoint (ADR-0020): 2+ chars, ranked prefix-first, same authZ as the screen that uses it.
+app.MapGet("/api/typeahead/products", async (string? q, HmsTx tx) =>
+{
+    var term = q?.Trim();
+    if (term is null || term.Length < 2) return Results.Json(Array.Empty<object>());
+
+    var like = $"%{term}%";
+    var prefix = $"{term}%";
+    var hits = await tx.RunAsync(async s => await s.Pharm.Products.AsNoTracking()
+        .Where(p => p.Active && (EF.Functions.ILike(p.Brand, like) || EF.Functions.ILike(p.Generic, like)))
+        .OrderByDescending(p => EF.Functions.ILike(p.Brand, prefix))
+        .ThenBy(p => p.Brand)
+        .Take(10)
+        .Select(p => new
+        {
+            value = p.Id,
+            label = p.Brand + " " + p.Strength + " " + p.Form + " (" + p.Generic + ")",
+        })
+        .ToListAsync());
+    return Results.Json(hits);
+}).RequireAuthorization(Perm.EmrNoteWrite);
 
 app.MapRazorPages();
 

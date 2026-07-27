@@ -73,5 +73,10 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0020-lifecycle-gaps](0020-lifecycle-gaps/spec.md) | Patient-lifecycle gaps found by end-to-end smoke testing (phone search, silent discharge with dues, invisible outdoor charges) | Done | §7, §5 M6, R4, §3.2 | 2026-07-27 |
 | [0021-terminal-exits-and-double-submit](0021-terminal-exits-and-double-submit/spec.md) | Money stranded on death/absconded exits, and double-billed invoices | Done | §11, §5 M6, §3.2, §7 | 2026-07-27 |
 | [0022-pharmacy-coverage](0022-pharmacy-coverage/spec.md) | Full pharmacy-module coverage: staff-sale tagging + audit-search defect | Done | §5 M11, §5A-11, §8 N5 | 2026-07-27 |
+| [0023-measured-memory-and-golive](0023-measured-memory-and-golive/spec.md) | Measured memory, 90-day seeded history, and a rehearsed go-live (Wave-0 close) | Done | §14, §8, §16 | 2026-07-27 |
+| [0024-emr-prescription](0024-emr-prescription/spec.md) | M5 Prescription & EMR + 5A-7 nursing charts (Wave 3) | Done | §5 M5, §5A-7, §11, §12 | 2026-07-28 |
+| [0025-operation-theatre](0025-operation-theatre/spec.md) | M7 Operation Theatre — scheduling, team, completion billing (Wave 3) | Done | §5 M7, §11, §12 | 2026-07-28 |
+| [0026-radiology](0026-radiology/spec.md) | M10 Radiology — modality worklist, templated reports, e-signed delivery (Wave 3) | Done | §5 M10, §5A-10, §11, §12 | 2026-07-28 |
+| [0027-day-close-business-day](0027-day-close-business-day/spec.md) | Day-close compared a Dhaka business day against a UTC date (night-shift defect) | Done | §5 M4, P2, edge 16/17 | 2026-07-28 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

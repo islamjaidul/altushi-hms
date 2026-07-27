@@ -11,6 +11,9 @@
     <ProjectReference Include="..\Modules\Admin\Hms.Admin\Hms.Admin.csproj" />
     <ProjectReference Include="..\Modules\Notifications\Hms.Notifications\Hms.Notifications.csproj" />
     <ProjectReference Include="..\Modules\Pharmacy\Hms.Pharmacy\Hms.Pharmacy.csproj" />
+    <ProjectReference Include="..\Modules\Emr\Hms.Emr\Hms.Emr.csproj" />
+    <ProjectReference Include="..\Modules\Ot\Hms.Ot\Hms.Ot.csproj" />
+    <ProjectReference Include="..\Modules\Radiology\Hms.Radiology\Hms.Radiology.csproj" />
     <ProjectReference Include="..\Modules\Ipd\Hms.Ipd\Hms.Ipd.csproj" />
   </ItemGroup>
 

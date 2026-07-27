@@ -19,7 +19,9 @@ public class LisAndDayCloseTests : IAsyncLifetime
     private readonly BillingService _billing = new(
         new NumberSeriesService(), new AuditWriter(TimeProvider.System),
         new FiscalCalendar(7), new BusinessDayCalendar(TimeOnly.MinValue), TimeProvider.System);
-    private readonly DayCloseService _dayClose = new(new AuditWriter(TimeProvider.System), TimeProvider.System);
+    private readonly DayCloseService _dayClose = new(
+        new AuditWriter(TimeProvider.System), new BusinessDayCalendar(TimeOnly.MinValue),
+        TimeProvider.System);
 
     public LisAndDayCloseTests(PostgresFixture pg) => _pg = pg;
 

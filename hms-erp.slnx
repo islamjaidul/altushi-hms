@@ -36,6 +36,15 @@
     <Project Path="src/Modules/Pharmacy/Hms.Pharmacy.Contracts/Hms.Pharmacy.Contracts.csproj" />
     <Project Path="src/Modules/Pharmacy/Hms.Pharmacy/Hms.Pharmacy.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Emr/">
+    <Project Path="src/Modules/Emr/Hms.Emr/Hms.Emr.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Ot/">
+    <Project Path="src/Modules/Ot/Hms.Ot/Hms.Ot.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Radiology/">
+    <Project Path="src/Modules/Radiology/Hms.Radiology/Hms.Radiology.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Ipd/">
     <Project Path="src/Modules/Ipd/Hms.Ipd/Hms.Ipd.csproj" />
   </Folder>
