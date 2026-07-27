@@ -81,11 +81,15 @@ print("  2. Supervisor approves in the inbox")
 sup = Session("shahid", "Demo#1234")
 inbox = sup.get("/admin/approvals")
 check("Discount" in inbox, "request is waiting in the supervisor's inbox")
-rid = re.search(r'name="id" value="(\d+)"', inbox)
-check(rid is not None, "approve control present")
+# The newest request is ours; a database with history holds other people's too, so the
+# assertion below is "OUR request left the inbox", not "the inbox is empty".
+ids = re.findall(r'name="id" value="(\d+)"', inbox)
+check(len(ids) > 0, "approve control present")
+rid = max(ids, key=int)
 sup.post("/admin/approvals?handler=Decide",
-         {"id": rid.group(1), "approve": "true", "note": "Regular patient"}, inbox)
-check("Nothing waiting" in sup.get("/admin/approvals"), "inbox cleared after the decision")
+         {"id": rid, "approve": "true", "note": "Regular patient"}, inbox)
+after = sup.get("/admin/approvals")
+check(f'name="id" value="{rid}"' not in after, "the decided request left the inbox")
 
 print("  3. Counter completes the bill with the approved discount")
 opd = bill.get(f"/billing/opd?patientId={pid}")

@@ -125,11 +125,15 @@ check("Oxygen" in folio and "Nasrin" in folio, "posting appears with the nurse's
 step(6, "Ward indent issues FEFO at batch MRP to the folio")
 napa = re.search(r'<option value="(\d+)">Napa', folio)
 check(napa is not None, "medicine on the indent form")
+# On a database with history the queue holds other wards' indents too — issue OUR one,
+# identified as the id that appeared after we raised it (not whatever is at the top).
+before = set(re.findall(r'name="IndentId" value="(\d+)"', ph.get("/pharmacy/indents")))
 nu.post(f"/ipd/folio/{adm}?handler=Indent", {
     "AdmissionId": adm, "ProductIds": [napa.group(1), "0", "0"],
     "ItemQtys": ["4", "0", "0"], "IndentNote": "post-op"}, folio)
 queue = ph.get("/pharmacy/indents")
-iid = re.search(r'name="IndentId" value="(\d+)"', queue)
+mine = sorted(set(re.findall(r'name="IndentId" value="(\d+)"', queue)) - before, key=int)
+iid = re.match(r"(\d+)", mine[-1]) if mine else None
 check(iid is not None, "indent waits in the pharmacy issue queue")
 outlet = re.search(r'<option value="(\d+)">(?!outlet)', queue)
 ph.post("/pharmacy/indents?handler=Issue",

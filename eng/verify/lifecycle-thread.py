@@ -150,11 +150,14 @@ nu.post(f"/ipd/folio/{adm}?handler=Service",
 folio = nu.get(f"/ipd/folio/{adm}")
 check("Oxygen" in folio and "Nasrin" in folio, "ward service posted with the nurse's name")
 napa = re.search(r'<option value="(\d+)">Napa', folio)
+# Issue OUR indent: on a database with history the queue holds other wards' too.
+before = set(re.findall(r'name="IndentId" value="(\d+)"', ph.get("/pharmacy/indents")))
 nu.post(f"/ipd/folio/{adm}?handler=Indent", {
     "AdmissionId": adm, "ProductIds": [napa.group(1), "0", "0"],
     "ItemQtys": ["3", "0", "0"], "IndentNote": "lifecycle"}, folio)
 queue = ph.get("/pharmacy/indents")
-iid = re.search(r'name="IndentId" value="(\d+)"', queue)
+mine = sorted(set(re.findall(r'name="IndentId" value="(\d+)"', queue)) - before, key=int)
+iid = re.match(r"(\d+)", mine[-1]) if mine else None
 outlet = re.search(r'<option value="(\d+)">(?!outlet)', queue)
 ph.post("/pharmacy/indents?handler=Issue",
         {"IndentId": iid.group(1), "OutletId": outlet.group(1)}, queue)
