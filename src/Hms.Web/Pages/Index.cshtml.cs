@@ -30,6 +30,7 @@ public class IndexModel(IReadOnlyList<NavItem> registry, EntitlementProvider ent
         "/lis/board" => "Move samples from collection through to delivery.",
         "/lis/results" => "Enter results with reference ranges and flags.",
         "/lis/verify" => "Verify and e-sign results for release.",
+        "/lis/amend" => "Correct a released report — both versions are kept.",
         "/dashboard" => "Today's income, collection, due and discount.",
         "/admin/approvals" => "Decide discount, refund and reopen requests.",
         "/admin/users" => "Manage login accounts and their roles.",

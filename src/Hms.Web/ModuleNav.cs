@@ -34,6 +34,7 @@ public static class ModuleNav
         new("Lis", "Work Board", "/lis/board", "lis.worklist.read", "biotech", "Laboratory"),
         new("Lis", "Result Entry", "/lis/results", "lis.result.enter", "edit_note", "Laboratory"),
         new("Lis", "Verification Queue", "/lis/verify", "lis.result.verify", "verified", "Laboratory"),
+        new("Lis", "Amend a Report", "/lis/amend", "lis.result.verify", "sync_alt", "Laboratory"),
 
         new("Notifications", "SMS Tray", "/notifications/tray", "notifications.read", "sms", "Notifications"),
 

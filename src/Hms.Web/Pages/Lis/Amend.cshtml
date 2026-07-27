@@ -1,0 +1,143 @@
+@page "/lis/amend"
+@model Hms.Web.Pages.Lis.AmendModel
+@{
+    ViewData["Title"] = "Amend a Released Report";
+    ViewData["Crumb"] = "Laboratory";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="alert warn">
+    <span class="icon icon-sm" aria-hidden="true">warning</span>
+    <span>
+        A released report has already been acted on. Correcting it does not rewrite it — it issues
+        a new version that says what it supersedes, and both stay on record permanently.
+    </span>
+</div>
+
+<div class="grid grid-side-main">
+    <div class="card card-clip">
+        <div class="card-head">
+            Released reports
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Verified.Count</span>
+        </div>
+        @foreach (var v in Model.Verified)
+        {
+            var selected = Model.Selected?.OrderTestId == v.OrderTestId;
+            <a class="worklist-row @(selected ? "selected" : "")" href="/lis/amend?orderTestId=@v.OrderTestId">
+                <div class="worklist-id">@v.OrderNo</div>
+                <div style="font-size:0.78125rem;font-weight:600">@v.TestName</div>
+                <div class="worklist-sub">
+                    @v.PatientName · @v.Uhid
+                    @if (v.Version > 1)
+                    {
+                        <span class="pill warn" style="margin-left:4px">v@v.Version</span>
+                    }
+                </div>
+                <div class="worklist-sub">signed @Ui.DateTimeShort(v.VerifiedAt) by @v.VerifiedBy</div>
+            </a>
+        }
+        @if (Model.Verified.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="icon" aria-hidden="true">task_alt</span>
+                No released reports yet.
+            </div>
+        }
+    </div>
+
+    @if (Model.Selected is { } sel)
+    {
+        <form method="post" class="stack"
+              data-confirm="Issue a corrected version? The original stays on record and the report will be marked as superseding it.">
+            <input type="hidden" name="OrderTestId" value="@sel.OrderTestId" />
+
+            <div class="patient-banner">
+                <span class="avatar">@Ui.Initials(sel.PatientName)</span>
+                <span>
+                    <div class="patient-name">@sel.PatientName</div>
+                    <div class="patient-meta">
+                        @sel.Uhid · @sel.OrderNo · @sel.TestName · currently version @sel.Version
+                    </div>
+                </span>
+                <span class="spacer"></span>
+                @if (Model.ApprovedAmendments.Count > 0)
+                {
+                    <span class="pill good">Amendment approved</span>
+                }
+            </div>
+
+            <div class="card card-clip">
+                <div class="card-head">
+                    Corrected values
+                    <span class="spacer"></span>
+                    <span class="card-hint">blank means "leave as it was"</span>
+                </div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Parameter</th><th class="num" style="width:130px">Released value</th>
+                            <th class="num" style="width:150px">Corrected value</th>
+                            <th style="width:100px">Unit</th><th style="width:130px">Reference</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var v in Model.Current)
+                        {
+                            <tr>
+                                <td>@v.Name</td>
+                                <td class="num text-muted">@v.Current</td>
+                                <td class="num">
+                                    <label class="sr-only" for="am-@v.Code">Corrected @v.Name</label>
+                                    <input id="am-@v.Code" name="Values[@v.Code]" value="@v.Current"
+                                           class="input input-sm input-num" data-advance inputmode="decimal" />
+                                </td>
+                                <td class="text-muted">@v.Unit</td>
+                                <td class="text-muted tabular">@v.Range</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <label class="field">
+                <span class="field-label">Why is it being corrected? <span class="req">*</span></span>
+                <textarea class="textarea" rows="3" asp-for="Reason"
+                          placeholder="e.g. Sample mix-up identified at the bench; re-run on the correct tube"></textarea>
+                <span class="help-text">This prints on the amended report and stays in the audit trail.</span>
+            </label>
+
+            <div class="row">
+                <span class="card-hint">
+                    @if (Model.ApprovedAmendments.Count > 0)
+                    {
+                        <text>Approved — saving now issues version @(sel.Version + 1).</text>
+                    }
+                    else
+                    {
+                        <text>This goes to an approver first. The released report is untouched meanwhile.</text>
+                    }
+                </span>
+                <span class="spacer"></span>
+                <button type="submit" class="btn btn-primary btn-cta">
+                    <span class="icon icon-sm" aria-hidden="true">sync_alt</span>
+                    @(Model.ApprovedAmendments.Count > 0 ? "Issue corrected version" : "Request amendment")
+                </button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="empty-card">
+            <span class="icon" aria-hidden="true">sync_alt</span>
+            Choose a released report on the left to correct it.
+        </div>
+    }
+</div>

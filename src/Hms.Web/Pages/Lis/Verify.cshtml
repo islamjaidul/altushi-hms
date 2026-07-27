@@ -126,6 +126,15 @@
                     report. A correction afterwards creates a new version — it never rewrites this one.
                 </span>
                 <span class="spacer"></span>
+                <label class="field" style="width:300px;margin-right:10px">
+                    <span class="field-label">Signed by <span class="req">*</span></span>
+                    <select class="select" asp-for="ConsultantId">
+                        @foreach (var c in Model.Consultants)
+                        {
+                            <option value="@c.Id">@c.Label</option>
+                        }
+                    </select>
+                </label>
                 <button type="submit" class="btn btn-success btn-cta">
                     <span class="icon icon-sm" aria-hidden="true">verified</span> Verify &amp; e-sign
                 </button>

@@ -1,49 +1,6 @@
-import { request as pwRequest, type APIRequestContext } from "@playwright/test";
+import { request as pwRequest } from "@playwright/test";
 import { authFile } from "./users";
-
-const TOKEN_RE = /name="__RequestVerificationToken"[^>]*value="([^"]+)"/;
-
-export async function postForm(
-  api: APIRequestContext,
-  path: string,
-  fields: Record<string, string | number | (string | number)[]>,
-  refHtml?: string,
-) {
-  const html = refHtml ?? (await (await api.get(path)).text());
-  const m = TOKEN_RE.exec(html);
-  const body = new URLSearchParams();
-  for (const [k, v] of Object.entries(fields)) {
-    if (Array.isArray(v)) v.forEach((x) => body.append(k, String(x)));
-    else body.append(k, String(v));
-  }
-  if (m) body.append("__RequestVerificationToken", m[1]);
-  const res = await api.post(path, {
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    data: body.toString(),
-  });
-  return { res, text: await res.text() };
-}
-
-function findCatalogRow(html: string, code: string): { id: string; price: string } {
-  const re = new RegExp(
-    `<span class="cat-code">${code}</span>[\\s\\S]*?<span class="cat-price">([^<]+)</span>[\\s\\S]*?name="catalogId" value="(\\d+)"`,
-  );
-  const m = re.exec(html);
-  if (!m) throw new Error(`catalog row for ${code} not found in /diagnostics/order`);
-  return { price: m[1].replace(/[^\d]/g, ""), id: m[2] };
-}
-
-/** Grabs the sampleId from whichever advance-form (Collect/Receive/...) sits inside the
- * board-card for a given "LB-00007"-style order number — scoped by string position so it
- * doesn't pick up an unrelated card's sample. */
-function sampleIdNear(html: string, orderNo: string): string {
-  const at = html.indexOf(orderNo);
-  if (at === -1) throw new Error(`${orderNo} not found on /lis/board`);
-  const slice = html.slice(at, at + 1500);
-  const m = /name="sampleId" value="(\d+)"/.exec(slice);
-  if (!m) throw new Error(`no sampleId near ${orderNo} on /lis/board`);
-  return m[1];
-}
+import { postForm, findCatalogRow, sampleIdNear } from "./http";
 
 /**
  * The golden-thread + discount-and-dues seed scripts fully process order #1 (verified and

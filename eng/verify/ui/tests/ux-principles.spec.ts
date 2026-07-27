@@ -89,6 +89,13 @@ test.describe("U12 — .pill and .flag always carry text, not just colour", () =
 });
 
 // ---- U9: patient-context screens show name + UHID in .patient-banner once a record is selected
+//
+// Deliberately NOT pinned to one specific fixture patient (e.g. "Rahim Uddin"): both /lis/results
+// and /lis/verify default-select whichever order is newest in their worklist, and other specs
+// (spec-0013.spec.ts's age/sex-band fixtures, in particular) legitimately leave more orders
+// sitting in Received/Resulted — so *which* patient wins the default selection is not, and
+// shouldn't be, stable across the suite. What §7 U9 actually requires is that a banner with a
+// real name + UHID renders once something is selected, not that it's this or that patient.
 test.describe("U9 — patient-banner shows name + UHID on selection", () => {
   test("/lis/results (ripon)", async ({ browser }) => {
     const context = await browser.newContext({ storageState: authFile("ripon") });
@@ -96,8 +103,8 @@ test.describe("U9 — patient-banner shows name + UHID on selection", () => {
     await page.goto("/lis/results");
     const banner = page.locator(".patient-banner");
     await expect(banner, "no order awaiting result entry was selected — worklist may be empty").toBeVisible();
-    await expect(banner.locator(".patient-name")).toHaveText("Rahim Uddin");
-    await expect(banner.locator(".patient-meta")).toContainText("ALT-000001");
+    await expect(banner.locator(".patient-name")).not.toBeEmpty();
+    await expect(banner.locator(".patient-meta")).toContainText(/ALT-\d{6}/);
     await context.close();
   });
 
@@ -107,8 +114,8 @@ test.describe("U9 — patient-banner shows name + UHID on selection", () => {
     await page.goto("/lis/verify");
     const banner = page.locator(".patient-banner");
     await expect(banner, "no order awaiting verification was selected — worklist may be empty").toBeVisible();
-    await expect(banner.locator(".patient-name")).toHaveText("Rahim Uddin");
-    await expect(banner.locator(".patient-meta")).toContainText("ALT-000001");
+    await expect(banner.locator(".patient-name")).not.toBeEmpty();
+    await expect(banner.locator(".patient-meta")).toContainText(/ALT-\d{6}/);
     await context.close();
   });
 });

@@ -21,10 +21,15 @@ public class VerifyModel(
     HmsTx tx, LisService lis, SmsQueue sms, HospitalIdentity hospital) : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public long? OrderId { get; set; }
+    /// <summary>5A-R1 [Must]: which reporting consultant's block prints on the release.</summary>
+    [BindProperty] public long? ConsultantId { get; set; }
 
     public IReadOnlyList<LabCard> Worklist { get; private set; } = [];
     public LabCard? Selected { get; private set; }
     public IReadOnlyList<VerifyTest> Tests { get; private set; } = [];
+    public IReadOnlyList<ConsultantPick> Consultants { get; private set; } = [];
+
+    public sealed record ConsultantPick(long Id, string Label);
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -71,6 +76,16 @@ public class VerifyModel(
                     users.GetValueOrDefault(latest.EnteredBy), latest.EnteredAt));
             }
             Tests = tests;
+
+            // Only consultants entitled to sign for these departments are offered (§7 U7).
+            var depts = await s.Adm.TestCatalog.AsNoTracking()
+                .Where(x => catalogIds.Contains(x.Id)).Select(x => x.Dept).Distinct().ToListAsync();
+            Consultants = (await s.Adm.ReportingConsultants.AsNoTracking()
+                    .Where(c => c.Active).OrderBy(c => c.Name).ToListAsync())
+                .Where(c => c.Departments.Length == 0 || c.Departments.Any(depts.Contains))
+                .Select(c => new ConsultantPick(c.Id, $"{c.Name} — {c.Degrees}"))
+                .ToList();
+            ConsultantId ??= Consultants.FirstOrDefault()?.Id;
             return 0;
         });
     }
@@ -88,7 +103,17 @@ public class VerifyModel(
             await tx.RunAsync(async s =>
             {
                 foreach (var t in pending)
-                    await lis.VerifyAsync(s.Lis, t.ResultId, ActorId, "pathologist");
+                {
+                    await lis.VerifyAsync(s.Lis, t.ResultId, ActorId, "reporting_consultant");
+                    if (ConsultantId is { } cid)
+                    {
+                        // The signature block that prints is a master reference, not free text —
+                        // the report can always reproduce who signed it and their credentials.
+                        var row = await s.Lis.Results.SingleAsync(r => r.Id == t.ResultId);
+                        row.SignatureImageRef = $"consultant:{cid}";
+                    }
+                }
+                await s.Lis.SaveChangesAsync();
 
                 sms.QueueReportReady(s.Notif, BranchId, hospital.Name,
                     Selected!.PatientName, Selected.OrderNo, Selected.Phone);

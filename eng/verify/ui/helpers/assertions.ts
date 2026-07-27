@@ -51,8 +51,18 @@ export async function assertShellRendered(page: Page, expectedTitle?: string) {
   }
 }
 
-/** §7 icon-font risk: the self-hosted Material Symbols subset must actually be loaded, or the
- * ligature falls back to literal spelled-out words like "dashboard" in the sidebar. */
+/**
+ * §7 icon-font risk: the self-hosted Material Symbols subset must actually be loaded, or the
+ * ligature falls back to literal spelled-out words like "dashboard" in the sidebar.
+ *
+ * Checks EVERY `.icon` element on the page, not just the first — the font can load fine overall
+ * while one specific glyph is simply missing from the trimmed subset (a real regression this
+ * suite caught: "outbox" was absent and rendered as giant literal text on /diagnostics/delivery's
+ * empty state, while every other icon on that same page was a normal ligature). The threshold
+ * scales with each element's own font-size (icon-sm/icon-lg/icon-xl all differ), so it isn't
+ * tuned to one size: a real ligature glyph renders roughly square, a spelled-out fallback word is
+ * many multiples of the font-size wide.
+ */
 export async function assertIconFontLoaded(page: Page) {
   await page.evaluate(() => (document as any).fonts.ready);
   const loaded = await page.evaluate(() =>
@@ -60,8 +70,33 @@ export async function assertIconFontLoaded(page: Page) {
   );
   expect(loaded, 'document.fonts.check(18px "Material Symbols Outlined") should be true').toBe(true);
 
-  const icon = page.locator(".icon").first();
-  await expect(icon).toBeAttached();
-  const width = await icon.evaluate((el) => (el as HTMLElement).offsetWidth);
-  expect(width, `an .icon element rendered ${width}px wide — looks like spelled-out fallback text, not a ligature glyph`).toBeLessThan(30);
+  const icons = page.locator(".icon");
+  const n = await icons.count();
+  expect(n, "expected at least one .icon element on the page to check").toBeGreaterThan(0);
+
+  for (let i = 0; i < n; i++) {
+    const el = icons.nth(i);
+    const { width, fontSize, text } = await el.evaluate((e) => {
+      const cs = getComputedStyle(e as HTMLElement);
+      // Measure the rendered GLYPH content, not the element's box: several icons
+      // (.empty-state .icon, .empty-card .icon) are `display:block; margin:0 auto` for
+      // centering, so offsetWidth reports the auto-stretched box width regardless of what's
+      // inside it — a real ligature glyph in that context would false-fail on box width alone.
+      // A Range over the text node gives the actual inline content's bounding box instead.
+      const range = document.createRange();
+      range.selectNodeContents(e);
+      const rect = range.getBoundingClientRect();
+      return {
+        width: rect.width,
+        fontSize: parseFloat(cs.fontSize),
+        text: (e.textContent ?? "").trim(),
+      };
+    });
+    if (width === 0) continue; // not rendering anything (e.g. inside a currently-hidden toast)
+    expect(
+      width,
+      `.icon #${i} ("${text}") rendered ${width}px wide at ${fontSize}px font-size — looks like ` +
+        `spelled-out fallback text, not a ligature glyph (glyph missing from the subset?)`,
+    ).toBeLessThanOrEqual(fontSize * 2.2);
+  }
 }

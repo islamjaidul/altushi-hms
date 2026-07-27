@@ -7,7 +7,8 @@ namespace Hms.Web.Pages.Lis;
 public sealed record ReportValue(string Name, string Value, string Unit, string Flag, string Range);
 public sealed record ReportSection(
     string TestName, IReadOnlyList<ReportValue> Values, string? Narrative,
-    bool Verified, string? VerifiedBy, DateTimeOffset? VerifiedAt, int Version, string? EsignHash);
+    bool Verified, string? VerifiedBy, DateTimeOffset? VerifiedAt, int Version, string? EsignHash,
+    string? SignerName, string? SignerDegrees, string? SignerBmdc, int? SupersedesVersion);
 
 /// <summary>
 /// The investigation report (§8 N8 — hospitals treat report appearance as brand identity).
@@ -72,6 +73,10 @@ public class ReportModel(HmsTx tx, TimeProvider clock) : HmsPageModel
                 .Where(u => verifierIds.Contains(u.Id))
                 .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
 
+            // 5A-R1: the signature block is a master reference — the report reproduces the
+            // consultant's credentials as they stood, not a free-text scribble.
+            var consultants = await s.Adm.ReportingConsultants.AsNoTracking().ToDictionaryAsync(c => c.Id);
+
             var sections = new List<ReportSection>();
             foreach (var t in card.Tests)
             {
@@ -87,10 +92,16 @@ public class ReportModel(HmsTx tx, TimeProvider clock) : HmsPageModel
                         stored[p.Code].Flag, stored[p.Code].RefUsed))
                     .ToList();
 
+                Hms.Admin.Data.ReportingConsultant? signer = null;
+                if (latest.SignatureImageRef?.StartsWith("consultant:") == true &&
+                    long.TryParse(latest.SignatureImageRef["consultant:".Length..], out var cid))
+                    consultants.TryGetValue(cid, out signer);
+
                 sections.Add(new ReportSection(t.Name, values, latest.Narrative,
                     latest.VerifiedAt is not null,
                     latest.VerifiedBy is { } v ? verifiers.GetValueOrDefault(v) : null,
-                    latest.VerifiedAt, latest.Version, latest.EsignHash));
+                    latest.VerifiedAt, latest.Version, latest.EsignHash,
+                    signer?.Name, signer?.Degrees, signer?.BmdcNo, latest.SupersedesVersion));
             }
             Sections = sections;
             return true;

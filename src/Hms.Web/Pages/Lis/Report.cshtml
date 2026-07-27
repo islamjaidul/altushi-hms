@@ -57,7 +57,7 @@
                     @part.TestName
                     @if (part.Version > 1)
                     {
-                        <text> — amended (v@part.Version)</text>
+                        <text> — amended, version @part.Version</text>
                     }
                 </div>
 
@@ -98,6 +98,14 @@
             </div>
         }
 
+        @if (Model.Sections.Any(x => x.Version > 1))
+        {
+            @* Edge 22: an amended report says so on its face, and names what it replaced. *@
+            <div class="sheet-words" style="font-weight:700">
+                This report supersedes an earlier version. Both versions are retained on record.
+            </div>
+        }
+
         @if (Model.Sections.Count == 0)
         {
             <div class="sheet-words">No results recorded for this order yet.</div>
@@ -112,12 +120,23 @@
             var signer = Model.Sections.First(x => x.Verified);
             <div class="sheet-signs">
                 <div class="sheet-sign">
-                    <b>@(signer.VerifiedBy ?? "Pathologist")</b><br />
-                    MBBS, MD (Pathology) — e-signed<br />
+                    <b>@(signer.SignerName ?? signer.VerifiedBy ?? "Reporting consultant")</b><br />
+                    @(signer.SignerDegrees ?? "—") — e-signed<br />
+                    @if (signer.SignerBmdc is { } bmdc)
+                    {
+                        <text>BMDC @bmdc<br /></text>
+                    }
                     <span style="font-size:0.5625rem;color:var(--muted-3)">
                         Signature ref @(signer.EsignHash?[..12] ?? "—")
                     </span>
                 </div>
+                @if (signer.VerifiedBy is { } releasedBy && releasedBy != signer.SignerName)
+                {
+                    <div class="sheet-sign">
+                        <b>@releasedBy</b><br />
+                        Released at the laboratory
+                    </div>
+                }
             </div>
         }
         else

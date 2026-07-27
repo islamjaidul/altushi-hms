@@ -102,6 +102,15 @@ export const ROUTES: RouteSpec[] = [
   { path: "/admin/users", permission: "admin.users.manage", user: "admin", title: "Users & Roles" },
   { path: "/admin/masters", permission: "admin.masters.manage", user: "admin", title: "Price List & Catalog" },
   { path: "/admin/audit", permission: "admin.audit.read", user: "admin", title: "Audit Viewer" },
+
+  // spec 0013 additions. Note: each page's own ViewData["Title"] (rendered in .page-title) is not
+  // always identical to its shorter nav-sidebar label — same pattern already used by document
+  // pages elsewhere in this suite (_Layout.cshtml gives ViewData["Title"] priority over the nav
+  // registry's label when both are set).
+  { path: "/billing/refund", permission: "billing.receipt.create", user: "rasel", title: "Refund & Cancellation" },
+  { path: "/billing/reports", permission: "billing.session.close", user: "rasel", title: "Collection & Income Reports" },
+  { path: "/admin/import", permission: "admin.masters.manage", user: "admin", title: "Price List & Catalog Import" },
+  { path: "/admin/people", permission: "admin.masters.manage", user: "admin", title: "Doctors, Referrers & Consultants" },
 ];
 
 /** Document (`.sheet`) pages — 05 §6 / U10, and the print-CSS check. */
@@ -122,6 +131,12 @@ export const DENIED_PAIRS: { path: string; user: string; permission: string }[] 
   { path: "/admin/audit", user: "rasel", permission: "admin.audit.read" },
   { path: "/lis/board", user: "md", permission: "lis.worklist.read" },
   { path: "/notifications/tray", user: "jashim", permission: "notifications.read" },
+
+  // spec 0013 additions.
+  { path: "/billing/refund", user: "ripon", permission: "billing.receipt.create" },
+  { path: "/billing/reports", user: "jashim", permission: "billing.session.close" },
+  { path: "/admin/import", user: "rasel", permission: "admin.masters.manage" },
+  { path: "/admin/people", user: "shahid", permission: "admin.masters.manage" },
 ];
 
 export function hasPermission(user: string, permission: string | null): boolean {
