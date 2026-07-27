@@ -89,7 +89,12 @@
                             <td class="tabular">@line.Qty</td>
                             <td class="tabular">@Ui.Money(line.Amount)</td>
                             <td>@line.PostedBy</td>
-                            <td>@if (line.Billed) { <span class="pill good">billed</span> }</td>
+                            <td>
+                                @if (line.Billed)
+                                {
+                                    <span class="pill good">billed</span>
+                                }
+                            </td>
                         </tr>
                     }
                     @if (Model.Lines.Count == 0)
@@ -115,9 +120,12 @@
                         <tr>
                             <td class="tabular">@indent.Id</td>
                             <td>
-                                @foreach (var (pid, product, requested, issued, returned) in indent.Items)
+                                @foreach (var item in indent.Items)
                                 {
-                                    <div>@product · @(issued > 0 ? $"{issued} issued" : $"{requested} requested")@(returned > 0 ? $", {returned} returned" : "")</div>
+                                    <div>
+                                        @item.Product ·
+                                        @(item.Issued > 0 ? $"{item.Issued} issued" : $"{item.Requested} requested")@(item.Returned > 0 ? $", {item.Returned} returned" : "")
+                                    </div>
                                 }
                             </td>
                             <td class="tabular">@Ui.Local(indent.RequestedAt).ToString("dd MMM HH:mm")</td>
@@ -130,9 +138,9 @@
                                         <input type="hidden" name="IndentId" value="@indent.Id" />
                                         <label class="sr-only" for="rp-@indent.Id">Product</label>
                                         <select id="rp-@indent.Id" class="select" name="ReturnProductId" style="width:150px">
-                                            @foreach (var (pid, product, _, issued, returned) in indent.Items.Where(x => x.Issued > x.Returned))
+                                            @foreach (var item in indent.Items.Where(x => x.Returnable))
                                             {
-                                                <option value="@pid">@product</option>
+                                                <option value="@item.ProductId">@item.Product</option>
                                             }
                                         </select>
                                         <label class="sr-only" for="rq-@indent.Id">Qty</label>
@@ -319,9 +327,9 @@
                                 <span class="field-label">@(i == 0 ? "Medicine" : $"Line {i + 1}")</span>
                                 <select class="select" name="ProductIds">
                                     <option value="0">—</option>
-                                    @foreach (var (id, name) in Model.Products)
+                                    @foreach (var product in Model.Products)
                                     {
-                                        <option value="@id">@name</option>
+                                        <option value="@product.Id">@product.Name</option>
                                     }
                                 </select>
                             </label>
@@ -343,13 +351,13 @@
                 <div class="card-head">Investigation indent (posts to folio)</div>
                 <div class="card-body stack" style="gap:8px;padding-top:0">
                     <div class="stack" style="gap:6px;max-height:220px;overflow-y:auto">
-                        @foreach (var (id, name, price) in Model.Tests)
+                        @foreach (var test in Model.Tests)
                         {
                             <label class="row" style="gap:8px">
-                                <input type="checkbox" name="TestIds" value="@id" />
-                                <span>@name</span>
+                                <input type="checkbox" name="TestIds" value="@test.Id" />
+                                <span>@test.Name</span>
                                 <span class="spacer"></span>
-                                <span class="tabular card-hint">@Ui.Money(price)</span>
+                                <span class="tabular card-hint">@Ui.Money(test.Price)</span>
                             </label>
                         }
                     </div>

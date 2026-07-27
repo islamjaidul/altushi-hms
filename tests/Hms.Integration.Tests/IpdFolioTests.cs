@@ -437,7 +437,7 @@ public class IpdFolioTests : IAsyncLifetime
         await Assert.ThrowsAsync<IpdException>(() =>
             InTxAsync<int>(async (ipd, bill, pharm, kernel) =>
             {
-                await _ipd.DischargeAsync(ipd, kernel, admissionId, 7, "t");
+                await _ipd.DischargeAsync(ipd, kernel, admissionId, 0, null, 7, "t");
                 return 0;
             }));
 
@@ -446,7 +446,7 @@ public class IpdFolioTests : IAsyncLifetime
             await _ipd.InitiateDischargeAsync(ipd, kernel, admissionId, "well", 7, "t");
             await _ipd.ClinicallyClearAsync(ipd, kernel, admissionId, 7, "t");
             await _ipd.MarkFinanciallySettledAsync(ipd, admissionId);
-            await _ipd.DischargeAsync(ipd, kernel, admissionId, 7, "t");
+            await _ipd.DischargeAsync(ipd, kernel, admissionId, 0, null, 7, "t");
             var admission = await ipd.Admissions.AsNoTracking().SingleAsync(a => a.Id == admissionId);
             Assert.Equal(AdmissionState.Discharged, admission.State);
             var bed = await ipd.Beds.AsNoTracking().SingleAsync(b => b.Id == bedId);

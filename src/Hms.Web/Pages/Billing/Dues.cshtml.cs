@@ -44,11 +44,8 @@ public class DuesModel(HmsTx tx, BillingService billing, Hms.Lis.LisService lis,
             List<long>? matchedPatients = null;
             if (!string.IsNullOrWhiteSpace(term))
             {
-                var like = $"%{term}%";
                 matchedPatients = await s.Reg.Patients.AsNoTracking()
-                    .Where(p => EF.Functions.ILike(p.FullName, like) ||
-                                EF.Functions.ILike(p.Uhid, like) ||
-                                (p.Phone != null && EF.Functions.ILike(p.Phone, like)))
+                    .Matching(term)                                    // spec 0020
                     .Select(p => p.Id).Take(500).ToListAsync();
             }
 

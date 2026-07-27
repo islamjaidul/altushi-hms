@@ -43,6 +43,8 @@ public class PosModel(
     public IReadOnlyList<ShelfItem> Shelf { get; private set; } = [];
     public IReadOnlyList<PosCartLine> Cart { get; private set; } = [];
     public string? PatientName { get; private set; }
+    /// <summary>Set when the selected patient is lying in a bed right now (spec 0020).</summary>
+    public (long AdmissionId, string AdmissionNo, string Bed)? Admitted { get; private set; }
     public bool DiscountPending { get; private set; }
     public long ApprovedDiscountId { get; private set; }
     public long ApprovedDiscountAmount { get; private set; }
@@ -113,8 +115,14 @@ public class PosModel(
                 .ToList();
 
             if (PatientId is { } pid and > 0)
+            {
                 PatientName = await s.Reg.Patients.AsNoTracking()
                     .Where(p => p.Id == pid).Select(p => p.FullName + " — " + p.Uhid).FirstOrDefaultAsync();
+                // Spec 0020 gap 3: a counter sale to an admitted patient is legitimate (the
+                // attendant buys) but must never be invisible — ward medicine belongs on the
+                // folio via an indent (5A-9), and a due raised here never reaches discharge.
+                Admitted = await IpdBilling.FindOpenAdmissionAsync(s, pid);
+            }
 
             if (PatientId is { } pid2 and > 0)
             {

@@ -28,6 +28,60 @@ public static class IpdBilling
                 "This patient is blocked for unpaid dues (R4) — clear or release before new charges.");
     }
 
+    /// <summary>Where an admitted patient is lying right now, for the screens that are about to
+    /// create an OUTDOOR charge for them (spec 0020 gap 3). Null when not admitted.</summary>
+    public static async Task<(long AdmissionId, string AdmissionNo, string Bed)?> FindOpenAdmissionAsync(
+        TxScope s, long patientId, CancellationToken ct = default)
+    {
+        var admission = await s.Ipd.Admissions.AsNoTracking()
+            .Where(a => a.PatientId == patientId
+                        && a.State != AdmissionState.Discharged
+                        && a.State != AdmissionState.Death
+                        && a.State != AdmissionState.Absconded
+                        && a.State != AdmissionState.Reserved)
+            .OrderByDescending(a => a.Id)
+            .Select(a => new { a.Id, a.AdmissionNo })
+            .FirstOrDefaultAsync(ct);
+        if (admission is null) return null;
+
+        var bedId = await s.Ipd.BedStays.AsNoTracking()
+            .Where(x => x.AdmissionId == admission.Id && x.ToAt == null)
+            .Select(x => (long?)x.BedId).FirstOrDefaultAsync(ct);
+        var bed = bedId is long id
+            ? await s.Ipd.Beds.AsNoTracking().Where(b => b.Id == id)
+                .Select(b => b.Code).FirstOrDefaultAsync(ct) ?? "—"
+            : "—";
+        return (admission.Id, admission.AdmissionNo, bed);
+    }
+
+    public sealed record OutstandingInvoice(long InvoiceId, string InvoiceNo, long Balance, bool IsSettlement);
+
+    /// <summary>
+    /// Everything this patient still owes the hospital, settlement invoice first (spec 0020
+    /// gap 2). Cross-context by construction: invoice ids come from bill.*, the settlement
+    /// reference from ipd.folio, joined in memory (ADR-0003).
+    /// </summary>
+    public static async Task<IReadOnlyList<OutstandingInvoice>> OutstandingForPatientAsync(
+        TxScope s, long patientId, long? settlementInvoiceId, CancellationToken ct = default)
+    {
+        var invoices = await s.Bill.Invoices.AsNoTracking()
+            .Where(i => i.PatientId == patientId && i.State != Hms.Billing.Data.InvoiceState.Cancelled)
+            .Select(i => new { i.Id, i.InvoiceNo })
+            .ToListAsync(ct);
+        if (invoices.Count == 0) return [];
+
+        var ids = invoices.Select(i => i.Id).ToList();
+        var dues = await s.Bill.Dues.AsNoTracking()
+            .Where(d => ids.Contains(d.InvoiceId) && d.Balance > 0)
+            .ToDictionaryAsync(d => d.InvoiceId, d => d.Balance, ct);
+
+        return invoices
+            .Where(i => dues.ContainsKey(i.Id))
+            .Select(i => new OutstandingInvoice(i.Id, i.InvoiceNo, dues[i.Id], i.Id == settlementInvoiceId))
+            .OrderByDescending(o => o.IsSettlement).ThenBy(o => o.InvoiceId)
+            .ToList();
+    }
+
     /// <summary>
     /// Posts every owed-but-unposted bed day at the day's effective rate (P18 rule). Runs on
     /// folio view, transfer and settlement; the UNIQUE(admission,date) index makes concurrent

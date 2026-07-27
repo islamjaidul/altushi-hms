@@ -4,7 +4,7 @@ medicine indent FEFO -> indoor investigation -> return -> R4 block/release (incl
 the OPD counter guard) -> transfer -> settlement (advance applied) -> discharge ->
 certificate. Assertions track the records this run creates (by id/number), so the
 script is dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
-import json, re, sys, urllib.parse, http.cookiejar, urllib.request
+import json, re, sys, time, urllib.parse, http.cookiejar, urllib.request
 
 BASE = "http://localhost:5199"
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -64,10 +64,16 @@ sup = Session("shahid", "Demo#1234")    # supervisor: approvals
 
 # 1 — a patient of our own -------------------------------------------------
 step(1, "Front desk registers the IPD patient")
+# A per-run patient: reusing one fixed name means a run that dies mid-flight leaves an open
+# admission behind, and every later run is refused ("already has an open admission"). The
+# duplicate guard is acknowledged the way the operator's "continue below" does (edge 23).
+stamp = f"{int(time.time() * 1000) % 100000:05d}"   # ms: two runs in one second differ
+NAME = f"Ipd Thread {stamp}"
 fd.post("/registration/new", {
-    "FullName": "Ipd Thread Patient", "Sex": "F", "AgeOrDob": "32",
-    "Phone": "01755512345", "PatientType": "general", "action": "save"})
-hits = json.loads(fd.get("/api/typeahead/patients?q=Ipd%20Thread"))
+    "FullName": NAME, "Sex": "F", "AgeOrDob": "32",
+    "Phone": f"017555{stamp}", "PatientType": "general",
+    "DuplicatesAcknowledged": "true", "action": "save"})
+hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(NAME)))
 check(len(hits) > 0, "patient registered and findable")
 pid = str(hits[-1]["value"])
 
@@ -140,7 +146,7 @@ nu.post(f"/ipd/folio/{adm}?handler=OrderTests",
 folio = nu.get(f"/ipd/folio/{adm}")
 check("Diagnostics" in folio, "test charge is on the folio")
 board = Session("ripon", "Demo#1234").get("/lis/board")
-check("Ipd Thread Patient" in board, "sample on the LIS board without payment (indoor rule)")
+check(NAME in board, "sample on the LIS board without payment (indoor rule)")
 
 # 8 — discharge-time return restocks (0016 deferral #11) -------------------
 step(8, "Partial return of the indent restocks its exact batch")
@@ -211,12 +217,12 @@ check("/billing/invoice/" in url, "settlement invoice created")
 inv_id = url.rstrip("/").split("/")[-1]
 invoice = op.get(f"/billing/invoice/{inv_id}")
 check("INV-" in invoice, "invoice printable")
-dues = op.get("/billing/dues?Q=Ipd%20Thread")
+dues = op.get("/billing/dues?Q=" + urllib.parse.quote(NAME))
 if f'name="InvoiceId" value="{inv_id}"' in dues:
     amt = re.search(r'Due[^0-9]*([\d,]+)', dues)
     op.post("/billing/dues?handler=Collect",
             {"InvoiceId": inv_id, "Amount": amt.group(1).replace(",", ""), "Tender": "cash"}, dues)
-    dues = op.get("/billing/dues?Q=Ipd%20Thread")
+    dues = op.get("/billing/dues?Q=" + urllib.parse.quote(NAME))
     check(f'name="InvoiceId" value="{inv_id}"' not in dues, "remaining balance collected")
 dis = op.get(f"/ipd/discharge/{adm}")
 op.post(f"/ipd/discharge/{adm}?handler=Discharge", {"AdmissionId": adm}, dis)
@@ -239,9 +245,20 @@ check(cert_no.group(1) in certs, "reprint kept the same number")
 # 13 — reports & board ------------------------------------------------------
 step(13, "The day shows on the IPD report and ward board")
 report = fd.get("/ipd/reports")
-check("Ipd Thread Patient" in report, "admission and discharge on the report")
+check(NAME in report, "admission and discharge on the report")
 board = fd.get("/ipd/board")
 check("Cleaning" in board or "cleaning" in board, "the vacated bed is in cleaning")
+
+# 14 — housekeeping so the ward survives repeated runs -----------------------
+# Discharge and transfer both leave a bed in Cleaning (§11). Real housekeeping clears it;
+# here the script does, or a ward of 8 beds would be exhausted after 8 runs and every later
+# run — including the upgrade gate's — would fail for want of a bed.
+step(14, "Housekeeping: hand the beds back to the ward")
+for bed_id in {bed.group(1), cab.group(1)}:
+    board = fd.get("/ipd/board")
+    fd.post("/ipd/board?handler=CleaningDone", {"BedId": bed_id}, board)
+board = fd.get("/ipd/board")
+check(board.count("Free") >= 1, "at least one bed is free again")
 
 print()
 if fail:

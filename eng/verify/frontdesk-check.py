@@ -42,12 +42,15 @@ print("FRONT DESK ESTIMATE CHECK (M2 US2.2)")
 fd = Session("jashim", "Demo#1234")
 op = Session("rasel", "Demo#1234")
 
-tag = f"Desk Check {int(time.time()) % 100000}"
+stamp = f"{int(time.time() * 1000) % 100000:05d}"   # ms: two runs in one second differ
+tag = f"Desk Check {stamp}"
+# Unique phone per run, and acknowledge the duplicate guard the way an operator does —
+# a previous run of this very script is a legitimate near-duplicate (edge 23).
 fd.post("/registration/new", {
-    "FullName": tag, "Sex": "M", "AgeOrDob": "50", "Phone": "01700000042",
-    "PatientType": "general", "action": "save"})
+    "FullName": tag, "Sex": "M", "AgeOrDob": "50", "Phone": f"017{stamp}{stamp[:3]}",
+    "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})
 hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(tag)))
-check(len(hits) == 1, "check patient registered")
+check(len(hits) >= 1, "check patient registered")   # newest first; repeats are fine
 pid = str(hits[0]["value"])
 
 admit = fd.get("/ipd/admit")

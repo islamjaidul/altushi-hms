@@ -30,14 +30,7 @@ public class IndexModel(HmsTx tx, TimeProvider clock) : HmsPageModel
             var query = s.Reg.Patients.AsNoTracking().Where(p => p.Active && p.MergedInto == null);
             var total = await query.CountAsync();
 
-            if (!string.IsNullOrWhiteSpace(term))
-            {
-                var like = $"%{term}%";
-                query = query.Where(p =>
-                    EF.Functions.ILike(p.FullName, like) ||
-                    EF.Functions.ILike(p.Uhid, like) ||
-                    (p.Phone != null && EF.Functions.ILike(p.Phone, like)));
-            }
+            if (!string.IsNullOrWhiteSpace(term)) query = query.Matching(term);   // spec 0020
 
             var patients = await query
                 .OrderByDescending(p => p.Id)

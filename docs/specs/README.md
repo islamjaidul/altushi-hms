@@ -70,5 +70,6 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0017-ipd-folio](0017-ipd-folio/spec.md) | M6 IPD & patient folio + R4 bill-block (Wave 2) | Done | §5 M6, §5A-8/9, R4, §11, §12 | 2026-07-27 |
 | [0018-front-desk](0018-front-desk/spec.md) | M2 Front Desk / help desk (Wave 2) | Done | §5 M2, §12 | 2026-07-27 |
 | [0019-public-displays](0019-public-displays/spec.md) | R3 public queue display + report-status self-lookup (Wave 2) | Done | §5A.2 R3, §8 N5 | 2026-07-27 |
+| [0020-lifecycle-gaps](0020-lifecycle-gaps/spec.md) | Patient-lifecycle gaps found by end-to-end smoke testing (phone search, silent discharge with dues, invisible outdoor charges) | Done | §7, §5 M6, R4, §3.2 | 2026-07-27 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

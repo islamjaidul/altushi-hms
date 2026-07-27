@@ -55,9 +55,7 @@ public class RefundModel(
             {
                 var like = $"%{term}%";
                 var matchedPatients = await s.Reg.Patients.AsNoTracking()
-                    .Where(p => EF.Functions.ILike(p.FullName, like) ||
-                                EF.Functions.ILike(p.Uhid, like) ||
-                                (p.Phone != null && EF.Functions.ILike(p.Phone, like)))
+                    .Matching(term)                                    // spec 0020
                     .Select(p => p.Id).Take(500).ToListAsync();
                 invQuery = invQuery.Where(i =>
                     EF.Functions.ILike(i.InvoiceNo, like) || matchedPatients.Contains(i.PatientId));

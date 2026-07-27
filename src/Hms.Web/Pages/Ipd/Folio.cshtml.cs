@@ -18,9 +18,18 @@ public sealed record FolioLine(
     string PostedBy, bool Billed);
 public sealed record AdvanceRow(string ReceiptNo, long Amount, string Tender, DateTimeOffset At);
 public sealed record StayRow(string Bed, DateTimeOffset From, DateTimeOffset? To);
+public sealed record IndentItemRow(
+    long ProductId, string Product, int Requested, int Issued, int Returned)
+{
+    /// <summary>What is still returnable at discharge (0016 deferral #11 path).</summary>
+    public bool Returnable => Issued > Returned;
+}
+
 public sealed record IndentRow(
-    long Id, string State, DateTimeOffset RequestedAt,
-    IReadOnlyList<(long ProductId, string Product, int Requested, int Issued, int Returned)> Items);
+    long Id, string State, DateTimeOffset RequestedAt, IReadOnlyList<IndentItemRow> Items);
+
+public sealed record ProductChoice(long Id, string Name);
+public sealed record TestChoice(long Id, string Name, long Price);
 
 /// <summary>
 /// The patient folio (§5 M6 [M]) — the running truth of an admission. Viewing it catches up
@@ -59,8 +68,8 @@ public class FolioModel(
     public IReadOnlyList<IndentRow> Indents { get; private set; } = [];
     public IReadOnlyList<CatalogItem> Services { get; private set; } = [];
     public IReadOnlyList<DoctorChoice> Doctors { get; private set; } = [];
-    public IReadOnlyList<(long Id, string Name)> Products { get; private set; } = [];
-    public IReadOnlyList<(long Id, string Name, long Price)> Tests { get; private set; } = [];
+    public IReadOnlyList<ProductChoice> Products { get; private set; } = [];
+    public IReadOnlyList<TestChoice> Tests { get; private set; } = [];
     public IReadOnlyList<BedChoice> FreeBeds { get; private set; } = [];
     public OpenSession? Session { get; private set; }
     public long? LatePostApprovalId { get; private set; }
@@ -155,7 +164,8 @@ public class FolioModel(
                     .ToDictionaryAsync(p => p.Id, p => $"{p.Brand} {p.Strength}");
                 Indents = indents.Select(i => new IndentRow(i.Id, i.State, i.RequestedAt,
                     items.Where(x => x.IndentId == i.Id)
-                        .Select(x => (x.ProductId, productNames.GetValueOrDefault(x.ProductId, "—"),
+                        .Select(x => new IndentItemRow(x.ProductId,
+                            productNames.GetValueOrDefault(x.ProductId, "—"),
                             x.QtyRequested, x.QtyIssued, x.QtyReturned)).ToList())).ToList();
             }
 
@@ -184,17 +194,17 @@ public class FolioModel(
 
                 Products = (await s.Pharm.Products.AsNoTracking().Where(p => p.Active)
                         .OrderBy(p => p.Brand).ToListAsync())
-                    .Select(p => (p.Id, $"{p.Brand} {p.Strength} {p.Form}")).ToList();
+                    .Select(p => new ProductChoice(p.Id, $"{p.Brand} {p.Strength} {p.Form}")).ToList();
 
                 var testCatalog = await s.Adm.TestCatalog.AsNoTracking().Where(t => t.Active)
                     .OrderBy(t => t.Name).ToListAsync();
-                var testChoices = new List<(long, string, long)>();
+                var testChoices = new List<TestChoice>();
                 foreach (var t in testCatalog)
                 {
                     try
                     {
                         var rate = await rates.ResolveAsync(s.Adm, "test", t.Id, today);
-                        testChoices.Add((t.Id, t.Name, rate.Price));
+                        testChoices.Add(new TestChoice(t.Id, t.Name, rate.Price));
                     }
                     catch (RateResolutionException) { }
                 }

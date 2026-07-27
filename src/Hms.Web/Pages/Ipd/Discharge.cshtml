@@ -181,16 +181,56 @@ else if (admission.State == AdmissionState.FinanciallySettled && folio is not nu
                 · due @Ui.Money(Model.SettledDue)
                 — <a href="/billing/invoice/@folio.SettlementInvoiceId">collect / print</a>
             </p>
-            @if (Model.SettledDue > 0)
+
+            @if (Model.OutstandingTotal > 0)
             {
-                <div class="alert">
+                @* Spec 0020: everything owed, including outdoor invoices this admission never
+                   saw. The plain discharge button is ABSENT while money is owed (§7 U7). *@
+                <div class="alert bad">
                     <span class="icon icon-sm" aria-hidden="true">payments</span>
-                    <span>A due remains — it is tracked on the dues screen. Discharging now records it.</span>
+                    <span>
+                        <b>@Ui.Money(Model.OutstandingTotal) is still owed</b> across
+                        @Model.Outstanding.Count invoice@(Model.Outstanding.Count == 1 ? "" : "s").
+                        Collect it, or state why the patient is leaving with a due.
+                    </span>
                 </div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Invoice</th><th>Source</th><th>Balance</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var o in Model.Outstanding)
+                        {
+                            <tr>
+                                <td class="tabular">@o.InvoiceNo</td>
+                                <td>@(o.IsSettlement ? "this admission" : "other counter")</td>
+                                <td class="tabular">@Ui.Money(o.Balance)</td>
+                                <td><a class="btn-tint" href="/billing/invoice/@o.InvoiceId">Collect…</a></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <form method="post" asp-page-handler="Discharge" class="stack" style="gap:10px">
+                    <label class="field">
+                        <span class="field-label">Why is this patient being released with a due?</span>
+                        <input class="input" asp-for="OutstandingReason"
+                               placeholder="e.g. corporate credit approved, family paying tomorrow" />
+                    </label>
+                    <button type="submit" class="btn btn-cta">
+                        Discharge with an outstanding due
+                    </button>
+                    <div class="card-hint">
+                        Your name and this reason go on the record (audit tier 2). To hold the
+                        patient instead, use the block on Admissions → Block list (R4).
+                    </div>
+                </form>
             }
-            <form method="post" asp-page-handler="Discharge">
-                <button type="submit" class="btn btn-primary btn-cta">Discharge — print gate pass</button>
-            </form>
+            else
+            {
+                <form method="post" asp-page-handler="Discharge">
+                    <button type="submit" class="btn btn-primary btn-cta">Discharge — print gate pass</button>
+                </form>
+            }
         </div>
     </div>
 }

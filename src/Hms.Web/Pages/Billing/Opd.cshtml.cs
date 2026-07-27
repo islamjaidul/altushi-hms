@@ -42,6 +42,8 @@ public class OpdModel(
     public IReadOnlyList<CartLine> Cart { get; private set; } = [];
     public IReadOnlyList<UnbilledLine> Unbilled { get; private set; } = [];
     public string? PatientName { get; private set; }
+    /// <summary>Set when the selected patient is lying in a bed right now (spec 0020).</summary>
+    public (long AdmissionId, string AdmissionNo, string Bed)? Admitted { get; private set; }
     public long ApprovedDiscountId { get; private set; }
     public long ApprovedDiscountAmount { get; private set; }
     public bool DiscountPending { get; private set; }
@@ -100,6 +102,9 @@ public class OpdModel(
             {
                 var patient = await s.Reg.Patients.AsNoTracking().SingleOrDefaultAsync(p => p.Id == pid);
                 PatientName = patient?.FullName;
+                // Spec 0020 gap 3: an outdoor invoice for an in-house patient is a due that
+                // discharge never sees — say so before it is saved.
+                Admitted = await IpdBilling.FindOpenAdmissionAsync(s, pid);
 
                 var encounter = await s.Bill.Encounters.AsNoTracking().FirstOrDefaultAsync(
                     e => e.PatientId == pid && e.OnDate == today && e.State == "open");

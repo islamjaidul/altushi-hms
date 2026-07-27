@@ -25,6 +25,20 @@
         <span>@Model.ErrorMessage</span>
     </div>
 }
+@if (Model.Admitted is { } bedside)
+{
+    @* Spec 0020: an in-house patient's medicine belongs on the folio (5A-9). The counter
+       sale stays possible — the attendant may be buying — but never silent. *@
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">warning</span>
+        <span>
+            This patient is <b>admitted</b> — @bedside.AdmissionNo, bed @bedside.Bed.
+            Ward medicine should go through a <b>ward indent</b> so it lands on the folio;
+            a sale here becomes a separate bill the discharge does not include.
+            <a href="/ipd/folio/@bedside.AdmissionId">Open the folio…</a>
+        </span>
+    </div>
+}
 @if (Model.ApprovedDiscountId > 0)
 {
     <div class="alert good">

@@ -187,13 +187,9 @@ app.MapGet("/api/typeahead/patients", async (string? q, HmsTx tx) =>
     var term = q?.Trim();
     if (term is null || term.Length < 2) return Results.Json(Array.Empty<object>());
 
-    var like = $"%{term}%";
     var prefix = $"{term}%";
     var hits = await tx.RunAsync(async s => await s.Reg.Patients.AsNoTracking()
-        .Where(p => p.Active && p.MergedInto == null &&
-                    (EF.Functions.ILike(p.FullName, like) ||
-                     EF.Functions.ILike(p.Uhid, like) ||
-                     (p.Phone != null && EF.Functions.ILike(p.Phone, like))))
+        .Searchable().Matching(term)                         // spec 0020: phone digits too
         .OrderByDescending(p => EF.Functions.ILike(p.FullName, prefix) ||
                                 EF.Functions.ILike(p.Uhid, prefix))
         .ThenByDescending(p => p.Id)

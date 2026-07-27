@@ -27,6 +27,8 @@ public class DischargeModel(
     [BindProperty] public string? ClinicalSummary { get; set; }
     [BindProperty] public long DiscountFlat { get; set; }
     [BindProperty] public string? DiscountReason { get; set; }
+    /// <summary>Spec 0020: releasing a patient who still owes money is a stated decision.</summary>
+    [BindProperty] public string? OutstandingReason { get; set; }
 
     public Admission? Admission { get; private set; }
     public Folio? Folio { get; private set; }
@@ -40,6 +42,9 @@ public class DischargeModel(
     public bool DiscountPending { get; private set; }
     public long SettledDue { get; private set; }
     public string? SettledInvoiceNo { get; private set; }
+    /// <summary>Everything the patient owes across the hospital, not just this admission.</summary>
+    public IReadOnlyList<IpdBilling.OutstandingInvoice> Outstanding { get; private set; } = [];
+    public long OutstandingTotal => Outstanding.Sum(o => o.Balance);
     public bool CanSettle => Can("ipd.settle");
     public bool CanManage => Can("ipd.manage");
 
@@ -74,6 +79,11 @@ public class DischargeModel(
                     SettledDue = await s.Bill.Dues.AsNoTracking()
                         .Where(d => d.InvoiceId == invId).Select(d => d.Balance).FirstOrDefaultAsync();
                 }
+
+                // Spec 0020: the whole position, including outdoor invoices this admission
+                // never knew about — nobody leaves the gate owing money unnoticed.
+                Outstanding = await IpdBilling.OutstandingForPatientAsync(
+                    s, Admission.PatientId, Folio.SettlementInvoiceId);
 
                 // A discount already approved against this folio and not yet spent (OPD pattern).
                 var approved = await s.Kernel.ApprovalRequests.AsNoTracking()
@@ -222,10 +232,24 @@ public class DischargeModel(
         if (!CanManage && !CanSettle) return Forbid();
         try
         {
-            await tx.RunAsync(s => ipd.DischargeAsync(s.Ipd, s.Kernel, AdmissionId, ActorId, ActorName));
+            await tx.RunAsync(async s =>
+            {
+                // Recomputed inside the transaction: the screen's figure is a display, the
+                // guard's figure is the truth (a payment may have landed in between).
+                var folio = await s.Ipd.Folios.AsNoTracking()
+                    .SingleAsync(f => f.AdmissionId == AdmissionId);
+                var admission = await s.Ipd.Admissions.AsNoTracking()
+                    .SingleAsync(a => a.Id == AdmissionId);
+                var outstanding = await IpdBilling.OutstandingForPatientAsync(
+                    s, admission.PatientId, folio.SettlementInvoiceId);
+                await ipd.DischargeAsync(s.Ipd, s.Kernel, AdmissionId,
+                    outstanding.Sum(o => o.Balance), OutstandingReason, ActorId, ActorName);
+            });
         }
         catch (IpdException e) { return await Reshow(e.Message); }
-        Toast("Discharged — gate pass below, bed sent to cleaning", "task_alt");
+        Toast(string.IsNullOrWhiteSpace(OutstandingReason)
+            ? "Discharged — gate pass below, bed sent to cleaning"
+            : "Discharged with a due — the reason is on the record with your name", "task_alt");
         return Redirect($"/ipd/discharge/{AdmissionId}");
     }
 }

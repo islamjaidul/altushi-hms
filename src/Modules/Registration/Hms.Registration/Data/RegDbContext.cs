@@ -17,6 +17,15 @@ public class Patient
     public bool AgeEstimated { get; set; }
     public DateOnly? AgeAsOf { get; set; }
     public string? Phone { get; set; }                 // edge 24: nullable, never blocks
+
+    /// <summary>
+    /// Spec 0020: the phone with every non-digit stripped, maintained by the DATABASE
+    /// (generated column). Registration stores the readable form `01712-345999` (§7 U13) but
+    /// an operator types what is on the slip — `01712345999` — so search matches on this.
+    /// A generated column cannot drift from <see cref="Phone"/> the way a second write path
+    /// could, and the migration fills it for every existing row by definition.
+    /// </summary>
+    public string? PhoneDigits { get; private set; }
     public string? Guardian { get; set; }
     public string? Area { get; set; }
     public string? Address { get; set; }
@@ -56,6 +65,9 @@ public class RegDbContext(DbContextOptions<RegDbContext> options) : DbContext(op
                 "dob is not null or age_years is not null or unknown_identity"));
             e.HasIndex(x => x.Uhid).IsUnique();
             e.HasIndex(x => x.Phone);
+            e.Property(x => x.PhoneDigits)
+                .HasComputedColumnSql(@"regexp_replace(coalesce(phone, ''), '\D', '', 'g')", stored: true);
+            e.HasIndex(x => x.PhoneDigits);
             e.Property(x => x.Sex).HasColumnType("char(1)");
         });
         b.Entity<PatientMerge>(e =>

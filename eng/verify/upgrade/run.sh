@@ -69,6 +69,9 @@ python3 eng/verify/pharmacy-thread.py
 echo "== ipd workflow on the upgraded database (spec 0017)"
 python3 eng/verify/ipd-thread.py
 
+echo "== whole-lifecycle seams on the upgraded database (spec 0020)"
+python3 eng/verify/lifecycle-thread.py
+
 echo "== front desk estimate + public surface on the upgraded database (specs 0018/0019)"
 python3 eng/verify/frontdesk-check.py
 for p in /public/queue /public/report-status; do

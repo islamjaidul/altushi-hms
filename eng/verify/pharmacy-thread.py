@@ -94,14 +94,36 @@ pur = ph.get("/pharmacy/purchase")
 check("complete" in pur, "line fully received — batch on the shelf")
 
 # 3 — FEFO sale (walk-in) ---------------------------------------------------
+# Repeat-run safe: the seeded near-expiry batch runs out after a few passes, so the FEFO
+# PROPERTY is asserted (earliest-expiring sellable batch wins) rather than a fixed batch no.
 step(3, "Walk-in sale picks the earliest expiry first (US11.1)")
+
+
+def sellable_batches(html, product_word="Napa"):
+    """(batch_no, expiry, qty) for in-stock, unexpired batches of the product, earliest first."""
+    out = []
+    for row in re.findall(r"<tr>(.*?)</tr>", html, re.S):
+        cells = [re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+        if len(cells) < 7 or product_word not in cells[0]:
+            continue
+        state = cells[6].split("\n")[0].strip()
+        qty = int(re.sub(r"\D", "", cells[3]) or 0)
+        if qty > 0 and state in ("in stock", "near expiry"):
+            out.append((cells[1], cells[2], qty))
+    return sorted(out, key=lambda b: __import__("datetime").datetime.strptime(b[1], "%d %b %Y"))
+
+
+stock_now = ph.get("/pharmacy/stock?Show=all")
+expected = sellable_batches(stock_now)
+check(len(expected) > 0, "the shelf has sellable stock of the demo product")
 pos = ph.get("/pharmacy/pos")
-check("near expiry" in pos, "near-expiry stock is flagged on the shelf")
+check("near expiry" in stock_now, "near-expiry stock is flagged in words on the shelf")
 pos = ph.post("/pharmacy/pos?handler=Add", {"productId": prod.group(1)}, pos)[1]
 url, receipt = ph.post("/pharmacy/pos?handler=Save", {
     "Items": [prod.group(1)], "Qtys": ["2"], "PaidNow": "4", "Tender": "cash"}, pos)
 check("/billing/invoice/" in url, "sale saved through the money spine")
-check("NP-2412" in receipt, "FEFO took the near-expiry batch, printed on the receipt")
+check(expected[0][0] in receipt,
+      f"FEFO took the earliest-expiring batch ({expected[0][0]}), printed on the receipt")
 walkin_invoice = url.rstrip("/").split("/")[-1]
 
 # 4 — expired stock is blocked ---------------------------------------------
@@ -160,19 +182,38 @@ check("Sale return" in ledger and ledger.count("Sale return") > before,
       "stock ledger shows the sale return — goods back on the shelf")
 
 # 7 — quarantine and supplier return ---------------------------------------
+# Repeat-run safe: on a second pass the seeded expired batch has already been walked to
+# Returned, so the lifecycle is asserted from wherever it currently stands (spec 0020 —
+# a "dirty-DB tolerant" script that only works once is not tolerant).
 step(7, "Expired batch: quarantine → return to supplier (5A-11)")
 stock = ph.get("/pharmacy/stock?Show=expired")
 batch = re.search(r'name="BatchId" value="(\d+)"', stock)
-check(batch is not None, "expired batch listed for action")
-ph.post("/pharmacy/stock?handler=Quarantine",
-        {"BatchId": batch.group(1), "Reason": "expired", "Show": "expired"}, stock)
-stock = ph.get("/pharmacy/stock?Show=quarantined")
-check("expired" in stock, "batch is quarantined with its reason")
-ph.post("/pharmacy/stock?handler=Return",
-        {"BatchId": batch.group(1), "SupplierId": sup_opt.group(1), "Show": "quarantined"}, stock)
-suppliers = ph.get(f"/pharmacy/suppliers?Ledger={sup_opt.group(1)}")
-check("Return credit" in suppliers or "return_credit" in suppliers.lower(),
-      "supplier ledger credited for the return")
+if batch is not None:
+    check(True, "expired batch listed for action")
+    ph.post("/pharmacy/stock?handler=Quarantine",
+            {"BatchId": batch.group(1), "Reason": "expired", "Show": "expired"}, stock)
+    stock = ph.get("/pharmacy/stock?Show=quarantined")
+    check("expired" in stock, "batch is quarantined with its reason")
+    ph.post("/pharmacy/stock?handler=Return",
+            {"BatchId": batch.group(1), "SupplierId": sup_opt.group(1), "Show": "quarantined"}, stock)
+    suppliers = ph.get(f"/pharmacy/suppliers?Ledger={sup_opt.group(1)}")
+    check("Return credit" in suppliers or "return_credit" in suppliers.lower(),
+          "supplier ledger credited for the return")
+else:
+    quarantined = ph.get("/pharmacy/stock?Show=quarantined")
+    pending = re.search(r'name="BatchId" value="(\d+)"', quarantined)
+    if pending is not None:
+        check(True, "expired stock already quarantined by an earlier run — returning it")
+        ph.post("/pharmacy/stock?handler=Return",
+                {"BatchId": pending.group(1), "SupplierId": sup_opt.group(1),
+                 "Show": "quarantined"}, quarantined)
+        suppliers = ph.get(f"/pharmacy/suppliers?Ledger={sup_opt.group(1)}")
+        check("Return credit" in suppliers or "return_credit" in suppliers.lower(),
+              "supplier ledger credited for the return")
+    else:
+        allstock = ph.get("/pharmacy/stock?Show=all")
+        check("Returned" in allstock or "Disposed" in allstock,
+              "expired stock already walked to a terminal state by an earlier run")
 
 # 8 — outlet transfer -------------------------------------------------------
 step(8, "Outlet transfer: indent → send FEFO → receive (5A-11)")

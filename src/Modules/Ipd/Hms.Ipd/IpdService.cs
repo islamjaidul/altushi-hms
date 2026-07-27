@@ -312,11 +312,27 @@ public sealed class IpdService(
             throw new IpdException("Settlement needs a clinically-cleared admission (§11 order).");
     }
 
-    /// <summary>The gate pass: patient leaves, bed goes to cleaning, stay closes.</summary>
+    /// <summary>
+    /// The gate pass: patient leaves, bed goes to cleaning, stay closes.
+    ///
+    /// Spec 0020: a patient used to be able to walk out with the settlement invoice unpaid,
+    /// silently, through a state named "financially settled". Dues are legitimate here
+    /// (§3.2 — corporate credit, partial payment), so this does not forbid them; it forces
+    /// the release to be a <em>decision</em>. With money outstanding the caller must state a
+    /// reason, and the amount plus the reason land in the tier-2 audit stream. The caller
+    /// computes <paramref name="outstanding"/> (money lives in bill.*, not here) — but a
+    /// crafted request cannot skip it, because zero-with-no-reason is the only silent path.
+    /// </summary>
     public async Task DischargeAsync(
-        IpdDbContext ipd, KernelDbContext kernel, long admissionId, long actorId, string actorName,
-        CancellationToken ct = default)
+        IpdDbContext ipd, KernelDbContext kernel, long admissionId, long outstanding,
+        string? outstandingReason, long actorId, string actorName, CancellationToken ct = default)
     {
+        if (outstanding < 0) throw new IpdException("Outstanding cannot be negative.");
+        if (outstanding > 0 && string.IsNullOrWhiteSpace(outstandingReason))
+            throw new IpdException(
+                $"This patient still owes ৳ {outstanding:N0}. Collect it, or state why they are " +
+                "being released with a due — the reason goes on the record with your name.");
+
         var admission = await GetAdmissionAsync(ipd, admissionId, ct);
         var affected = await ipd.Database.ExecuteSqlAsync($"""
             UPDATE ipd.admission SET state = 'discharged', discharged_at = {clock.GetUtcNow()}
@@ -325,7 +341,11 @@ public sealed class IpdService(
         if (affected == 0) throw new IpdException("Discharge needs a financially-settled admission.");
         await CloseStayAsync(ipd, admissionId, ct);
         audit.Append(kernel, admission.BranchId, actorId, actorName,
-            "ipd.discharge", "ipd.admission", admissionId, after: null);
+            "ipd.discharge", "ipd.admission", admissionId,
+            after: outstanding > 0
+                ? new { outstanding, reason = outstandingReason!.Trim() }
+                : null,
+            tier: outstanding > 0 ? (short)2 : (short)1);
         await kernel.SaveChangesAsync(ct);
     }
 

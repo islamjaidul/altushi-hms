@@ -25,6 +25,19 @@
         <span>@Model.ErrorMessage</span>
     </div>
 }
+@if (Model.Admitted is { } bedside)
+{
+    @* Spec 0020: an outdoor invoice for an in-house patient is a due discharge never sees. *@
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">warning</span>
+        <span>
+            This patient is <b>admitted</b> — @bedside.AdmissionNo, bed @bedside.Bed.
+            Indoor services belong on the folio, where the discharge bill will collect them;
+            billing here creates a separate invoice.
+            <a href="/ipd/folio/@bedside.AdmissionId">Open the folio…</a>
+        </span>
+    </div>
+}
 @if (Model.ApprovedDiscountId > 0)
 {
     <div class="alert good">
