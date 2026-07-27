@@ -1,6 +1,6 @@
 # 0013 — Close the MVP requirement gaps (PRD [M] items with no screen)
 
-- **Status:** In Progress
+- **Status:** Done
 - **Date:** 2026-07-26
 - **PRD ref:** §5 (M1, M3, M4, M8, M9, M20, M21, M22), §5A, §9A.2, §11, §12
 - **MVP:** in scope — this finishes §9A.2's stated depth; it adds no module

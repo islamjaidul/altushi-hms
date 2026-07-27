@@ -1,0 +1,121 @@
+@page "/admin/templates"
+@model Hms.Web.Pages.Admin.TemplatesModel
+@{
+    ViewData["Title"] = "Report Templates";
+    ViewData["Crumb"] = "Administration";
+    var rows = Model.Parameters.Count + 3;   // existing lines plus room to add
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card-hint" style="margin-bottom:14px;max-width:680px">
+    What each test reports, and the ranges its values are judged against. Editing a template
+    changes future results only — every result already stored keeps the range it was judged by,
+    so an old report always reprints exactly as it was released.
+</div>
+
+<div class="grid grid-side-main">
+    <div class="card card-clip">
+        <div class="card-head">
+            Tests
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Tests.Count</span>
+        </div>
+        @foreach (var t in Model.Tests)
+        {
+            <a class="worklist-row @(Model.Selected?.Id == t.Id ? "selected" : "")"
+               href="/admin/templates?testId=@t.Id">
+                <div class="worklist-id">@t.Code</div>
+                <div style="font-size:0.78125rem;font-weight:600">@t.Name</div>
+                <div class="worklist-sub">
+                    @t.Dept ·
+                    @if (t.Parameters > 0)
+                    {
+                        <text>@t.Parameters parameter(s)</text>
+                    }
+                    else
+                    {
+                        <span class="text-muted">narrative report</span>
+                    }
+                </div>
+            </a>
+        }
+    </div>
+
+    @if (Model.Selected is { } sel)
+    {
+        <form method="post" class="stack">
+            <input type="hidden" name="TestId" value="@sel.Id" />
+
+            <div class="card card-clip">
+                <div class="card-head">
+                    @sel.Name <span class="text-muted">· @sel.Code</span>
+                    <span class="spacer"></span>
+                    @if (Model.UsageCount > 0)
+                    {
+                        <span class="pill info">@Model.UsageCount result(s) already recorded</span>
+                    }
+                </div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th style="width:110px">Code</th>
+                            <th>Parameter</th>
+                            <th style="width:100px">Unit</th>
+                            <th class="num" style="width:90px">Low</th>
+                            <th class="num" style="width:90px">High</th>
+                            <th class="num" style="width:90px">Male low</th>
+                            <th class="num" style="width:90px">Male high</th>
+                            <th class="num" style="width:100px">Female low</th>
+                            <th class="num" style="width:100px">Female high</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @for (var i = 0; i < rows; i++)
+                        {
+                            var p = i < Model.Parameters.Count ? Model.Parameters[i] : null;
+                            <tr>
+                                <td><input name="Code" value="@p?.Code" class="input input-sm" placeholder="HB" aria-label="Parameter code" /></td>
+                                <td><input name="Name" value="@p?.Name" class="input input-sm" placeholder="Haemoglobin" aria-label="Parameter name" /></td>
+                                <td><input name="Unit" value="@p?.Unit" class="input input-sm" placeholder="g/dL" aria-label="Unit" /></td>
+                                <td><input name="Low" value="@p?.Low" class="input input-sm input-num" inputmode="decimal" aria-label="Low" /></td>
+                                <td><input name="High" value="@p?.High" class="input input-sm input-num" inputmode="decimal" aria-label="High" /></td>
+                                <td><input name="MaleLow" value="@p?.MaleLow" class="input input-sm input-num" inputmode="decimal" aria-label="Male low" /></td>
+                                <td><input name="MaleHigh" value="@p?.MaleHigh" class="input input-sm input-num" inputmode="decimal" aria-label="Male high" /></td>
+                                <td><input name="FemaleLow" value="@p?.FemaleLow" class="input input-sm input-num" inputmode="decimal" aria-label="Female low" /></td>
+                                <td><input name="FemaleHigh" value="@p?.FemaleHigh" class="input input-sm input-num" inputmode="decimal" aria-label="Female high" /></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row">
+                <span class="card-hint">
+                    Leave a row blank to skip it. Fill only Low and High for a range that applies
+                    to everyone; add the male or female columns where the range genuinely differs.
+                    A test with no parameters reports a narrative instead of a grid.
+                </span>
+                <span class="spacer"></span>
+                <button type="submit" class="btn btn-primary btn-cta">
+                    <span class="icon icon-sm" aria-hidden="true">science</span> Save template
+                </button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <div class="empty-card">
+            <span class="icon" aria-hidden="true">science</span>
+            Choose a test on the left to configure what it reports.
+        </div>
+    }
+</div>
