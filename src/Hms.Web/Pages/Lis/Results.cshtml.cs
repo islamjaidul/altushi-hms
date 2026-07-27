@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Hms.Web.Pages.Lis;
 
 public sealed record EntryParameter(
-    string Code, string Name, string Unit, string Range,
+    string Code, string Name, string Unit, string Range, string BandLabel,
     decimal? Low, decimal? High, string? Existing);
 public sealed record EntryTest(
     long OrderTestId, string Name, bool HasResult, bool NarrativeOnly,
@@ -61,9 +61,13 @@ public class ResultsModel(HmsTx tx, LisService lis) : HmsPageModel
                 var stored = ResultValues.Parse(latest?.Values);
 
                 var parameters = (template?.Parameters ?? [])
-                    .Select(p => new EntryParameter(p.Code, p.Name, p.Unit,
-                        ResultTemplates.RangeText(p), p.Low, p.High,
-                        stored.TryGetValue(p.Code, out var v) ? v.Value : null))
+                    .Select(p =>
+                    {
+                        var band = p.BandFor(Selected!.Sex, Selected.AgeYears);
+                        return new EntryParameter(p.Code, p.Name, p.Unit,
+                            band?.Text ?? "—", band?.Label ?? "", band?.Low, band?.High,
+                            stored.TryGetValue(p.Code, out var v) ? v.Value : null);
+                    })
                     .ToList();
 
                 tests.Add(new EntryTest(t.OrderTestId, t.Name, latest is not null,
@@ -104,12 +108,14 @@ public class ResultsModel(HmsTx tx, LisService lis) : HmsPageModel
 
                         decimal? numeric = decimal.TryParse(raw, NumberStyles.Any,
                             CultureInfo.InvariantCulture, out var d) ? d : null;
+                        var band = p.BandFor(Selected.Sex, Selected.AgeYears);
                         values[p.Code] = new
                         {
                             value = raw.Trim(),
                             unit = p.Unit,
-                            flag = ResultTemplates.Flag(numeric, p),
-                            ref_used = ResultTemplates.RangeText(p),   // the range as it stood today
+                            flag = ResultTemplates.Flag(numeric, band),
+                            // The band actually used, in words — this is what the report reprints.
+                            ref_used = band is null ? "—" : $"{band.Text} ({band.Label})",
                         };
                     }
 

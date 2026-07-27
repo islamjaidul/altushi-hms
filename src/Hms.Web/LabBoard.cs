@@ -10,6 +10,7 @@ public sealed record LabSample(long Id, string Barcode, string SampleType, strin
 
 public sealed record LabCard(
     long OrderId, string OrderNo, string PatientName, string Uhid, string? Phone,
+    char Sex, short? AgeYears,
     IReadOnlyList<LabTest> Tests, IReadOnlyList<LabSample> Samples,
     string Stage, long Due, DateTimeOffset PromisedAt, DateTimeOffset CreatedAt)
 {
@@ -111,11 +112,26 @@ public static class LabBoard
             cards.Add(new LabCard(
                 order.Id, "LB-" + order.Id.ToString("D5"),
                 patient?.FullName ?? "(unknown)", patient?.Uhid ?? "—", patient?.Phone,
+                patient?.Sex ?? 'O', AgeYearsOf(patient),
                 tests, mySamples,
                 StageOf(order.Id, tests, mySamples, delivered),
                 due, order.PromisedAt, order.CreatedAt));
         }
         return cards;
+    }
+
+    /// <summary>DOB wins when present (02 §2.2); reference bands need a number, not a date.</summary>
+    private static short? AgeYearsOf(Hms.Registration.Data.Patient? p)
+    {
+        if (p is null) return null;
+        if (p.Dob is { } dob)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var years = today.Year - dob.Year;
+            if (today < dob.AddYears(years)) years--;
+            return (short)Math.Max(0, years);
+        }
+        return p.AgeYears;
     }
 
     private static string StageOf(

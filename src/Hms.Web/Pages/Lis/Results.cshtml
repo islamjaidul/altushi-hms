@@ -124,7 +124,13 @@
                                             <span class="flag none" id="flag-@fieldId">—</span>
                                         </td>
                                         <td class="text-muted">@p.Unit</td>
-                                        <td class="text-muted tabular">@p.Range</td>
+                                        <td class="text-muted tabular">
+                                            @p.Range
+                                            @if (!string.IsNullOrEmpty(p.BandLabel) && p.BandLabel != "all patients")
+                                            {
+                                                <div style="font-size:0.65625rem">@p.BandLabel</div>
+                                            }
+                                        </td>
                                     </tr>
                                 }
                                 </tbody>
