@@ -1,0 +1,55 @@
+@page "/admin/sms"
+@model Hms.Web.Pages.Admin.SmsModel
+@{
+    ViewData["Title"] = "SMS Templates";
+    ViewData["Crumb"] = "Administration";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card-hint" style="margin-bottom:14px;max-width:660px">
+    The exact words patients receive. Switch an event off and nothing is queued for it —
+    that is a configuration choice, not a failure, and the tray shows what was sent either way.
+</div>
+
+<div class="stack narrow">
+    @foreach (var t in Model.Templates)
+    {
+        <form method="post" asp-page-handler="Save" class="card">
+            <input type="hidden" name="Event" value="@t.Event" />
+            <div class="card-head">
+                @Ui.Humanize(t.Event)
+                <span class="spacer"></span>
+                <span class="pill @(t.Enabled ? "good" : "")">@(t.Enabled ? "Sending" : "Switched off")</span>
+            </div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:10px">
+                <label class="field">
+                    <span class="field-label">Message</span>
+                    <textarea class="textarea" rows="3" name="Body">@t.Body</textarea>
+                </label>
+                <div class="row">
+                    <span class="card-hint">
+                        Placeholders:
+                        @foreach (var v in Model.Variables.GetValueOrDefault(t.Event, []))
+                        {
+                            <code>{@v}</code><text> </text>
+                        }
+                    </span>
+                    <span class="spacer"></span>
+                    <label class="row" style="gap:6px">
+                        <input type="checkbox" name="Enabled" value="true" checked="@t.Enabled"
+                               style="width:18px;height:18px" />
+                        <span>Send this message</span>
+                    </label>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </form>
+    }
+</div>

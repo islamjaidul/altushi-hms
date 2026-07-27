@@ -103,9 +103,15 @@ public class IndexModel(
                 var doctor = await s.Appt.Schedules.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.DoctorId == DoctorId);
 
-                sms.QueueAppointment(s.Notif, BranchId, hospital.Name, patient.FullName,
-                    row.SerialNo, doctor?.DoctorName ?? "the doctor", patient.Phone);
-                await s.Notif.SaveChangesAsync();
+                await SmsSender.SendAsync(s, sms, BranchId,
+                    Hms.Notifications.Data.SmsEvent.Appointment,
+                    patient.Phone, new Dictionary<string, string?>
+                    {
+                        ["hospital"] = hospital.Name,
+                        ["patient"] = patient.FullName,
+                        ["serial"] = row.SerialNo.ToString(),
+                        ["doctor"] = doctor?.DoctorName ?? "the doctor",
+                    });
                 return (row.SerialNo, patient.FullName);
             });
 
@@ -131,6 +137,7 @@ public class IndexModel(
                 AppointmentState.InChamber => "Called in — patient is with the doctor",
                 AppointmentState.Done => "Consultation finished",
                 AppointmentState.Cancelled => "Serial cancelled",
+                AppointmentState.NoShow => "Marked as a no-show — the serial is freed",
                 _ => "Queue updated",
             }, "arrow_forward");
         }

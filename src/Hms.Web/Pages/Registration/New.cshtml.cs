@@ -111,7 +111,9 @@ public class NewModel(
                 }
 
                 // The welcome SMS commits with the patient, or not at all (§9A.2 module 8).
-                sms.QueueRegistration(s.Notif, BranchId, hospital.Name, p.FullName, p.Uhid, p.Phone);
+                await SmsSender.SendAsync(s, sms, BranchId, Hms.Notifications.Data.SmsEvent.Registration,
+                    p.Phone, new Dictionary<string, string?>
+                    { ["hospital"] = hospital.Name, ["patient"] = p.FullName, ["uhid"] = p.Uhid });
                 await s.Notif.SaveChangesAsync();
                 return p;
             });

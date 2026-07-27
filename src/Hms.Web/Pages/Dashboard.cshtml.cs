@@ -6,6 +6,7 @@ namespace Hms.Web.Pages;
 public sealed record DayBar(DateOnly Day, long Net);
 public sealed record DeptSlice(string Dept, long Amount);
 public sealed record VarianceRow(string Counter, string Operator, DateOnly Day, long Variance);
+public sealed record ConsultantRank(string Name, int Patients, long Income);
 public sealed record DiscountRow(
     string InvoiceNo, string PatientName, long Discount, string ApprovedBy, string Reason);
 
@@ -32,6 +33,9 @@ public class DashboardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     public IReadOnlyList<DeptSlice> DeptSplit { get; private set; } = [];
     public IReadOnlyList<VarianceRow> Variances { get; private set; } = [];
     public IReadOnlyList<DiscountRow> Discounts { get; private set; } = [];
+    public IReadOnlyList<ConsultantRank> Ranking { get; private set; } = [];
+    public long YesterdayNet { get; private set; }
+    public long YesterdayCollected { get; private set; }
 
     public long TrendMax => Trend.Count == 0 ? 1 : Math.Max(1, Trend.Max(t => t.Net));
     public long DeptMax => DeptSplit.Count == 0 ? 1 : Math.Max(1, DeptSplit.Max(d => d.Amount));
@@ -122,6 +126,40 @@ public class DashboardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
                     sess is null ? "—" : users.GetValueOrDefault(sess.OperatorId, "—"),
                     c.BusinessDay, c.Variance);
             }).ToList();
+
+            // §5 M22 [M]: consultant ranking by income volume. Referring/ordering doctors carry
+            // the charge line, so the ranking comes from the same money the dashboard totals.
+            var doctorLines = await s.Bill.ChargeLines.AsNoTracking()
+                .Where(c => c.InvoiceId != null && invoiceIds.Contains(c.InvoiceId!.Value) && c.DoctorId != null)
+                .Select(c => new { DoctorId = c.DoctorId!.Value, c.Amount, c.EncounterId })
+                .ToListAsync();
+            var schedules = await s.Appt.Schedules.AsNoTracking()
+                .Select(x => new { x.DoctorId, x.DoctorName }).ToListAsync();
+            var doctorNames = schedules.GroupBy(x => x.DoctorId)
+                .ToDictionary(g => g.Key, g => g.First().DoctorName);
+
+            // Serials are the other half of a consultant's day — a doctor with no billed line
+            // still saw patients, and the MD wants that visible.
+            var todaysAppts = await s.Appt.Appointments.AsNoTracking()
+                .Where(a => a.OnDate == Today && a.State != "cancelled")
+                .Select(a => new { a.DoctorId, a.PatientId }).ToListAsync();
+
+            Ranking = doctorNames.Keys
+                .Union(todaysAppts.Select(a => a.DoctorId))
+                .Select(id => new ConsultantRank(
+                    doctorNames.GetValueOrDefault(id, "Doctor " + id),
+                    todaysAppts.Count(a => a.DoctorId == id),
+                    doctorLines.Where(l => l.DoctorId == id).Sum(l => l.Amount)))
+                .Where(r => r.Patients > 0 || r.Income > 0)
+                .OrderByDescending(r => r.Income).ThenByDescending(r => r.Patients)
+                .Take(8).ToList();
+
+            // §5 M22 [M] end-of-day digest: yesterday in one line, for the morning tea read.
+            var yStart = Ui.DhakaMidnightUtc(Today.AddDays(-1));
+            var yEnd = dayStart;
+            YesterdayNet = invoices.Where(i => i.CreatedAt >= yStart && i.CreatedAt < yEnd).Sum(i => i.Net);
+            YesterdayCollected = await s.Bill.Receipts.AsNoTracking()
+                .Where(r => r.At >= yStart && r.At < yEnd).SumAsync(r => (long?)r.Amount) ?? 0;
 
             // Who discounted what, attributed by name — F2 again.
             var discounted = todays.Where(i => i.Discount > 0).Take(10).ToList();

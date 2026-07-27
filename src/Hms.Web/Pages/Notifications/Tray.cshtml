@@ -64,7 +64,7 @@
                 <th style="width:140px">To</th>
                 <th>Message</th>
                 <th style="width:70px" class="num">Parts</th>
-                <th style="width:150px">Status</th>
+                <th style="width:150px">Status</th><th class="num" style="width:110px">Action</th>
             </tr>
             </thead>
             <tbody>
@@ -84,12 +84,22 @@
                             <span class="pill">Simulated</span>
                         }
                     </td>
+                    <td class="num">
+                        @if (Model.Can("admin.masters.manage") && m.Recipient is not null)
+                        {
+                            <form method="post" action="/admin/sms?handler=Resend" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@m.Id" />
+                                <button type="submit" class="btn-tint">Resend</button>
+                            </form>
+                        }
+                    </td>
                 </tr>
             }
             @if (Model.Rows.Count == 0)
             {
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="empty-state">
                             <span class="icon" aria-hidden="true">sms</span>
                             No messages yet. Registering a patient or verifying a report puts one here.

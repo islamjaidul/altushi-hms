@@ -13,7 +13,8 @@
 
     <div class="sheet">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead("Patient ID Card", Model.Uhid, Model.RegisteredAt))
+            new Hms.Web.Letterhead(Model.Reissue ? "Patient ID Card (re-issue)" : "Patient ID Card",
+                Model.Uhid, Model.RegisteredAt))
 
         <div class="sheet-info">
             <div><span class="k">Patient:</span> <b>@Model.FullName</b></div>

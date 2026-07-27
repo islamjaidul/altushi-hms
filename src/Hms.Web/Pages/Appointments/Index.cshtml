@@ -96,6 +96,24 @@
                             {
                                 <span class="dash">—</span>
                             }
+                            @* §11: a serial that never arrives is not silently left "waiting". *@
+                            @if (q.State is AppointmentState.Booked or AppointmentState.Arrived)
+                            {
+                                <form method="post" asp-page-handler="Advance" style="display:inline"
+                                      data-confirm="Mark this serial as a no-show? The patient keeps their record; only the queue moves on.">
+                                    <input type="hidden" name="id" value="@q.Id" />
+                                    <input type="hidden" name="from" value="@q.State" />
+                                    <input type="hidden" name="to" value="@AppointmentState.NoShow" />
+                                    <button type="submit" class="btn-tint">No show</button>
+                                </form>
+                                <form method="post" asp-page-handler="Advance" style="display:inline"
+                                      data-confirm="Cancel this serial?">
+                                    <input type="hidden" name="id" value="@q.Id" />
+                                    <input type="hidden" name="from" value="@q.State" />
+                                    <input type="hidden" name="to" value="@AppointmentState.Cancelled" />
+                                    <button type="submit" class="btn-tint danger">Cancel</button>
+                                </form>
+                            }
                         </td>
                     </tr>
                 }

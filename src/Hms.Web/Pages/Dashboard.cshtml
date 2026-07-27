@@ -130,6 +130,45 @@
     </div>
 </div>
 
+@* §5 M22 [M] end-of-day digest — yesterday in one line (US22.1). *@
+<div class="alert info" style="margin-top:14px">
+    <span class="icon icon-sm" aria-hidden="true">history</span>
+    <span>
+        <b>Yesterday:</b> @Ui.Money(Model.YesterdayNet) billed, @Ui.Money(Model.YesterdayCollected) collected.
+        <a href="/billing/reports?range=yesterday" style="margin-left:6px">Full statement →</a>
+    </span>
+</div>
+
+<div class="card card-clip" style="margin-top:14px">
+    <div class="card-head">
+        Consultants today
+        <span class="spacer"></span>
+        <span class="section-sub">by income, then patients seen</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Consultant</th><th class="num">Patients</th><th class="num">Income ৳</th></tr></thead>
+            <tbody>
+            @foreach (var r in Model.Ranking)
+            {
+                <tr>
+                    <td><b>@r.Name</b></td>
+                    <td class="num">@r.Patients</td>
+                    <td class="num">@(r.Income == 0 ? "—" : Ui.Group(r.Income))</td>
+                </tr>
+            }
+            @if (Model.Ranking.Count == 0)
+            {
+                <tr><td colspan="3"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">stethoscope</span>
+                    No consultant activity today yet.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="grid grid-main-side" style="margin-top:14px">
     <div class="card card-clip">
         <div class="card-head">

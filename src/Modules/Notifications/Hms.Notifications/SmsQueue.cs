@@ -51,18 +51,8 @@ public sealed class SmsQueue(TimeProvider clock, SmsOptions options)
         return msg;
     }
 
-    public SmsMessage QueueRegistration(NotifDbContext notif, long branchId, string hospital,
-        string patientName, string uhid, string? phone)
-        => Queue(notif, branchId, SmsEvent.Registration, phone,
-            $"{hospital}: Welcome {patientName}. Your patient ID is {uhid}. Please keep it for all future visits.");
-
-    public SmsMessage QueueReportReady(NotifDbContext notif, long branchId, string hospital,
-        string patientName, string orderNo, string? phone)
-        => Queue(notif, branchId, SmsEvent.ReportReady, phone,
-            $"{hospital}: Dear {patientName}, your report for order {orderNo} is ready for collection.");
-
-    public SmsMessage QueueAppointment(NotifDbContext notif, long branchId, string hospital,
-        string patientName, int serial, string doctor, string? phone)
-        => Queue(notif, branchId, SmsEvent.Appointment, phone,
-            $"{hospital}: {patientName}, serial {serial} with {doctor} is confirmed for today.");
+    /// <summary>Re-queues an existing message unchanged — the operator resends, never rewrites
+    /// (§5 M20 [M] "resend from log").</summary>
+    public SmsMessage Resend(NotifDbContext notif, SmsMessage original)
+        => Queue(notif, original.BranchId, original.Event, original.Recipient, original.Body);
 }

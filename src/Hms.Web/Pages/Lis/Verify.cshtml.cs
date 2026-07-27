@@ -115,8 +115,9 @@ public class VerifyModel(
                 }
                 await s.Lis.SaveChangesAsync();
 
-                sms.QueueReportReady(s.Notif, BranchId, hospital.Name,
-                    Selected!.PatientName, Selected.OrderNo, Selected.Phone);
+                await SmsSender.SendAsync(s, sms, BranchId, Hms.Notifications.Data.SmsEvent.ReportReady,
+                    Selected.Phone, new Dictionary<string, string?>
+                    { ["hospital"] = hospital.Name, ["patient"] = Selected!.PatientName, ["order"] = Selected.OrderNo });
                 await s.Notif.SaveChangesAsync();
                 return 0;
             });
