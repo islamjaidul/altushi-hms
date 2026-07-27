@@ -118,6 +118,66 @@ actually holds** before building on it.
 
 ---
 
+## INPUT-CONTROL DEFECTS FOUND IN MANUAL UI TESTING — CONFIRMED IN CODE
+
+A manual smoke pass by the product owner surfaced inconsistencies in date entry and search that
+the automated suites did not catch, because the Playwright tests assert *behaviour on seeded
+data* and never search for a record outside the first page, nor set a date range without also
+setting the period selector. Each item below was then confirmed by reading the source.
+
+**These are the clearest evidence that §7 U9 ("consistent layout grammar — learn one module ≈
+learn all") and U13 ("forgiving inputs") were applied per-screen rather than as a product-wide
+contract.** Treat the specific bugs as symptoms; the missing shared input layer is the finding.
+
+### 1. Search filters a pre-truncated page, so older records are unfindable — correctness bug
+
+| Screen | How search actually works |
+|---|---|
+| `/registration` | server-side `ILIKE` on name/UHID/phone, then take 60 — **correct** |
+| `/admin/audit` | server-side `ILIKE`, then take 150 — **correct** |
+| `/billing/dues` | **loads the newest 300 dues, then filters in memory** (`Dues.cshtml.cs:62`) |
+| `/billing/refund` | **loads the newest 200 invoices, then filters in memory** (`Refund.cshtml.cs:77`) |
+| POS catalogues | in-memory over the whole catalogue — acceptable, the set is small |
+| Patient pickers | **no search at all** — a `<select>` of the 60 most recent patients |
+
+On the two marked screens, searching for an invoice older than the fetch window returns
+"nothing matches" even though the record exists and is unpaid. At §14 volumes that is most of
+the ledger. The fix is to push the predicate into the query, as the two correct screens already
+do — but the real fix is one search contract, not four.
+
+### 2. Report date range is silently ignored unless the period dropdown says "Custom"
+
+`/billing/reports` has a period `<select>` (Today / Yesterday / Last 7 days / This month /
+Custom) **and** From/To date inputs. `ReportsModel.OnGetAsync` only reads From/To when
+`Range == "custom"`; every other branch computes its own dates. So an operator who picks two
+dates and presses **Apply** — without also changing the dropdown — gets **today's figures**
+under their chosen date headings, with no error. A wrong number that looks right is worse than
+an error, and this is a money report.
+
+### 3. Two different date-entry paradigms in one product
+
+- Registration takes age or DOB as **free text** with forgiving parsing — `45`, `8 months`,
+  `12/03/1980`, `1980-03-12` all work (`New.cshtml.cs`, `ParseAge`). This is what §7 U13 asks for.
+- `/admin/masters` and `/billing/reports` use native **`<input type="date">`**, which renders in
+  the *browser's* locale. On an en-US browser that is `mm/dd/yyyy` — contradicting both the
+  Bangladeshi `dd/mm/yyyy` convention and the `dd MMM yyyy` the app displays everywhere else.
+  It also cannot accept the forgiving formats U13 promises, and its native picker is not the
+  44px keyboard-first target §7 U3/U4 require.
+
+An operator who learns date entry on registration cannot apply it on a report. That is precisely
+the failure U9 exists to prevent.
+
+### What to do about it
+
+Do not fix these four screens individually. The finding is that **there is no shared input
+layer** — no date component, no search component, no type-ahead binding (see debt item on
+type-ahead below: `typeahead.js` exists and nothing uses it). `05-ui-architecture.md` §3
+specifies exactly such a kernel-level interaction contract — "one JS module, one Razor tag
+helper" per capability. It was never built; screens hand-rolled their own inputs instead.
+
+Decide whether to build that layer now or carry the inconsistency into Phase 2, where fourteen
+more modules will hand-roll their own again. State the cost either way.
+
 ## KNOWN RISKS AND DEBT — REVIEW THESE FIRST
 
 1. **A clean-database-only test plan hid a production defect.** Templates written before
@@ -167,6 +227,9 @@ actually holds** before building on it.
 ## DELIVERABLES
 
 **A. Architectural review** (`docs/architecture/10-mvp-review.md`, new)
+- **Rule on the shared input layer first** — the date/search/type-ahead contract of
+  `05-ui-architecture.md` §3 that was specified and never built. Build it now, or carry it?
+  Fourteen deferred modules will each hand-roll their own inputs if you carry it.
 - Does the delivered system honour the ADRs, or has the implementation drifted? Name specific
   drift with file references.
 - Is the money spine actually safe under concurrency? Read `BillingService`, the migrations'
