@@ -1,0 +1,63 @@
+@page "/ot/register"
+@model Hms.Web.Pages.Ot.RegisterModel
+@{
+    ViewData["Title"] = "Operation Register";
+    ViewData["Crumb"] = "Operation Theatre";
+}
+
+<form method="get" class="card">
+    <div class="card-body row" style="gap:10px;align-items:end">
+        <label class="field">
+            <span class="field-label">From</span>
+            <input class="input" name="From" hms-date value="@Ui.DateLong(Model.FromDate)" />
+        </label>
+        <label class="field">
+            <span class="field-label">To</span>
+            <input class="input" name="To" hms-date value="@Ui.DateLong(Model.ToDate)" />
+        </label>
+        <button type="submit" class="btn btn-primary">
+            <span class="icon icon-sm" aria-hidden="true">search</span> Show
+        </button>
+        <span class="spacer"></span>
+        @await Html.PartialAsync("_PrintTools", "/ot/board")
+    </div>
+</form>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Operation register
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Rows.Count case(s) between @Ui.DateLong(Model.FromDate) and @Ui.DateLong(Model.ToDate)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th>Case</th><th>When</th><th>Patient</th><th>Operation</th><th>Theatre</th>
+                <th>Surgeon</th><th>Anaesthetist</th><th>State</th><th class="num">Billed</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                var status = Ui.Status(r.State);
+                <tr>
+                    <td class="id-cell">@r.CaseNo</td>
+                    <td>@Ui.DateTimeShort(r.At)</td>
+                    <td>@r.Patient<div class="card-hint">@r.Uhid</div></td>
+                    <td>@r.Operation</td>
+                    <td>@r.Theatre</td>
+                    <td>@r.Surgeon</td>
+                    <td>@r.Anaesthetist</td>
+                    <td><span class="pill @status.Css">@status.Word</span></td>
+                    <td class="num tabular">@Ui.MoneyOrDash(r.Billed)</td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="9" class="empty">No operations in this period.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

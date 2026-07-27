@@ -1,0 +1,203 @@
+@page "/ot/case/{Id:long}"
+@using Hms.Ot.Data
+@model Hms.Web.Pages.Ot.CaseModel
+@{
+    ViewData["Title"] = "Operation";
+    ViewData["Crumb"] = "Operation Theatre";
+    var c = Model.Case!;
+    var status = Ui.Status(c.State);
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">block</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        @c.CaseNo — @c.OperationName
+        <span class="spacer"></span>
+        <span class="pill @status.Css">@status.Word</span>
+    </div>
+    <div class="card-body">
+        <div class="sheet-info">
+            <div><span class="k">Patient:</span> <b>@Model.PatientName</b> (@Model.Uhid)</div>
+            <div><span class="k">Theatre:</span> @Model.TheatreName</div>
+            <div><span class="k">Scheduled:</span> @Ui.DateTimeShort(c.ScheduledFrom) – @Ui.Time(c.ScheduledTo)</div>
+            <div><span class="k">Bills to:</span> @(c.FolioId is not null ? "the admission folio" : "today's visit")</div>
+            @if (c.StartedAt is not null)
+            {
+                <div><span class="k">In theatre:</span> @Ui.Time(c.StartedAt.Value)@(c.FinishedAt is not null ? $" – {Ui.Time(c.FinishedAt.Value)}" : "")</div>
+            }
+            @if (c.CancelReason is not null)
+            {
+                <div><span class="k">Reason:</span> @c.CancelReason</div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Surgical team
+        <span class="spacer"></span>
+        <span class="card-hint">what each member earned is recorded here for consultant payouts</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Role</th><th>Name</th><th class="num">Posted</th></tr></thead>
+            <tbody>
+            @foreach (var m in Model.Team)
+            {
+                <tr>
+                    <td>@Ui.Humanize(m.Role)</td>
+                    <td>@m.PersonName</td>
+                    <td class="num tabular">@(m.AmountPosted == 0 ? "—" : Ui.Money(m.AmountPosted))</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@* U7: each state offers exactly the actions that are legal from it — nothing else is on screen. *@
+@if (c.State == CaseState.Scheduled || c.State == CaseState.PatientReady)
+{
+    <div class="card">
+        <div class="card-body row" style="gap:10px;align-items:end;flex-wrap:wrap">
+            @if (c.State == CaseState.Scheduled)
+            {
+                <form method="post" asp-page-handler="Ready">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="icon icon-sm" aria-hidden="true">task_alt</span> Patient sent for
+                    </button>
+                </form>
+            }
+            else
+            {
+                <form method="post" asp-page-handler="Start">
+                    <button type="submit" class="btn btn-primary btn-cta">
+                        <span class="icon icon-sm" aria-hidden="true">schedule</span> Start — patient in theatre
+                    </button>
+                </form>
+            }
+            <form method="post" class="row" style="gap:6px;align-items:end">
+                <label class="field" style="width:260px">
+                    <span class="field-label">Reason</span>
+                    <input class="input" name="Reason" placeholder="why cancelled or postponed" />
+                </label>
+                <button type="submit" class="btn-tint" asp-page-handler="Postpone">Postpone</button>
+                <button type="submit" class="btn-tint danger" asp-page-handler="Cancel"
+                        data-confirm="Cancel this operation? Nothing is billed and the reason is kept.">
+                    Cancel
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+@if (c.State == CaseState.InTheatre)
+{
+    <form method="post" asp-page-handler="Complete" class="card">
+        <div class="card-head">Operative record &amp; completion</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Procedure performed <span class="req">*</span></span>
+                <textarea class="input" name="ProcedurePerformed" rows="2"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Findings</span>
+                <textarea class="input" name="Findings" rows="2"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Anaesthesia</span>
+                <input class="input" name="AnaesthesiaType" placeholder="spinal / general / local" />
+            </label>
+            <button type="submit" class="btn btn-primary btn-cta"
+                    data-confirm="Complete the case? The operation and team charges post to the bill now.">
+                <span class="icon icon-sm" aria-hidden="true">task_alt</span> Complete &amp; post charges
+            </button>
+        </div>
+    </form>
+}
+
+@if (c.State == CaseState.InTheatre || c.State == CaseState.PatientReady)
+{
+    <form method="post" asp-page-handler="Consumable" class="card">
+        <div class="card-head">
+            Issue a consumable
+            <span class="spacer"></span>
+            <span class="card-hint">FEFO off the main pharmacy; posts at the batch's price</span>
+        </div>
+        <div class="card-body row" style="gap:10px;align-items:end">
+            <label class="field" style="flex:1">
+                <span class="field-label">Item</span>
+                <select class="input" name="ProductId">
+                    @foreach (var (id, name) in Model.Products)
+                    {
+                        <option value="@id">@name</option>
+                    }
+                </select>
+            </label>
+            <label class="field" style="width:110px">
+                <span class="field-label">Quantity</span>
+                <input class="input input-num" name="Qty" inputmode="numeric" value="1" />
+            </label>
+            <button type="submit" class="btn-tint">
+                <span class="icon icon-sm" aria-hidden="true">outbox</span> Issue
+            </button>
+        </div>
+    </form>
+}
+
+@if (Model.Consumables.Count > 0)
+{
+    <div class="card card-clip">
+        <div class="card-head">
+            Consumables used
+            <span class="spacer"></span>
+            <span class="card-hint">billed so far on this case: @Ui.Money(Model.BilledSoFar)</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Item</th><th>Batch</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>
+                <tbody>
+                @foreach (var u in Model.Consumables)
+                {
+                    <tr>
+                        <td>@u.ProductName</td>
+                        <td class="id-cell">@u.BatchNo</td>
+                        <td class="num tabular">@u.Qty</td>
+                        <td class="num tabular">@Ui.Money(u.UnitPrice * u.Qty)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (c.State == CaseState.Completed)
+{
+    <div class="card">
+        <div class="card-head">Operative record</div>
+        <div class="card-body">
+            <p><b>Procedure.</b> @c.ProcedurePerformed</p>
+            @if (!string.IsNullOrWhiteSpace(c.Findings))
+            {
+                <p><b>Findings.</b> @c.Findings</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(c.AnaesthesiaType))
+            {
+                <p><b>Anaesthesia.</b> @c.AnaesthesiaType</p>
+            }
+            <p class="card-hint">
+                Charges posted to @(c.FolioId is not null ? "the folio" : "the visit") —
+                total on this case @Ui.Money(Model.BilledSoFar).
+            </p>
+        </div>
+    </div>
+}

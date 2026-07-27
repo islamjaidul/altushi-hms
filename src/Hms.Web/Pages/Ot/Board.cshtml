@@ -1,0 +1,49 @@
+@page "/ot/board"
+@model Hms.Web.Pages.Ot.BoardModel
+@{
+    ViewData["Title"] = "OT Board";
+    ViewData["Crumb"] = "Operation Theatre";
+}
+
+<div class="card">
+    <div class="card-head">
+        Theatres — @Ui.DateLong(Model.Today)
+        <span class="spacer"></span>
+        @if (Model.Can("ot.schedule"))
+        {
+            <a class="btn btn-primary" href="/ot/schedule">
+                <span class="icon icon-sm" aria-hidden="true">calendar_add_on</span> Schedule
+            </a>
+        }
+    </div>
+</div>
+
+@foreach (var theatre in Model.Theatres)
+{
+    <div class="card card-clip">
+        <div class="card-head">@theatre.Name</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Time</th><th>Case</th><th>Patient</th><th>Operation</th><th>Surgeon</th><th>State</th></tr></thead>
+                <tbody>
+                @foreach (var c in theatre.Cases)
+                {
+                    var status = Ui.Status(c.State);
+                    <tr>
+                        <td class="tabular">@Ui.Time(c.From) – @Ui.Time(c.To)</td>
+                        <td class="id-cell"><a href="/ot/case/@c.Id">@c.CaseNo</a></td>
+                        <td>@c.Patient</td>
+                        <td>@c.Operation</td>
+                        <td>@c.Surgeon</td>
+                        <td><span class="pill @status.Css">@status.Word</span></td>
+                    </tr>
+                }
+                @if (theatre.Cases.Count == 0)
+                {
+                    <tr><td colspan="6" class="empty">Nothing scheduled today.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

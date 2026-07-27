@@ -1,0 +1,64 @@
+@page "/ot/theatres"
+@model Hms.Web.Pages.Ot.TheatresModel
+@{
+    ViewData["Title"] = "Theatres";
+    ViewData["Crumb"] = "Operation Theatre";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" asp-page-handler="Add" class="card">
+    <div class="card-head">Add a theatre</div>
+    <div class="card-body row" style="gap:10px;align-items:end">
+        <label class="field" style="flex:1">
+            <span class="field-label">Name <span class="req">*</span></span>
+            <input class="input" name="Name" placeholder="e.g. OT-3 (Orthopaedic)" autocomplete="off" data-advance />
+        </label>
+        <button type="submit" class="btn btn-primary">
+            <span class="icon icon-sm" aria-hidden="true">add</span> Add
+        </button>
+    </div>
+</form>
+
+<div class="card card-clip">
+    <div class="card-head">Theatres</div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Name</th><th>Status</th><th class="num"></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Rows)
+            {
+                <tr>
+                    <td><b>@t.Name</b></td>
+                    <td>
+                        @if (t.Active)
+                        {
+                            <span class="pill good">In service</span>
+                        }
+                        else
+                        {
+                            <span class="pill">Retired</span>
+                        }
+                    </td>
+                    <td class="num">
+                        <form method="post" asp-page-handler="Toggle" style="display:inline">
+                            <input type="hidden" name="Id" value="@t.Id" />
+                            <button type="submit" class="btn-tint">@(t.Active ? "Retire" : "Return to service")</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="3" class="empty">No theatres yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

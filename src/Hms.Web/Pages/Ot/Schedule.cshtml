@@ -1,0 +1,98 @@
+@page "/ot/schedule"
+@model Hms.Web.Pages.Ot.ScheduleModel
+@{
+    ViewData["Title"] = "Schedule an Operation";
+    ViewData["Crumb"] = "Operation Theatre";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">block</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" class="card">
+    <div class="card-head">
+        New operation
+        <span class="spacer"></span>
+        <span class="card-hint">a theatre or surgeon already booked for that window is refused</span>
+    </div>
+    <div class="card-body">
+        <div class="field-grid cols-3">
+            <label class="field">
+                <span class="field-label">Patient <span class="req">*</span></span>
+                <select class="input" name="PatientId" required>
+                    <option value="">— choose —</option>
+                    @foreach (var p in Model.Patients)
+                    {
+                        <option value="@p.PatientId">@p.Label</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Operation <span class="req">*</span></span>
+                <select class="input" name="OperationServiceId" required>
+                    @foreach (var o in Model.Operations)
+                    {
+                        <option value="@o.ServiceId">@o.Name — @Ui.Money(o.Price)</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Theatre <span class="req">*</span></span>
+                <select class="input" name="TheatreId" required>
+                    @foreach (var t in Model.Theatres)
+                    {
+                        <option value="@t.Id">@t.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Date</span>
+                <input class="input" name="OnDate" hms-date value="@Model.Today" />
+            </label>
+            <label class="field">
+                <span class="field-label">Start time (HH:mm) <span class="req">*</span></span>
+                <input class="input" name="FromTime" placeholder="09:30" data-advance />
+            </label>
+            <label class="field">
+                <span class="field-label">Expected minutes</span>
+                <input class="input input-num" name="Minutes" inputmode="numeric" value="90" />
+            </label>
+            <label class="field">
+                <span class="field-label">Surgeon <span class="req">*</span></span>
+                <select class="input" name="SurgeonId" required>
+                    @foreach (var p in Model.People)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Anaesthetist</span>
+                <select class="input" name="AnaesthetistId">
+                    <option value="0">— none —</option>
+                    @foreach (var p in Model.People)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Assistant</span>
+                <select class="input" name="AssistantId">
+                    <option value="0">— none —</option>
+                    @foreach (var p in Model.People)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-cta" style="margin-top:14px">
+            <span class="icon icon-sm" aria-hidden="true">calendar_add_on</span> Schedule
+        </button>
+    </div>
+</form>
