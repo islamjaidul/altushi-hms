@@ -72,5 +72,6 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0019-public-displays](0019-public-displays/spec.md) | R3 public queue display + report-status self-lookup (Wave 2) | Done | §5A.2 R3, §8 N5 | 2026-07-27 |
 | [0020-lifecycle-gaps](0020-lifecycle-gaps/spec.md) | Patient-lifecycle gaps found by end-to-end smoke testing (phone search, silent discharge with dues, invisible outdoor charges) | Done | §7, §5 M6, R4, §3.2 | 2026-07-27 |
 | [0021-terminal-exits-and-double-submit](0021-terminal-exits-and-double-submit/spec.md) | Money stranded on death/absconded exits, and double-billed invoices | Done | §11, §5 M6, §3.2, §7 | 2026-07-27 |
+| [0022-pharmacy-coverage](0022-pharmacy-coverage/spec.md) | Full pharmacy-module coverage: staff-sale tagging + audit-search defect | Done | §5 M11, §5A-11, §8 N5 | 2026-07-27 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

@@ -26,16 +26,24 @@ public class AuditModel(HmsTx tx) : HmsPageModel
         (Rows, Actions, Total) = await tx.RunAsync(async s =>
         {
             var query = s.Kernel.AuditEvents.AsNoTracking().AsQueryable();
-            if (!string.IsNullOrWhiteSpace(Action))
-                query = query.Where(a => a.Action == Action);
+
+            // `after` is jsonb, and Postgres has no ILIKE for jsonb — the LINQ form of this
+            // predicate threw 42883 for every search term, so the search box never worked at
+            // all. The cast has to happen in SQL (ADR-0020: predicate in SQL, never
+            // fetch-then-filter — the audit table is the largest in the product).
             if (!string.IsNullOrWhiteSpace(Q))
             {
                 var like = $"%{Q.Trim()}%";
-                query = query.Where(a =>
-                    EF.Functions.ILike(a.ActorNameSnapshot, like) ||
-                    EF.Functions.ILike(a.Entity, like) ||
-                    (a.After != null && EF.Functions.ILike(a.After, like)));
+                query = s.Kernel.AuditEvents.FromSql($"""
+                    SELECT * FROM kernel.audit_event
+                    WHERE actor_name_snapshot ILIKE {like}
+                       OR entity ILIKE {like}
+                       OR action ILIKE {like}
+                       OR after::text ILIKE {like}
+                    """).AsNoTracking();
             }
+            if (!string.IsNullOrWhiteSpace(Action))
+                query = query.Where(a => a.Action == Action);
 
             var total = await s.Kernel.AuditEvents.CountAsync();
             var rows = await query.OrderByDescending(a => a.Id).Take(150)

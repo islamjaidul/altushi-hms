@@ -44,7 +44,8 @@ public static class PharmacySale
         long branchId, long outletId, OpenSession session, long patientId,
         IReadOnlyList<SaleItem> items, long discount, long? discountApprovalId,
         IReadOnlyList<(long Amount, string Mode, string? Reference)> tenders,
-        long actorId, string actorName, Guid? submissionToken = null)
+        long actorId, string actorName, Guid? submissionToken = null,
+        bool staffSale = false, Hms.Kernel.Audit.AuditWriter? audit = null)
     {
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
         var encounter = await CounterContext.GetOrCreateEncounterAsync(
@@ -81,6 +82,17 @@ public static class PharmacySale
                 UnitMrp = a.UnitMrp, UnitCost = a.UnitCost,
             });
         await s.Pharm.SaveChangesAsync();
+
+        // 5A-11 staff-pharmacy variant: the TAG is a fact about the sale, so it is recorded
+        // whether or not a discount was asked for. Before spec 0022 it survived only inside a
+        // discount's approval reason, so a staff member paying full MRP left no trace at all.
+        if (staffSale && audit is not null)
+        {
+            audit.Append(s.Kernel, branchId, actorId, actorName,
+                "pharmacy.sale.staff", "bill.invoice", invoice.Id,
+                after: new { invoice.InvoiceNo, patientId, staffSale = true }, tier: 2);
+            await s.Kernel.SaveChangesAsync();
+        }
 
         foreach (var (amount, mode, reference) in tenders)
             await billing.CollectAsync(s.Bill, s.Kernel, branchId, invoice.Id, session.Id,

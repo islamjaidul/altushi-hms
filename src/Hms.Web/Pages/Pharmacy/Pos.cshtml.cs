@@ -22,7 +22,7 @@ public sealed record PosCartLine(long ProductId, string Label, int Qty, long Uni
 [Authorize(Policy = Perm.PharmacySaleCreate)]
 public class PosModel(
     HmsTx tx, BillingService billing, StockService stock, ApprovalEngine approvals,
-    TimeProvider clock) : HmsPageModel
+    Hms.Kernel.Audit.AuditWriter audit, TimeProvider clock) : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public long? PatientId { get; set; }
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
@@ -221,7 +221,8 @@ public class PosModel(
                     : await PharmacySale.EnsureWalkInPatientAsync(s, BranchId, ActorId);
                 return await PharmacySale.SaveAsync(
                     s, billing, stock, clock, BranchId, OutletId!.Value, Session!, patientId,
-                    items, discount, approvalId, tenders, ActorId, ActorName, SubmissionToken);
+                    items, discount, approvalId, tenders, ActorId, ActorName, SubmissionToken,
+                    StaffSale, audit);
             });
             Toast("Sale saved — receipt ready", "receipt_long");
             return Redirect($"/billing/invoice/{invoiceId}");

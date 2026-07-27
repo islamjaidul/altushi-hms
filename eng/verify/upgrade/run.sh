@@ -72,6 +72,9 @@ python3 eng/verify/ipd-thread.py
 echo "== whole-lifecycle seams on the upgraded database (spec 0020)"
 python3 eng/verify/lifecycle-thread.py
 
+echo "== every pharmacy feature on the upgraded database (spec 0022)"
+python3 eng/verify/pharmacy-full.py
+
 echo "== advanced edge cases on the upgraded database (specs 0020/0021)"
 python3 eng/verify/edge-cases.py
 
