@@ -1,9 +1,10 @@
-# Handoff Prompt — Principal Software Architect: post-MVP review & next-phase plan
+# Handoff Prompt — Principal Software Architect: MVP review & completing the product
 
 > **How to use this file:** paste everything below the line into a fresh agent session that has
 > access to this repository. It is written to be self-contained and paste-ready. It supersedes
 > nothing — `docs/architect_prompt.md` remains the record of the original design brief; this is
-> the review handoff for what was actually built against it.
+> the handoff for reviewing what was built against it and **completing the remaining fourteen
+> modules to the same standard**.
 
 ---
 
@@ -21,12 +22,19 @@ summary.
 
 ## MISSION
 
-Two deliverables, in this order:
+Three deliverables, in this order:
 
 1. **An architectural review** of the delivered MVP: is it sound, is it safe to run a hospital
-   on, and where is the debt that will hurt at Phase 2?
-2. **A next-phase plan** — sequencing, risks and structural work — for the modules PRD §9A.3
-   deliberately deferred, starting with the one the PRD itself names first.
+   on, and where is the debt that will hurt as the product grows?
+2. **A build plan** — sequencing, risks and structural work — for **the fourteen modules PRD
+   §9A.3 deferred, which the PM has now released for development** (see the scope change below).
+3. **Build them.** Not scaffolding, not placeholder screens, not "pattern pages" that render a
+   table and do nothing. Each module ships **comprehensively featured and functional**, to the
+   standard already set by the eight MVP modules — every `[M]` sub-feature of its PRD §5 section
+   and every `Must` of its §5A enrichments has a working screen wired to real services, or an
+   explicit, reasoned deferral recorded in the spec.
+
+The MVP proved the spine. Your job is to complete the product on it.
 
 ---
 
@@ -85,14 +93,102 @@ CI gates: no hardcoded colours, no external hosts, no F-key collisions.
 
 ---
 
-## WHAT IS NOT BUILT — YOUR SCOPE
+## SCOPE CHANGE — THE PM HAS RELEASED THE DEFERRED MODULES
 
-**14 modules deferred by PRD §9A.3** (PM decision; adding one is a PM call, not yours):
-Front Desk (M2), EMR (M5), **IPD & folio (M6)**, OT (M7), Radiology/PACS (M10),
-**Pharmacy (M11)**, Inventory (M12), Blood Bank (M13), Canteen (M14), Accounts (M15),
-HR & Payroll (M16), Consultant Payments (M17), Corporate Billing (M18), Referral (M19).
-Plus sub-modules **R2** (health/discount cards), **R3** (public queue display, patient
-self-service status), **R4** (bill-block / due-control patient hold).
+PRD §9A.3 froze the MVP at eight modules and made adding one a PM decision. **The PM has now
+made that decision: build the remaining fourteen.** Read §9A.3 for the original reasoning — it
+explains *why* each was deferred, and that reasoning is still the best guide to sequencing and
+to what each one actually needs.
+
+This does not loosen anything else. The PRD remains the requirements source of truth, the
+spec-driven rule still applies to every module, and §9's binding rule — that the folio spine,
+consultant accruals and multi-branch must be structurally accommodated rather than retrofitted —
+now becomes the thing you are actually cashing in.
+
+Two cautions the PRD itself raises and you should weigh:
+
+- §9A.3 deferred several modules because **the real-world preconditions did not exist** — no
+  beds occupied, no stock, no analyzers installed, no staff on payroll, no transfusion licence.
+  Building the software does not create those preconditions. Say plainly which modules can be
+  *validated* today and which can only be *built* today, and what that means for demo risk.
+- §9 sequences by **customer revenue-criticality**, not by technical convenience. Phase 2 is
+  "Full Hospital" (M5 EMR, M6 IPD/folio, M7 OT, M10 radiology, M12 inventory, M16 HR, M17
+  consultant pay, M18 corporate, M19 referral); Phase 3 is "Differentiation" (M13 blood bank,
+  M14 canteen, PACS depth, patient portal). §9A.3 names **Pharmacy (M11) as the first module
+  after the MVP** because it is a cash engine. Follow that unless you can argue better.
+
+## DEFINITION OF DONE — PER MODULE, NON-NEGOTIABLE
+
+"Featured and functional" is not a judgement call. A module is done when **all** of these hold.
+The eight MVP modules meet this bar; anything less is a regression in product quality, not a
+smaller increment.
+
+1. **Every `[M]` sub-feature of its PRD §5 section has a working screen** wired to real services
+   — not a list view over an empty table. Every `Must` in its §5A enrichment rows likewise.
+   Anything not built is recorded as an explicit deferral with a reason in the spec's matrix,
+   the way `docs/specs/0013-mvp-requirement-gaps/plan.md` does. **Build the traceability matrix
+   first, then the module** — that spec exists because nobody did, and ~25 requirements were
+   silently missing behind screens that all rendered.
+2. **Its user stories' acceptance criteria pass**, demonstrably. §5's `**AC:**` lines are tests,
+   not prose.
+3. **Its §11 state machine is complete and reachable** — every state and every marked exit,
+   including the ⚿ approval-gated ones. A state nothing can enter is a bug; a state nothing can
+   leave is a worse one.
+4. **Its §12 permissions exist as data** and are enforced server-side, with the nav composed from
+   the same grants. A screen a role cannot reach must also be a request the server refuses.
+5. **Money and clinical invariants hold in the database**, not merely in code: no financial hard
+   deletes ever, append-only audit, row-locked concurrent writes, effective-dated prices,
+   state-guarded transitions. Follow the patterns in `BillingService` and `LisService`.
+6. **§7's UX principles are met** — role-based home, keyboard-first, type-ahead over typing,
+   barcode-first where a barcode exists, error-proofing by absence, consequence preview,
+   status by colour **and** word, everything printable, 44px targets, 1366×768.
+7. **Tests exist at three levels**: services (integration, against real Postgres), screens
+   (Playwright in `eng/verify/ui/`), and a runnable end-to-end thread through the module the way
+   `eng/verify/golden-thread.py` runs the MVP's. **Add an upgrade-path test** — see debt item 1;
+   a clean-database-only plan already hid one production defect.
+8. **It survives the demo constraints**: works offline, works with no printer (PDF fallback),
+   loses nothing on a power cut, and runs inside the 2 vCPU / 3 GB budget.
+9. **The CI gates stay green**: no hardcoded colours, no external hosts, no F-key collisions,
+   additive-only migrations.
+
+If a module cannot meet this bar in the time available, **cut its scope explicitly and say so** —
+`09-questions-for-pm.md` exists for that. Do not ship a half-wired screen and call the module
+delivered; that is the exact failure this codebase already had once, and spec 0013 is the record
+of cleaning it up.
+
+## THE FOURTEEN MODULES
+
+All fourteen are in scope and all are to be built to the Definition of Done above. Each links to
+its own PRD §5 section for the feature list, and to its §5A rows for the live-observed
+enrichments that matter in this market — **§5A is not optional colour; several of its rows are
+`Must`.**
+
+| PRD | Module | The §5A rows that make it real in Bangladesh |
+|---|---|---|
+| M2 | Front Desk / Help Desk | — |
+| M5 | Prescription & EMR | 5A-7 nursing charts (MAR, diabetic chart), patient receive note |
+| **M6** | **IPD & patient folio** | 5A-8 extra bed + visitor card · **5A-9 admission package, service-charge %, medicine/investigation indents** (`Must`) · R4 bill-block |
+| M7 | Operation Theatre | — |
+| M10 | Radiology & imaging | **5A-10 per-modality report templates** (`Must`, engine already exists — reuse it) |
+| **M11** | **Pharmacy** — §9A.3's first | **5A-11 multi-outlet, stock transfer, damage, expiry, supplier replacement**; POS variants incl. staff pharmacy |
+| M12 | Inventory (3 stores) | 5A-12 fixed assets, raw-material conversion, approval authority, reagent-machine inventory |
+| M13 | Blood Bank | — (§11 blood unit + request state machines are the spine) |
+| M14 | Canteen | — |
+| M15 | Accounts & Finance | **5A-13 bank module, hierarchical heads, the seven ledgers, central cash collection** (`Must`) · 5A-14 top sheet, budget, IOU |
+| M16 | HR & Payroll | 5A-16 comp-off, OT ledger, 3-tier leave approval, bonus, increment · 5A-17 HR documents |
+| M17 | Consultant Payments | **5A-18 full doctor-payment sub-system** (`Must`) · **5A-15 BEFTN + TDS** (`Must`) |
+| M18 | Corporate / Panel Billing | — |
+| M19 | Marketing & Referral | **5A-19 four-way commission split + RCDD** (`Must`) · MPO setup and payouts |
+
+Plus the sub-modules PRD §5A.2 identifies as genuine v1.0 gaps: **R2** health/discount cards
+(auto-applying rate at billing), **R3** public queue display and patient self-service report
+status, **R4** bill-block / due-control patient hold (adds a `Blocked` state to admission and
+folio per §11).
+
+**Do not treat any of these as a thin module.** M6, M11, M15, M17 and M19 each carry `Must`
+enrichments that are substantial sub-systems in their own right — the competitor walkthrough in
+§2.4 is the evidence base for why. If the honest estimate for one of them is large, say so in
+the plan rather than shrinking the feature set silently.
 
 PRD §9A.3 names **Pharmacy as the first module after the MVP**. PRD §9's binding rule says the
 **M6 folio spine, M17 accruals and multi-branch** must already be structurally accommodated —
@@ -213,7 +309,10 @@ more modules will hand-roll their own again. State the cost either way.
 
 - **Spec-driven development.** No non-trivial change without a spec in `docs/specs/` first, and
   the approved plan archived as `plan.md`. Specs are append-only once `Done`.
-- **MVP scope is frozen** at §9A.2's 8 modules. Proposals to add one go to the PM as a question.
+- **Scope is now the full 22-module product of PRD §5.** The MVP freeze is lifted (see the scope
+  change above). What has *not* changed: the PRD defines what each module is — you implement §5
+  and §5A, you do not invent requirements, and anything genuinely out of scope goes to
+  `09-questions-for-pm.md` rather than being built silently or dropped silently.
 - **No financial hard deletes, ever** — corrections are reversals; audit is append-only.
 - **Prices are effective-dated** — a historical invoice must always reproduce its historical price.
 - **PRD §7's 15 UX principles are binding requirements**, not suggestions.
@@ -239,15 +338,29 @@ more modules will hand-roll their own again. State the cost either way.
 - Rank the debt above by what will hurt most at Phase 2, and say what you would fix before
   building anything new.
 
-**B. Next-phase plan** (`docs/architecture/11-phase2-plan.md`, new)
-- Sequencing for the deferred modules, starting from §9A.3's own "first module after MVP".
-- For each: the structural work it forces on the existing spine, the migration risk, and what it
-  breaks if sequenced wrongly.
+**B. Build plan** (`docs/architecture/11-build-plan-phase2.md`, new)
+- Sequencing for all fourteen modules, starting from §9A.3's own "first module after MVP"
+  (Pharmacy, M11) unless you can argue better — and if you can, argue it explicitly.
+- For each: the structural work it forces on the existing spine, the migration risk, what it
+  breaks if sequenced wrongly, and which of its §5 `[M]` features are genuinely buildable now
+  versus blocked on a real-world precondition (installed analyzers, stocked shelves, staff on
+  payroll, a transfusion licence).
+- The order in which the **shared input layer** (date, search, type-ahead — see the input-control
+  defects above) lands relative to the modules. My view: before them, because fourteen modules
+  hand-rolling their own inputs is how the current inconsistency happened at a smaller scale.
+  Disagree if you have reason.
 - New ADRs for any decision this surfaces — one per decision, in `docs/architecture/01-adr/`.
-- Anything you believe the PM must decide goes to `09-questions-for-pm.md`, not into your plan
-  as an assumption.
+- Anything the PM must decide goes to `09-questions-for-pm.md`, not into your plan as an
+  assumption.
 
-**C. A spec** for whatever you propose to build first, per the spec-driven rule.
+**C. Build the modules**, one spec per module, in the sequence you set.
+- A spec in `docs/specs/NNNN-slug/` **before** each module, with the PRD-to-screen traceability
+  matrix as its plan. Archive the approved plan; close the spec with notes when done.
+- Meet the **Definition of Done** above, in full, per module. Do not batch modules into one spec
+  to move faster — the matrix per module is what makes "comprehensively featured" checkable.
+- Deploy and verify each on the VM as it lands, the way the MVP was: snapshot the database
+  first, run the flows and the Playwright suite against production, and confirm the golden
+  thread still passes. `deploy/RUNBOOK.md` §4 has the update and rollback procedure.
 
 ---
 
