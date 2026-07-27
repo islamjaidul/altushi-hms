@@ -3,7 +3,7 @@
 due -> refund restock -> quarantine/return -> transfer -> audit -> dashboard.
 Assertions track the records this run creates (by id), so the script is
 dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
-import json, re, sys, urllib.parse, http.cookiejar, urllib.request
+import datetime, json, re, sys, urllib.parse, http.cookiejar, urllib.request
 
 BASE = "http://localhost:5199"
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -110,14 +110,21 @@ def sellable_batches(html, product_word="Napa"):
         qty = int(re.sub(r"\D", "", cells[3]) or 0)
         if qty > 0 and state in ("in stock", "near expiry"):
             out.append((cells[1], cells[2], qty))
-    return sorted(out, key=lambda b: __import__("datetime").datetime.strptime(b[1], "%d %b %Y"))
+    return sorted(out, key=lambda b: datetime.datetime.strptime(b[1], "%d %b %Y"))
 
 
 stock_now = ph.get("/pharmacy/stock?Show=all")
 expected = sellable_batches(stock_now)
 check(len(expected) > 0, "the shelf has sellable stock of the demo product")
 pos = ph.get("/pharmacy/pos")
-check("near expiry" in stock_now, "near-expiry stock is flagged in words on the shelf")
+# The CONTRACT, not the seed: the seeded near-expiry batch is legitimately sold down by
+# repeated runs, so require the wording only when a batch is actually inside the window.
+window = datetime.datetime.now() + datetime.timedelta(days=90)
+near = [b for b in expected if datetime.datetime.strptime(b[1], "%d %b %Y") <= window]
+if near:
+    check("near expiry" in stock_now, "near-expiry stock is flagged in words on the shelf")
+else:
+    check("Expiry" in stock_now, "no batch is near expiry today; the shelf still shows expiries")
 pos = ph.post("/pharmacy/pos?handler=Add", {"productId": prod.group(1)}, pos)[1]
 url, receipt = ph.post("/pharmacy/pos?handler=Save", {
     "Items": [prod.group(1)], "Qtys": ["2"], "PaidNow": "4", "Tender": "cash"}, pos)
