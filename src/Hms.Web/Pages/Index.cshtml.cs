@@ -33,6 +33,7 @@ public class IndexModel(IReadOnlyList<NavItem> registry, EntitlementProvider ent
         "/admin/users" => "Manage login accounts and their roles.",
         "/admin/masters" => "Test catalog, services and effective-dated prices.",
         "/admin/import" => "Load a price list or test catalog from a spreadsheet.",
+        "/admin/people" => "Doctors, referrers and the consultants who sign reports.",
         "/admin/audit" => "Who changed what, and when.",
         "/notifications/tray" => "Every SMS the system has sent or simulated.",
         _ => "",

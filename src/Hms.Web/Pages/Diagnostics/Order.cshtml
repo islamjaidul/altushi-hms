@@ -41,14 +41,15 @@
                         }
                     </select>
                 </label>
-                @* Referrer capture (§9A.2 module 4) needs the adm.referrer master, which lands
-                   with the masters screens — a free-text box here would look like capture while
-                   discarding the value, so the field waits for the table. *@
-                <div class="field">
+                <label class="field">
                     <span class="field-label">Referred by</span>
-                    <input class="input" value="Self / walk-in" disabled />
-                    <span class="help-text">Referrer list arrives with the referrer master.</span>
-                </div>
+                    <select class="select" asp-for="ReferrerId">
+                        @foreach (var r in Model.Referrers)
+                        {
+                            <option value="@r.Id">@r.Label</option>
+                        }
+                    </select>
+                </label>
                 <div class="field">
                     <span class="field-label">Counter</span>
                     <input class="input" value="@(Model.Session?.CounterName ?? "Not open")" disabled />

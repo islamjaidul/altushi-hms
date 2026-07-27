@@ -1,0 +1,200 @@
+@page "/admin/people"
+@model Hms.Web.Pages.Admin.PeopleModel
+@{
+    ViewData["Title"] = "Doctors, Referrers & Consultants";
+    ViewData["Crumb"] = "Administration";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card-hint" style="margin-bottom:14px;max-width:640px">
+    The people the hospital configures before opening: doctors who take serials, referrers
+    captured on every test order, and the consultants who sign released reports. Nobody is ever
+    deleted — a name printed on a document has to stay readable.
+</div>
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Doctors
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Doctors.Count · serials are issued against these</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Doctor</th><th>Chamber</th><th>Hours</th><th class="num">Daily capacity</th></tr></thead>
+                    <tbody>
+                    @foreach (var d in Model.Doctors)
+                    {
+                        <tr>
+                            <td><b>@d.Name</b></td>
+                            <td>@(d.Room ?? "—")</td>
+                            <td class="tabular">@d.From.ToString("HH:mm") – @d.To.ToString("HH:mm")</td>
+                            <td class="num">@d.MaxSerials</td>
+                        </tr>
+                    }
+                    @if (Model.Doctors.Count == 0)
+                    {
+                        <tr><td colspan="4"><div class="empty-state">
+                            <span class="icon" aria-hidden="true">stethoscope</span>
+                            No doctors yet — add one to start issuing serials.
+                        </div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">
+                Referrers
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Referrers.Count · captured on every test order</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr><th style="width:100px">Code</th><th>Name</th><th style="width:110px">Type</th>
+                        <th>Area</th><th>Phone</th><th class="num" style="width:110px">Commission</th>
+                        <th style="width:110px">Status</th></tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.Referrers)
+                    {
+                        <tr>
+                            <td class="id-cell">@r.Code</td>
+                            <td><b>@r.Name</b></td>
+                            <td>@Ui.Humanize(r.Kind)</td>
+                            <td>@(r.Area ?? "—")</td>
+                            <td>@(r.Phone ?? "—")</td>
+                            <td class="num">@(r.Commission == 0 ? "—" : r.Commission + "%")</td>
+                            <td>
+                                <form method="post" asp-page-handler="ToggleReferrer" style="display:inline">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint @(r.Active ? "" : "danger")">
+                                        @(r.Active ? "Active" : "Inactive")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">
+                Reporting consultants
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Consultants.Count · their signature block prints on the report</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Consultant</th><th>Qualifications</th><th style="width:120px">BMDC</th><th>Signs for</th><th style="width:100px">Status</th></tr></thead>
+                    <tbody>
+                    @foreach (var c in Model.Consultants)
+                    {
+                        <tr>
+                            <td><b>@c.Name</b></td>
+                            <td>@c.Degrees</td>
+                            <td class="tabular">@(c.Bmdc ?? "—")</td>
+                            <td class="text-muted">@c.Departments</td>
+                            <td><span class="pill @(c.Active ? "good" : "")">@(c.Active ? "Active" : "Inactive")</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="stack">
+        <form method="post" asp-page-handler="Doctor" class="card">
+            <div class="card-head">Add a doctor</div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+                <label class="field">
+                    <span class="field-label">Name <span class="req">*</span></span>
+                    <input class="input" asp-for="Name" placeholder="Dr. …" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Chamber / room</span>
+                    <input class="input" asp-for="Room" placeholder="Room 204 — Medicine" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Daily serial capacity</span>
+                    <input class="input input-num" asp-for="MaxSerials" inputmode="numeric" data-advance />
+                </label>
+                <button type="submit" class="btn btn-primary btn-block">Add doctor</button>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="Referrer" class="card">
+            <div class="card-head">Add a referrer</div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+                <label class="field">
+                    <span class="field-label">Code <span class="req">*</span></span>
+                    <input class="input" name="Code" placeholder="RD-044" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Name <span class="req">*</span></span>
+                    <input class="input" name="Name" placeholder="Dr. … / pharmacy name" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Type</span>
+                    <select class="select" asp-for="Kind">
+                        <option value="doctor">Referring doctor</option>
+                        <option value="agent">Agent / pharmacy</option>
+                        <option value="corporate">Corporate</option>
+                        <option value="self">Self / walk-in</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Area</span>
+                    <input class="input" asp-for="Area" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Phone</span>
+                    <input class="input" asp-for="Phone" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Commission %</span>
+                    <input class="input input-num" asp-for="Commission" inputmode="numeric" data-advance />
+                    <span class="help-text">Recorded now; payouts arrive with the referral module.</span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-block">Add referrer</button>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="Consultant" class="card">
+            <div class="card-head">Add a reporting consultant</div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+                <label class="field">
+                    <span class="field-label">Name <span class="req">*</span></span>
+                    <input class="input" name="Name" placeholder="Dr. …" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Qualifications <span class="req">*</span></span>
+                    <input class="input" asp-for="Degrees" placeholder="MBBS, MD (Pathology)" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">BMDC registration</span>
+                    <input class="input" asp-for="Bmdc" placeholder="A-38112" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Signs for departments</span>
+                    <input class="input" asp-for="Departments" placeholder="Hematology, Biochemistry" data-advance />
+                    <span class="help-text">Comma separated. Leave blank to allow all departments.</span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-block">Add consultant</button>
+            </div>
+        </form>
+    </div>
+</div>

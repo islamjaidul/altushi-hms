@@ -145,6 +145,28 @@ public static class DevSeed
         }
 
         var adm = sp.GetRequiredService<AdmDbContext>();
+
+        // §5 M8 [M] referrer capture, and 5A-R1 reporting consultants (07 §1 cast).
+        if (!await adm.Referrers.AnyAsync())
+        {
+            adm.Referrers.AddRange(
+                new Referrer { Code = "SELF", Name = "Self / walk-in", Kind = "self", CommissionPercent = 0 },
+                new Referrer { Code = "RD-041", Name = "Dr. S. Chowdhury", Kind = "doctor", Area = "Zindabazar", Phone = "01711-000041", CommissionPercent = 15 },
+                new Referrer { Code = "RD-042", Name = "Popular Pharmacy", Kind = "agent", Area = "Amberkhana", Phone = "01711-000042", CommissionPercent = 10 },
+                new Referrer { Code = "RD-043", Name = "Dr. M. Ali", Kind = "doctor", Area = "Subid Bazar", Phone = "01711-000043", CommissionPercent = 15 },
+                new Referrer { Code = "CORP-01", Name = "Rose Garments Ltd.", Kind = "corporate", Area = "Sylhet Sadar", CommissionPercent = 0 });
+            await adm.SaveChangesAsync();
+        }
+
+        if (!await adm.ReportingConsultants.AnyAsync())
+        {
+            adm.ReportingConsultants.AddRange(
+                new ReportingConsultant { Name = "Dr. Farhana Rahman", Degrees = "MBBS, MD (Pathology)", BmdcNo = "A-38112", Departments = ["Hematology", "Biochemistry", "Pathology", "Immunology"] },
+                new ReportingConsultant { Name = "Dr. N. Chowdhury", Degrees = "MBBS, MD (Radiology)", BmdcNo = "A-45120", Departments = ["Imaging"] },
+                new ReportingConsultant { Name = "Dr. A. Karim", Degrees = "MBBS, D-Card", BmdcNo = "A-51907", Departments = ["Cardiology"] });
+            await adm.SaveChangesAsync();
+        }
+
         if (!await adm.Services.AnyAsync())
         {
             var from = new DateOnly(2026, 1, 1);

@@ -39,6 +39,7 @@ public static class ModuleNav
         new("Admin", "Users & Roles", "/admin/users", "admin.users.manage", "manage_accounts", "Administration"),
         new("Admin", "Price List & Catalog", "/admin/masters", "admin.masters.manage", "inventory_2", "Administration"),
         new("Admin", "Bulk Import", "/admin/import", "admin.masters.manage", "download", "Administration"),
+        new("Admin", "Doctors & Referrers", "/admin/people", "admin.masters.manage", "group", "Administration"),
         new("Admin", "Audit Viewer", "/admin/audit", "admin.audit.read", "history", "Administration"),
     ];
 }

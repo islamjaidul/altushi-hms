@@ -28,18 +28,22 @@ public class OrderModel(
     [BindProperty] public long DiscountFlat { get; set; }
     [BindProperty] public long PaidNow { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
+    /// <summary>§5 M8 [M]: referrer captured on every order — a master row, never free text.</summary>
+    [BindProperty] public long? ReferrerId { get; set; }
 
     public OpenSession? Session { get; private set; }
     public IReadOnlyList<TestItem> Catalog { get; private set; } = [];
     public IReadOnlyList<TestItem> Cart { get; private set; } = [];
     public IReadOnlyList<PatientPick> Patients { get; private set; } = [];
     public string? PatientName { get; private set; }
+    public IReadOnlyList<ReferrerPick> Referrers { get; private set; } = [];
 
     public long Gross => Cart.Sum(c => c.Price);
     public int SlowestTat => Cart.Count == 0 ? 0 : Cart.Max(c => c.TatMinutes);
     public DateTimeOffset PromisedAt => clock.GetUtcNow().AddMinutes(SlowestTat);
 
     public sealed record PatientPick(long Id, string Label);
+    public sealed record ReferrerPick(long Id, string Label);
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -87,6 +91,13 @@ public class OrderModel(
                 .OrderByDescending(p => p.Id).Take(60)
                 .Select(p => new PatientPick(p.Id, p.FullName + " — " + p.Uhid))
                 .ToListAsync();
+
+            Referrers = await s.Adm.Referrers.AsNoTracking()
+                .Where(r => r.Active).OrderBy(r => r.Kind == "self" ? 0 : 1).ThenBy(r => r.Name)
+                .Select(r => new ReferrerPick(r.Id, r.Name + " (" + r.Code + ")"))
+                .ToListAsync();
+            ReferrerId ??= (await s.Adm.Referrers.AsNoTracking()
+                .Where(r => r.Code == "SELF").Select(r => (long?)r.Id).FirstOrDefaultAsync());
 
             if (PatientId is { } pid and > 0)
                 PatientName = await s.Reg.Patients.AsNoTracking()
@@ -138,7 +149,7 @@ public class OrderModel(
                     s.Diag, BranchId, PatientId.Value, encounter.Id,
                     cart.Select(c => new OrderedTest(c.Id, c.Name, c.TatMinutes, c.Price, c.RateVersionId))
                         .ToList(),
-                    orderingDoctorId: null, referrerId: null, ActorId);
+                    orderingDoctorId: null, referrerId: ReferrerId, ActorId);
 
                 var invoice = await billing.CreateInvoiceAsync(
                     s.Bill, s.Kernel, BranchId, encounter.Id, Session.Id, PatientId.Value,
