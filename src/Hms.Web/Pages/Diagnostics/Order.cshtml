@@ -31,15 +31,14 @@
     <div class="stack">
         <div class="card card-body">
             <div class="field-grid cols-3">
-                <label class="field">
+                <label class="field typeahead-host">
                     <span class="field-label">Patient <span class="req">*</span></span>
-                    <select class="select" asp-for="PatientId" onchange="this.form.submit()">
-                        <option value="">— Select patient —</option>
-                        @foreach (var p in Model.Patients)
-                        {
-                            <option value="@p.Id">@p.Label</option>
-                        }
-                    </select>
+                    @* §7 U5: 2–3 characters of name/UHID/phone, ranked — never a scroll-list (ADR-0020). *@
+                    <input class="input" data-typeahead="/api/typeahead/patients"
+                           data-target="#PatientId" data-submit autocomplete="off"
+                           value="@Model.PatientName"
+                           placeholder="Type name, UHID or phone…" />
+                    <input type="hidden" id="PatientId" name="PatientId" value="@Model.PatientId" />
                 </label>
                 <label class="field">
                     <span class="field-label">Referred by</span>

@@ -43,6 +43,37 @@ public class CrossContextQueryTests
             string.Join("\n  ", offenders));
     }
 
+    /// <summary>
+    /// Spec 0015 (review debt #4): the query-syntax check above misses method-chain joins —
+    /// <c>s.Bill.X.Join(s.Reg.Y, …)</c> compiles and 500s at runtime exactly the same way.
+    /// Heuristic: any single statement that both calls Join/GroupJoin and names two different
+    /// TxScope contexts. In-memory joins over already-materialised lists don't name a second
+    /// scope inside the statement, so they pass.
+    /// </summary>
+    [Fact]
+    public void No_method_chain_join_mixes_two_TxScope_contexts()
+    {
+        var root = FindRepoRoot();
+        var web = Path.Combine(root, "src", "Hms.Web");
+        var offenders = new List<string>();
+
+        foreach (var file in Directory.EnumerateFiles(web, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains("/obj/") || file.Contains("/bin/")) continue;
+            foreach (var statement in File.ReadAllText(file).Split(';'))
+            {
+                if (!Regex.IsMatch(statement, @"\.(Join|GroupJoin)\s*\(")) continue;
+                var used = Scopes.Where(sc => statement.Contains(sc + ".", StringComparison.Ordinal)).ToList();
+                if (used.Count > 1)
+                    offenders.Add($"{Path.GetFileName(file)}: method-chain join over {string.Join(" + ", used)}");
+            }
+        }
+
+        Assert.True(offenders.Count == 0,
+            "A method-chain Join mixes DbContexts, which throws at runtime:\n  " +
+            string.Join("\n  ", offenders));
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

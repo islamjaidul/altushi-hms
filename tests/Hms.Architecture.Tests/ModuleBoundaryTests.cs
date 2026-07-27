@@ -11,7 +11,8 @@ namespace Hms.Architecture.Tests;
 public class ModuleBoundaryTests
 {
     private static readonly string[] Modules =
-        ["Registration", "Appointments", "Billing", "Diagnostics", "Lis", "Dashboard", "Admin", "Notifications"];
+        ["Registration", "Appointments", "Billing", "Diagnostics", "Lis", "Dashboard", "Admin",
+         "Notifications", "Pharmacy", "Ipd"];
 
     private static Assembly Load(string name) => Assembly.Load(name);
 
@@ -46,7 +47,11 @@ public class ModuleBoundaryTests
     [MemberData(nameof(ModuleNames))]
     public void Contracts_assemblies_reference_no_implementations(string module)
     {
-        var assembly = Load($"Hms.{module}.Contracts");
+        // A module publishes a Contracts assembly only when another module consumes it
+        // (Ipd's consumers live in the composition root, so it has none yet — ADR-0003).
+        Assembly assembly;
+        try { assembly = Load($"Hms.{module}.Contracts"); }
+        catch (FileNotFoundException) { return; }
         var offenders = assembly.GetReferencedAssemblies()
             .Where(r => r.Name is not null &&
                         r.Name.StartsWith("Hms.", StringComparison.Ordinal) &&

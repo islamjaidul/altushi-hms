@@ -34,7 +34,8 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     [BindProperty] public long TargetId { get; set; }
     [BindProperty] public string TargetKind { get; set; } = "test";
     [BindProperty] public long NewPrice { get; set; }
-    [BindProperty] public DateOnly EffectiveFrom { get; set; }
+    /// <summary>Free text, parsed by the kernel date contract (ADR-0020) — never a native date input.</summary>
+    [BindProperty] public string? EffectiveFrom { get; set; }
 
     public DateOnly Today { get; private set; }
     public IReadOnlyList<CatalogRow> Services { get; private set; } = [];
@@ -48,7 +49,6 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     private async Task LoadAsync(long? history = null, string? historyKind = null)
     {
         Today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
-        if (EffectiveFrom == default) EffectiveFrom = Today.AddDays(1);
         var today = Today;
 
         await tx.RunAsync(async s =>
@@ -182,7 +182,19 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     {
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
         if (NewPrice < 0) { await LoadAsync(); Fail("Price cannot be negative."); return Page(); }
-        if (EffectiveFrom < today)
+
+        // Blank = tomorrow (the pre-filled default); anything else must parse (§7 U13).
+        DateOnly effectiveFrom;
+        if (string.IsNullOrWhiteSpace(EffectiveFrom)) effectiveFrom = today.AddDays(1);
+        else if (Hms.Kernel.Time.FlexibleDate.TryParse(EffectiveFrom, out var parsed)) effectiveFrom = parsed;
+        else
+        {
+            await LoadAsync();
+            Fail("Couldn't read that date — try 12/03/2026, 2026-03-12 or 12 Mar 2026.");
+            return Page();
+        }
+
+        if (effectiveFrom < today)
         {
             await LoadAsync();
             Fail("A price cannot start in the past — that would change invoices already issued. " +
@@ -200,19 +212,19 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
 
                 if (open is not null)
                 {
-                    if (open.ValidFrom >= EffectiveFrom)
+                    if (open.ValidFrom >= effectiveFrom)
                         throw new InvalidOperationException(
                             $"The current price starts on {Ui.DateLong(open.ValidFrom)} — " +
                             "the new one must start after that.");
                     if (open.Price == NewPrice)
                         throw new InvalidOperationException("That is already the price — nothing to change.");
-                    open.ValidTo = EffectiveFrom;
+                    open.ValidTo = effectiveFrom;
                 }
 
                 s.Adm.RateVersions.Add(new RateVersion
                 {
                     BranchId = BranchId, CatalogKind = TargetKind, CatalogId = TargetId,
-                    Price = NewPrice, ValidFrom = EffectiveFrom, AuthorId = ActorId,
+                    Price = NewPrice, ValidFrom = effectiveFrom, AuthorId = ActorId,
                 });
 
                 // An item priced for the first time stops being provisional (edge 11).
@@ -235,7 +247,7 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
                     Entity = "adm.rate_version", EntityId = TargetId,
                     Before = open is null ? null
                         : System.Text.Json.JsonSerializer.Serialize(new { open.Price, open.ValidFrom }),
-                    After = System.Text.Json.JsonSerializer.Serialize(new { NewPrice, EffectiveFrom }),
+                    After = System.Text.Json.JsonSerializer.Serialize(new { NewPrice, EffectiveFrom = effectiveFrom }),
                     CorrelationId = Guid.NewGuid(), Tier = 2,
                 });
                 await s.Kernel.SaveChangesAsync();
@@ -247,7 +259,7 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
             await LoadAsync(); Fail(e.Message); return Page();
         }
 
-        Toast($"New price {Ui.Money(NewPrice)} effective {Ui.DateLong(EffectiveFrom)}", "payments");
+        Toast($"New price {Ui.Money(NewPrice)} effective {Ui.DateLong(effectiveFrom)}", "payments");
         return Redirect($"/admin/masters?history={TargetId}&historyKind={TargetKind}");
     }
 }

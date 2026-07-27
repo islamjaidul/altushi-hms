@@ -36,15 +36,35 @@ public class DuesModel(HmsTx tx, BillingService billing, Hms.Lis.LisService lis,
         {
             var session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
 
-            // reg.* and bill.* are separate contexts on one connection (ADR-0003): the module
-            // boundary is real, so the join happens here rather than in SQL.
-            var open = await (
+            // The search contract (ADR-0020): the predicate goes into the SQL query, so an old
+            // due is as findable as a new one — never fetch-then-filter. reg.* and bill.* are
+            // separate contexts on one connection (ADR-0003), so the patient predicate resolves
+            // to ids in reg first, and the display join happens in memory.
+            var term = Q?.Trim();
+            List<long>? matchedPatients = null;
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                var like = $"%{term}%";
+                matchedPatients = await s.Reg.Patients.AsNoTracking()
+                    .Where(p => EF.Functions.ILike(p.FullName, like) ||
+                                EF.Functions.ILike(p.Uhid, like) ||
+                                (p.Phone != null && EF.Functions.ILike(p.Phone, like)))
+                    .Select(p => p.Id).Take(500).ToListAsync();
+            }
+
+            var openQuery =
                 from d in s.Bill.Dues
                 join i in s.Bill.Invoices on d.InvoiceId equals i.Id
                 where d.Balance > 0
-                orderby i.CreatedAt descending
-                select new { i.Id, i.InvoiceNo, i.PatientId, i.Net, d.Balance, i.CreatedAt })
-                .Take(300).ToListAsync();
+                select new { i.Id, i.InvoiceNo, i.PatientId, i.Net, d.Balance, i.CreatedAt };
+            if (matchedPatients is not null)
+            {
+                var like = $"%{term}%";
+                openQuery = openQuery.Where(x =>
+                    EF.Functions.ILike(x.InvoiceNo, like) || matchedPatients.Contains(x.PatientId));
+            }
+            var open = await openQuery
+                .OrderByDescending(x => x.CreatedAt).Take(100).ToListAsync();
 
             var patientIds = open.Select(o => o.PatientId).Distinct().ToList();
             var patients = await s.Reg.Patients.AsNoTracking()
@@ -58,11 +78,6 @@ public class DuesModel(HmsTx tx, BillingService billing, Hms.Lis.LisService lis,
                     return new DueRow(o.Id, o.InvoiceNo, p?.FullName ?? "(unknown)", p?.Uhid ?? "—",
                         p?.Phone, o.Net, o.Balance, o.CreatedAt);
                 })
-                .Where(r => string.IsNullOrWhiteSpace(Q)
-                            || r.PatientName.Contains(Q!.Trim(), StringComparison.OrdinalIgnoreCase)
-                            || r.Uhid.Contains(Q.Trim(), StringComparison.OrdinalIgnoreCase)
-                            || r.InvoiceNo.Contains(Q.Trim(), StringComparison.OrdinalIgnoreCase))
-                .Take(100)
                 .ToList();
             var total = await s.Bill.Dues.Where(d => d.Balance > 0).SumAsync(d => (long?)d.Balance) ?? 0;
 

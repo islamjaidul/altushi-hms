@@ -1,0 +1,109 @@
+@page "/ipd/board"
+@using Hms.Ipd.Data
+@model Hms.Web.Pages.Ipd.BoardModel
+@{
+    ViewData["Title"] = "Ward Board";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        @foreach (var ward in Model.Wards)
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    @ward.Name
+                    <span class="pill">@ward.Class.ToUpperInvariant()</span>
+                    <span class="spacer"></span>
+                    <span class="card-hint">@ward.Beds.Count(b => b.State == BedState.Free) free of @ward.Beds.Count</span>
+                </div>
+                <div class="card-body" style="display:flex;flex-wrap:wrap;gap:10px;padding-top:0">
+                    @foreach (var bed in ward.Beds)
+                    {
+                        <div class="card" style="min-width:170px;padding:10px" data-bed="@bed.Code">
+                            <div class="row" style="gap:8px">
+                                <b>@bed.Code</b>
+                                <span class="pill @(bed.State switch {
+                                    BedState.Free => "good", BedState.Occupied => "bad",
+                                    BedState.Reserved => "warn", BedState.Cleaning => "warn", _ => "" })">
+                                    @Ui.Humanize(bed.State)
+                                </span>
+                            </div>
+                            @if (bed.State == BedState.Occupied && bed.AdmissionId is not null)
+                            {
+                                <div style="margin-top:6px">
+                                    <a href="/ipd/folio/@bed.AdmissionId">@bed.PatientName</a>
+                                    <div class="card-hint">@bed.AdmissionNo</div>
+                                </div>
+                            }
+                            else if (bed.State == BedState.Free && Model.CanManage)
+                            {
+                                <div style="margin-top:6px">
+                                    <a class="btn-tint" href="/ipd/admit?BedId=@bed.Id">Admit here</a>
+                                </div>
+                            }
+                            else if (bed.State == BedState.Cleaning && Model.CanManage)
+                            {
+                                <form method="post" asp-page-handler="CleaningDone" style="margin-top:6px">
+                                    <input type="hidden" name="BedId" value="@bed.Id" />
+                                    <button type="submit" class="btn-tint">Cleaning done</button>
+                                </form>
+                            }
+                            else if (bed.State == BedState.OutOfService)
+                            {
+                                <div class="card-hint" style="margin-top:6px">@bed.StateReason</div>
+                                @if (Model.CanManage)
+                                {
+                                    <form method="post" asp-page-handler="ReturnToService" style="margin-top:6px">
+                                        <input type="hidden" name="BedId" value="@bed.Id" />
+                                        <button type="submit" class="btn-tint">Return to service</button>
+                                    </form>
+                                }
+                            }
+                            @if (bed.State == BedState.Free && Model.CanManage)
+                            {
+                                <form method="post" asp-page-handler="OutOfService" class="row" style="gap:6px;margin-top:6px">
+                                    <input type="hidden" name="BedId" value="@bed.Id" />
+                                    <label class="sr-only" for="oos-@bed.Id">Reason</label>
+                                    <input id="oos-@bed.Id" class="input" name="Reason" placeholder="out of service…" style="width:110px" />
+                                    <button type="submit" class="btn-tint" title="Mark out of service">
+                                        <span class="icon icon-sm" aria-hidden="true">close</span>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-head">Occupancy tonight (US6.4)</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Class</th><th>Beds</th><th>Occupied</th><th>Reserved</th><th>Free</th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.Occupancy)
+                {
+                    <tr>
+                        <td>@row.Class.ToUpperInvariant()</td>
+                        <td class="tabular">@row.Total</td>
+                        <td class="tabular">@row.Occupied</td>
+                        <td class="tabular">@row.Reserved</td>
+                        <td class="tabular"><b>@row.Free</b></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

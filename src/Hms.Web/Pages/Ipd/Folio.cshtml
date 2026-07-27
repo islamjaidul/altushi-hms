@@ -1,0 +1,361 @@
+@page "/ipd/folio/{admissionId:long}"
+@using Hms.Ipd.Data
+@model Hms.Web.Pages.Ipd.FolioModel
+@{
+    ViewData["Title"] = $"Folio — {Model.PatientName}";
+    ViewData["Crumb"] = "Indoor (IPD)";
+    var admission = Model.Admission!;
+    var folio = Model.Folio;
+    var balance = Model.UnbilledTotal - Model.AdvanceHeld;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (admission.State == AdmissionState.Blocked)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">block</span>
+        <span><b>Blocked for dues (R4).</b> No new charges or requisitions until released
+            (see Admissions → Block list).</span>
+    </div>
+}
+
+<div class="card" style="margin-bottom:12px">
+    <div class="card-body row" style="gap:18px;flex-wrap:wrap">
+        <div>
+            <b>@Model.PatientName</b>
+            <div class="card-hint">@Model.PatientUhid · @admission.AdmissionNo · from @Ui.Local(admission.AdmittedAt).ToString("dd MMM yyyy")</div>
+        </div>
+        <span class="pill @(admission.State switch {
+            AdmissionState.Blocked => "bad", AdmissionState.Admitted => "good", _ => "warn" })">
+            @Ui.Humanize(admission.State)
+        </span>
+        @if (folio is not null)
+        {
+            <span class="pill @(folio.State switch {
+                FolioState.Open => "good", FolioState.Locked => "", _ => "warn" })">
+                folio @Ui.Humanize(folio.State)
+            </span>
+        }
+        <span class="spacer"></span>
+        <div class="row" style="gap:18px">
+            <div><span class="card-hint">Charges (unbilled)</span><div class="tabular"><b>@Ui.Money(Model.UnbilledTotal)</b></div></div>
+            <div><span class="card-hint">Advance held</span><div class="tabular">@Ui.Money(Model.AdvanceHeld)</div></div>
+            <div><span class="card-hint">@(balance >= 0 ? "Balance payable" : "Advance excess")</span>
+                <div class="tabular"><b>@Ui.Money(Math.Abs(balance))</b></div></div>
+        </div>
+        @if (admission.State is AdmissionState.Admitted or AdmissionState.DischargeInitiated
+             or AdmissionState.ClinicallyCleared or AdmissionState.FinanciallySettled)
+        {
+            <a class="btn btn-primary" href="/ipd/discharge/@admission.Id">Discharge…</a>
+        }
+    </div>
+</div>
+
+@if (Model.SettledInvoiceNo is not null && folio is not null)
+{
+    <div class="alert">
+        <span class="icon icon-sm" aria-hidden="true">receipt_long</span>
+        <span>Settled on invoice <b>@Model.SettledInvoiceNo</b> (advance applied
+            @Ui.Money(folio.AdvanceApplied), due @Ui.Money(Model.SettledDue)) —
+            <a href="/billing/invoice/@folio.SettlementInvoiceId">collect / print</a>.</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Folio lines
+                <span class="spacer"></span>
+                <span class="card-hint">every line carries its poster (US6.1/US6.2)</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>When</th><th>Description</th><th>Source</th><th>Qty</th><th>Amount</th><th>Posted by</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td class="tabular">@Ui.Local(line.At).ToString("dd MMM HH:mm")</td>
+                            <td>@line.Description</td>
+                            <td><span class="pill">@line.Source</span></td>
+                            <td class="tabular">@line.Qty</td>
+                            <td class="tabular">@Ui.Money(line.Amount)</td>
+                            <td>@line.PostedBy</td>
+                            <td>@if (line.Billed) { <span class="pill good">billed</span> }</td>
+                        </tr>
+                    }
+                    @if (Model.Lines.Count == 0)
+                    {
+                        <tr><td colspan="7"><div class="empty-state">
+                            <span class="icon" aria-hidden="true">edit_note</span>
+                            Nothing posted yet.
+                        </div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">Medicine indents (5A-9)</div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>#</th><th>Items</th><th>Raised</th><th>State</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var indent in Model.Indents)
+                    {
+                        <tr>
+                            <td class="tabular">@indent.Id</td>
+                            <td>
+                                @foreach (var (pid, product, requested, issued, returned) in indent.Items)
+                                {
+                                    <div>@product · @(issued > 0 ? $"{issued} issued" : $"{requested} requested")@(returned > 0 ? $", {returned} returned" : "")</div>
+                                }
+                            </td>
+                            <td class="tabular">@Ui.Local(indent.RequestedAt).ToString("dd MMM HH:mm")</td>
+                            <td><span class="pill @(indent.State switch {
+                                IndentState.Issued => "good", IndentState.Cancelled => "bad", _ => "warn" })">@Ui.Humanize(indent.State)</span></td>
+                            <td>
+                                @if (indent.State == IndentState.Issued && (Model.CanPost || Model.CanSettle))
+                                {
+                                    <form method="post" asp-page-handler="ReturnItem" class="row" style="gap:6px">
+                                        <input type="hidden" name="IndentId" value="@indent.Id" />
+                                        <label class="sr-only" for="rp-@indent.Id">Product</label>
+                                        <select id="rp-@indent.Id" class="select" name="ReturnProductId" style="width:150px">
+                                            @foreach (var (pid, product, _, issued, returned) in indent.Items.Where(x => x.Issued > x.Returned))
+                                            {
+                                                <option value="@pid">@product</option>
+                                            }
+                                        </select>
+                                        <label class="sr-only" for="rq-@indent.Id">Qty</label>
+                                        <input id="rq-@indent.Id" class="input input-num" name="ReturnQty" inputmode="numeric" value="1" style="width:64px" />
+                                        <button type="submit" class="btn-tint">Return</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Indents.Count == 0)
+                    {
+                        <tr><td colspan="5"><div class="empty-state">
+                            <span class="icon" aria-hidden="true">receipt_long</span>
+                            No indents yet.
+                        </div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">Bed history (US6.3)</div>
+            <div class="card-body stack" style="gap:6px;padding-top:0">
+                @foreach (var stay in Model.Stays)
+                {
+                    <div class="row" style="gap:8px">
+                        <span class="pill @(stay.To is null ? "good" : "")">@stay.Bed</span>
+                        <span class="card-hint tabular">
+                            @Ui.Local(stay.From).ToString("dd MMM HH:mm") →
+                            @(stay.To is null ? "now" : Ui.Local(stay.To.Value).ToString("dd MMM HH:mm"))
+                        </span>
+                    </div>
+                }
+                @if (Model.CanManage && admission.State is AdmissionState.Admitted or AdmissionState.DischargeInitiated)
+                {
+                    <form method="post" asp-page-handler="Transfer" class="row" style="gap:6px">
+                        <label class="sr-only" for="ToBedId">Target bed</label>
+                        <select id="ToBedId" class="select" name="ToBedId">
+                            <option value="0">transfer to…</option>
+                            @foreach (var b in Model.FreeBeds)
+                            {
+                                <option value="@b.Id">@b.Code — @b.Ward</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn-tint">Transfer</button>
+                    </form>
+                }
+                @if (Model.CanManage && admission.State is AdmissionState.Admitted or AdmissionState.Blocked
+                     or AdmissionState.DischargeInitiated or AdmissionState.ClinicallyCleared)
+                {
+                    <div class="row" style="gap:6px">
+                        <form method="post" asp-page-handler="Death">
+                            <button type="submit" class="btn-tint">Record death</button>
+                        </form>
+                        <form method="post" asp-page-handler="Absconded">
+                            <button type="submit" class="btn-tint">Absconded</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="stack">
+        @if ((Model.CanPost || Model.CanSettle) && folio is not null && folio.State != FolioState.SettlementDraft)
+        {
+            @if (folio.State == FolioState.Locked)
+            {
+                <div class="card">
+                    <div class="card-head">Post after lock ⚿</div>
+                    <div class="card-body stack" style="gap:8px;padding-top:0">
+                        @if (Model.LatePostApprovalId is not null)
+                        {
+                            <div class="alert">
+                                <span class="icon icon-sm" aria-hidden="true">fact_check</span>
+                                <span>Late-post approval granted — the forms below will use it.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="RaiseLatePost" class="stack" style="gap:8px">
+                                <label class="field">
+                                    <span class="field-label">Reason for posting after settlement</span>
+                                    <input class="input" name="Reason" placeholder="e.g. OT charge arrived late" />
+                                </label>
+                                <button type="submit" class="btn">Request supervisor approval</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (folio.State == FolioState.Open || (folio.State == FolioState.Locked && Model.LatePostApprovalId is not null))
+            {
+                <form method="post" asp-page-handler="Service" class="card">
+                    <div class="card-head">Post a service (US6.1)</div>
+                    <div class="card-body stack" style="gap:10px;padding-top:0">
+                        <label class="field">
+                            <span class="field-label">Service — price comes from the rate plan</span>
+                            <select class="select" name="ServiceId">
+                                <option value="0">—</option>
+                                @foreach (var svc in Model.Services)
+                                {
+                                    <option value="@svc.Id">@svc.Name — @Ui.Money(svc.Price)</option>
+                                }
+                            </select>
+                        </label>
+                        <div class="field-grid cols-2">
+                            <label class="field">
+                                <span class="field-label">Qty</span>
+                                <input class="input input-num" name="Qty" inputmode="numeric" value="1" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Doctor (visit entry → M17)</span>
+                                <select class="select" name="VisitDoctorId">
+                                    <option value="">—</option>
+                                    @foreach (var d in Model.Doctors)
+                                    {
+                                        <option value="@d.Id">@d.Name</option>
+                                    }
+                                </select>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Post to folio</button>
+                    </div>
+                </form>
+            }
+        }
+
+        @if (Model.CanSettle && folio is not null && folio.State != FolioState.Locked)
+        {
+            <form method="post" asp-page-handler="Advance" class="card">
+                <div class="card-head">Advance / deposit</div>
+                <div class="card-body stack" style="gap:10px;padding-top:0">
+                    @if (Model.Session is null)
+                    {
+                        <div class="card-hint">Open your counter session to take money.</div>
+                        <a class="btn" href="/billing/session">Open counter…</a>
+                    }
+                    else
+                    {
+                        <div class="field-grid cols-2">
+                            <label class="field">
+                                <span class="field-label">Amount (৳)</span>
+                                <input class="input input-num" name="AdvanceAmount" inputmode="numeric" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Tender</span>
+                                <select class="select" name="AdvanceTender">
+                                    <option value="cash">Cash</option>
+                                    <option value="card">Card</option>
+                                    <option value="bkash">bKash</option>
+                                    <option value="nagad">Nagad</option>
+                                </select>
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Take advance</button>
+                    }
+                </div>
+            </form>
+
+            @foreach (var adv in Model.Advances)
+            {
+                <div class="row" style="gap:8px;padding:0 4px">
+                    <span class="tabular card-hint">@adv.ReceiptNo</span>
+                    <span class="pill">@adv.Tender</span>
+                    <span class="spacer"></span>
+                    <span class="tabular">@Ui.Money(adv.Amount)</span>
+                </div>
+            }
+        }
+
+        @if (Model.CanPost && folio is not null && folio.State == FolioState.Open)
+        {
+            <form method="post" asp-page-handler="Indent" class="card">
+                <div class="card-head">Medicine indent (ward requisition)</div>
+                <div class="card-body stack" style="gap:8px;padding-top:0">
+                    @for (var i = 0; i < 3; i++)
+                    {
+                        <div class="field-grid cols-2">
+                            <label class="field">
+                                <span class="field-label">@(i == 0 ? "Medicine" : $"Line {i + 1}")</span>
+                                <select class="select" name="ProductIds">
+                                    <option value="0">—</option>
+                                    @foreach (var (id, name) in Model.Products)
+                                    {
+                                        <option value="@id">@name</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Qty</span>
+                                <input class="input input-num" name="ItemQtys" inputmode="numeric" value="0" />
+                            </label>
+                        </div>
+                    }
+                    <label class="field">
+                        <span class="field-label">Note</span>
+                        <input class="input" name="IndentNote" placeholder="optional" />
+                    </label>
+                    <button type="submit" class="btn btn-primary">Raise indent</button>
+                </div>
+            </form>
+
+            <form method="post" asp-page-handler="OrderTests" class="card">
+                <div class="card-head">Investigation indent (posts to folio)</div>
+                <div class="card-body stack" style="gap:8px;padding-top:0">
+                    <div class="stack" style="gap:6px;max-height:220px;overflow-y:auto">
+                        @foreach (var (id, name, price) in Model.Tests)
+                        {
+                            <label class="row" style="gap:8px">
+                                <input type="checkbox" name="TestIds" value="@id" />
+                                <span>@name</span>
+                                <span class="spacer"></span>
+                                <span class="tabular card-hint">@Ui.Money(price)</span>
+                            </label>
+                        }
+                    </div>
+                    <button type="submit" class="btn btn-primary">Order — samples raise now</button>
+                </div>
+            </form>
+        }
+    </div>
+</div>

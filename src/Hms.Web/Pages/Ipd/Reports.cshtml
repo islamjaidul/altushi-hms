@@ -1,0 +1,94 @@
+@page "/ipd/reports"
+@model Hms.Web.Pages.Ipd.ReportsModel
+@{
+    ViewData["Title"] = "IPD Reports";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+<form method="get" class="row" style="gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <label class="field">
+        <span class="field-label">From</span>
+        <input class="input" name="from" value="@Model.From" hms-date />
+    </label>
+    <label class="field">
+        <span class="field-label">To</span>
+        <input class="input" name="to" value="@Model.To" hms-date />
+    </label>
+    <button type="submit" class="btn btn-primary" style="align-self:flex-end">Show</button>
+    <span class="card-hint" style="align-self:flex-end">
+        @Model.FromDate.ToString("dd MMM yyyy") – @Model.ToDate.ToString("dd MMM yyyy") ·
+        in-house now: <b>@Model.InHouseCount</b>
+    </span>
+</form>
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">Admissions (@Model.Admitted.Count)</div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Admission</th><th>Patient</th><th>Source</th><th>When</th></tr></thead>
+                    <tbody>
+                    @foreach (var row in Model.Admitted)
+                    {
+                        <tr>
+                            <td class="tabular">@row.AdmissionNo</td>
+                            <td>@row.Patient</td>
+                            <td><span class="pill">@row.What</span></td>
+                            <td class="tabular">@Ui.Local(row.At).ToString("dd MMM HH:mm")</td>
+                        </tr>
+                    }
+                    @if (Model.Admitted.Count == 0)
+                    {
+                        <tr><td colspan="4"><div class="empty-state">No admissions in the period.</div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">Discharges / exits (@Model.Left.Count)</div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Admission</th><th>Patient</th><th>How</th><th>When</th></tr></thead>
+                    <tbody>
+                    @foreach (var row in Model.Left)
+                    {
+                        <tr>
+                            <td class="tabular">@row.AdmissionNo</td>
+                            <td>@row.Patient</td>
+                            <td><span class="pill">@row.What</span></td>
+                            <td class="tabular">@Ui.Local(row.At).ToString("dd MMM HH:mm")</td>
+                        </tr>
+                    }
+                    @if (Model.Left.Count == 0)
+                    {
+                        <tr><td colspan="4"><div class="empty-state">No discharges in the period.</div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">Department census (now)</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Ward</th><th>Class</th><th>Beds</th><th>Occupied</th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.Census)
+                {
+                    <tr>
+                        <td>@row.Ward</td>
+                        <td>@row.Class.ToUpperInvariant()</td>
+                        <td class="tabular">@row.Beds</td>
+                        <td class="tabular"><b>@row.Occupied</b></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

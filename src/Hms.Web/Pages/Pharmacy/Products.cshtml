@@ -1,0 +1,133 @@
+@page "/pharmacy/products"
+@model Hms.Web.Pages.Pharmacy.ProductsModel
+@{
+    ViewData["Title"] = "Products & Companies";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Products
+            <span class="spacer"></span>
+            <form method="get" class="row" style="gap:6px">
+                <label class="sr-only" for="Q">Search</label>
+                <input id="Q" name="Q" class="input input-sm" style="width:200px" value="@Model.Q"
+                       placeholder="brand or generic…" />
+                <button type="submit" class="btn-tint">Search</button>
+            </form>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr>
+                    <th>Brand</th><th>Generic</th><th>Company</th><th class="num">On hand</th>
+                    <th class="num">Reorder at</th><th>State</th><th></th>
+                </tr></thead>
+                <tbody>
+                @foreach (var p in Model.Rows)
+                {
+                    <tr>
+                        <td><b>@p.Brand</b> @p.Strength @p.Form</td>
+                        <td>@p.Generic</td>
+                        <td>@p.Company</td>
+                        <td class="num @(p.OnHand <= p.ReorderLevel ? "text-warning" : "")">@p.OnHand @p.Unit</td>
+                        <td class="num">@p.ReorderLevel</td>
+                        <td>
+                            @if (p.Active)
+                            {
+                                <span class="pill good">active</span>
+                            }
+                            else
+                            {
+                                <span class="pill">inactive</span>
+                            }
+                        </td>
+                        <td>
+                            <form method="post" asp-page-handler="Toggle">
+                                <input type="hidden" name="ProductId" value="@p.Id" />
+                                <button type="submit" class="btn-tint">@(p.Active ? "Deactivate" : "Reactivate")</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="7"><div class="empty-state">
+                        <span class="icon" aria-hidden="true">science</span>
+                        No products yet — register the first one on the right.
+                    </div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stack">
+        <form method="post" asp-page-handler="Create" class="card">
+            <div class="card-head">Register a product</div>
+            <div class="card-body stack" style="gap:10px;padding-top:0">
+                <label class="field">
+                    <span class="field-label">Manufacturer <span class="req">*</span></span>
+                    <select class="select" asp-for="CompanyId">
+                        <option value="0">— Pick company —</option>
+                        @foreach (var c in Model.Companies)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Brand <span class="req">*</span></span>
+                    <input class="input" asp-for="Brand" placeholder="Napa" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Generic <span class="req">*</span></span>
+                    <input class="input" asp-for="Generic" placeholder="Paracetamol" data-advance />
+                </label>
+                <div class="field-grid cols-2">
+                    <label class="field">
+                        <span class="field-label">Strength</span>
+                        <input class="input" asp-for="Strength" placeholder="500 mg" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Form</span>
+                        <select class="select" asp-for="Form">
+                            <option>tablet</option><option>capsule</option><option>syrup</option>
+                            <option>injection</option><option>drops</option><option>ointment</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="field-grid cols-2">
+                    <label class="field">
+                        <span class="field-label">Unit</span>
+                        <select class="select" asp-for="Unit">
+                            <option>pcs</option><option>strip</option><option>bottle</option><option>vial</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Reorder level</span>
+                        <input class="input input-num" asp-for="ReorderLevel" inputmode="numeric" />
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-primary">Register product</button>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="Company" class="card">
+            <div class="card-head">Add a company</div>
+            <div class="card-body row" style="gap:8px;padding-top:0">
+                <label class="sr-only" for="CompanyName">Company name</label>
+                <input id="CompanyName" class="input" asp-for="CompanyName" placeholder="e.g. ACI Limited" />
+                <button type="submit" class="btn">Add</button>
+            </div>
+        </form>
+    </div>
+</div>

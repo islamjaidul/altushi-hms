@@ -30,16 +30,14 @@ export async function registerPatient(
   return { uhid: m[0] };
 }
 
-/** Finds a patient's numeric id from the /diagnostics/order patient picker by exact full-name
- * prefix match — the picker lists "FullName — UHID". The separator renders as the HTML entity
- * `&#x2014;` (em dash), not a literal "—" character, so match on the name immediately followed
- * by "ALT-" rather than on the literal dash glyph. */
+/** Finds a patient's numeric id through the shared type-ahead endpoint (ADR-0020, §7 U5) —
+ * the same source every patient picker uses since spec 0015. */
 export async function findPatientId(api: APIRequestContext, fullName: string): Promise<string> {
-  const html = await (await api.get("/diagnostics/order")).text();
-  const escaped = fullName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const m = new RegExp(`<option value="(\\d+)">${escaped}[^<]*ALT-`).exec(html);
-  if (!m) throw new Error(`patient "${fullName}" not found in the /diagnostics/order picker`);
-  return m[1];
+  const res = await api.get(`/api/typeahead/patients?q=${encodeURIComponent(fullName)}`);
+  const hits: { value: number; label: string }[] = await res.json();
+  const hit = hits.find((h) => h.label.startsWith(fullName));
+  if (!hit) throw new Error(`patient "${fullName}" not found via /api/typeahead/patients`);
+  return String(hit.value);
 }
 
 /** Orders one test for a patient and pays in full, as whichever user `api` is authenticated as

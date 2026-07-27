@@ -41,7 +41,6 @@ public class OpdModel(
     public IReadOnlyList<CatalogItem> Catalog { get; private set; } = [];
     public IReadOnlyList<CartLine> Cart { get; private set; } = [];
     public IReadOnlyList<UnbilledLine> Unbilled { get; private set; } = [];
-    public IReadOnlyList<PatientPick> Patients { get; private set; } = [];
     public string? PatientName { get; private set; }
     public long ApprovedDiscountId { get; private set; }
     public long ApprovedDiscountAmount { get; private set; }
@@ -50,8 +49,6 @@ public class OpdModel(
     public long CartTotal => Cart.Sum(c => c.Price);
     public long UnbilledTotal => Unbilled.Sum(u => u.Amount);
     public long Gross => CartTotal + UnbilledTotal;
-
-    public sealed record PatientPick(long Id, string Label);
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -98,12 +95,6 @@ public class OpdModel(
             Cart = Items.Where(byId.ContainsKey)
                 .Select(id => new CartLine(id, byId[id].Name, byId[id].Price))
                 .ToList();
-
-            Patients = await s.Reg.Patients.AsNoTracking()
-                .Where(p => p.Active && p.MergedInto == null)
-                .OrderByDescending(p => p.Id).Take(60)
-                .Select(p => new PatientPick(p.Id, p.FullName + " — " + p.Uhid))
-                .ToListAsync();
 
             if (PatientId is { } pid and > 0)
             {
@@ -235,6 +226,9 @@ public class OpdModel(
         {
             var invoiceId = await tx.RunAsync(async s =>
             {
+                // R4 (spec 0017): a due-blocked patient takes no new charges at any counter.
+                await IpdBilling.EnsureNotBlockedAsync(s, PatientId!.Value);
+
                 var encounter = await CounterContext.GetOrCreateEncounterAsync(
                     s.Bill, BranchId, PatientId!.Value, Session!.CounterId, today, Session.EncounterType,
                     ActorId, clock.GetUtcNow());
@@ -263,6 +257,11 @@ public class OpdModel(
             return Redirect($"/billing/invoice/{invoiceId}");
         }
         catch (BillingException e)
+        {
+            Fail(e.Message);
+            return Page();
+        }
+        catch (Hms.Ipd.IpdException e)
         {
             Fail(e.Message);
             return Page();

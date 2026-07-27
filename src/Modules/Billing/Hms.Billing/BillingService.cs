@@ -85,6 +85,171 @@ public sealed class BillingService(
         return charge;
     }
 
+    /// <summary>
+    /// The folio-parented twin of <see cref="PostChargeAsync"/> (M6 seam, spec 0017). Negative
+    /// quantities are reserved for the return path (discharge-time medicine return) — a return
+    /// is a new negative line pointing at what it reverses, never an edit (hard rule 4).
+    /// State guards (open/blocked/locked) belong to the folio's owner (Ipd module) — this
+    /// method trusts the caller holds the folio row lock.
+    /// </summary>
+    public async Task<ChargeLine> PostFolioChargeAsync(
+        BillDbContext bill, long branchId, long folioId, string sourceModule, NewChargeLine line,
+        long actorId, bool allowNegativeQty = false, CancellationToken ct = default)
+    {
+        if ((line.Qty <= 0 && !allowNegativeQty) || line.Qty == 0 || line.UnitPrice < 0)
+            throw new BillingException("Quantity must be positive and price non-negative.");
+        var charge = new ChargeLine
+        {
+            BranchId = branchId,
+            FolioId = folioId,
+            SourceModule = sourceModule,
+            CatalogKind = line.CatalogKind,
+            CatalogId = line.CatalogId,
+            DescriptionSnapshot = line.Description,
+            Qty = line.Qty,
+            UnitPrice = line.UnitPrice,
+            RateVersionId = line.RateVersionId,
+            Amount = line.Qty * line.UnitPrice,
+            DoctorId = line.DoctorId,
+            ReferrerId = line.ReferrerId,
+            TestOrderId = line.TestOrderId,
+            InvoiceId = null,
+            CreatedAt = clock.GetUtcNow(),
+            CreatedBy = actorId,
+        };
+        bill.ChargeLines.Add(charge);
+        await bill.SaveChangesAsync(ct);
+        return charge;
+    }
+
+    /// <summary>
+    /// An advance is a folio-parented receipt: it rides the counter session like any other
+    /// money into the drawer, so tender totals and expected cash need no special-casing.
+    /// A negative amount is the settlement-time return of excess advance (approval-free by
+    /// design: it is the documented change-giving of settlement, audited like everything else).
+    /// </summary>
+    public async Task<Receipt> CollectAdvanceAsync(
+        BillDbContext bill, KernelDbContext kernel, long branchId, long folioId, long sessionId,
+        long amount, string tender, string? tenderRef, long actorId, string actorName,
+        CancellationToken ct = default)
+    {
+        if (amount == 0) throw new BillingException("Amount cannot be zero.");
+
+        var sessionStates = await bill.Database.SqlQuery<string>($"""
+            SELECT state AS "Value" FROM bill.counter_session WHERE id = {sessionId} FOR UPDATE
+            """).ToListAsync(ct);
+        if (sessionStates.Count == 0 ||
+            sessionStates[0] is not (SessionState.Active or SessionState.Reopened))
+            throw new BillingException("Advances need an open counter session (02 §2.4).");
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var (_, receiptNo) = await numbers.IssueAsync(
+            kernel, branchId, "receipt", fiscal.FiscalYearOf(today), "RCP-{fy}-{n:D6}", ct);
+
+        var receipt = new Receipt
+        {
+            BranchId = branchId,
+            ReceiptNo = receiptNo,
+            FolioId = folioId,
+            CounterSessionId = sessionId,
+            Amount = amount,
+            Tender = tender,
+            TenderRef = tenderRef,
+            OperatorId = actorId,
+            At = clock.GetUtcNow(),
+        };
+        bill.Receipts.Add(receipt);
+        await bill.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName,
+            amount > 0 ? "advance.collect" : "advance.return", "bill.receipt", receipt.Id,
+            after: new { receiptNo, folioId, amount, tender });
+        await kernel.SaveChangesAsync(ct);
+        return receipt;
+    }
+
+    /// <summary>Net advance held on a folio = advances taken − advance money returned.</summary>
+    public async Task<long> AdvanceHeldAsync(BillDbContext bill, long folioId, CancellationToken ct = default)
+        => await bill.Receipts.Where(r => r.FolioId == folioId)
+            .SumAsync(r => (long?)r.Amount, ct) ?? 0;
+
+    /// <summary>
+    /// US6.2: the settlement invoice assembles itself from the folio's unbilled lines.
+    /// Advances held reduce the due at birth; the applied amount is returned to the caller
+    /// (the Ipd module records it on the folio). The caller holds the folio row lock and has
+    /// already posted the service-charge line and caught up bed days.
+    /// </summary>
+    public async Task<(Invoice Invoice, long AdvanceApplied)> CreateFolioInvoiceAsync(
+        BillDbContext bill, KernelDbContext kernel,
+        long branchId, long folioId, long sessionId, long patientId,
+        decimal discountPercent, long discountFlat, long? discountApprovalId,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        var charges = await bill.ChargeLines
+            .Where(c => c.FolioId == folioId && c.InvoiceId == null)
+            .ToListAsync(ct);
+        if (charges.Count == 0) throw new BillingException("No unbilled charges on this folio.");
+
+        var gross = charges.Sum(c => c.Amount);
+        if (gross < 0) throw new BillingException("Folio total is negative — check return postings.");
+        var discount = discountFlat + (discountPercent > 0
+            ? RoundHalfUp(gross * discountPercent / 100m) : 0);
+        if (discount > gross) throw new BillingException("Discount cannot exceed the gross amount.");
+        var net = gross - discount;
+
+        var advanceHeld = await AdvanceHeldAsync(bill, folioId, ct);
+        var advanceApplied = Math.Min(net, advanceHeld);
+
+        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var fy = fiscal.FiscalYearOf(today);
+        var (_, invoiceNo) = await numbers.IssueAsync(
+            kernel, branchId, "invoice", fy, "INV-{fy}-{n:D6}", ct);
+
+        var invoice = new Invoice
+        {
+            BranchId = branchId,
+            InvoiceNo = invoiceNo,
+            FiscalYear = fy,
+            PatientId = patientId,
+            FolioId = folioId,
+            CounterSessionId = sessionId,
+            Gross = gross,
+            Discount = discount,
+            DiscountApprovalId = discountApprovalId,
+            Net = net,
+            State = advanceApplied == net ? InvoiceState.Paid
+                  : advanceApplied > 0 ? InvoiceState.PartiallyPaid : InvoiceState.Billed,
+            CreatedAt = clock.GetUtcNow(),
+            CreatedBy = actorId,
+        };
+        bill.Invoices.Add(invoice);
+        await bill.SaveChangesAsync(ct);
+
+        foreach (var c in charges)
+        {
+            c.InvoiceId = invoice.Id;
+            bill.InvoiceLines.Add(new InvoiceLine
+            {
+                InvoiceId = invoice.Id,
+                ChargeLineId = c.Id,
+                DescriptionSnapshot = c.DescriptionSnapshot,
+                Qty = c.Qty,
+                UnitPrice = c.UnitPrice,
+                Amount = c.Amount,
+                RateVersionId = c.RateVersionId,
+                DoctorId = c.DoctorId,
+                ReferrerId = c.ReferrerId,
+            });
+        }
+        bill.Dues.Add(new Due { InvoiceId = invoice.Id, Balance = net - advanceApplied });
+        await bill.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "invoice.create", "bill.invoice", invoice.Id,
+            after: new { invoice.InvoiceNo, folioId, gross, discount, net, advanceApplied });
+        await kernel.SaveChangesAsync(ct);
+        return (invoice, advanceApplied);
+    }
+
     /// <summary>03 §6 step 2: percentage discounts round half-up to whole taka, ONCE, at the total.</summary>
     public static long RoundHalfUp(decimal value) => (long)Math.Floor(value + 0.5m);
 

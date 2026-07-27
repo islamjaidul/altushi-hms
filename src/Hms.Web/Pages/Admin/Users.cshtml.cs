@@ -101,20 +101,25 @@ public class UsersModel(
             await s.Auth.SaveChangesAsync();
             return 0;
         });
+        // Deactivation must also kill the live session, not only the next sign-in (ADR-0019).
+        if (await userManager.FindByIdAsync(id.ToString()) is { } affected)
+            await userManager.UpdateSecurityStampAsync(affected);
         Toast("Account updated", "manage_accounts");
         return Redirect("/admin/users");
     }
 
     /// <summary>
-    /// §12 as data. The change lands on the role, so it applies to everyone holding it — and it
-    /// takes effect at their next sign-in, because permissions are stamped into the cookie then.
+    /// §12 as data. The change lands on the role, so it applies to everyone holding it. It
+    /// takes effect within the security-stamp revalidation window (ADR-0019 amendment): the
+    /// stamp bump below invalidates every holder's cookie, and the next check re-runs
+    /// PermissionClaimsFactory against the updated matrix.
     /// </summary>
     public async Task<IActionResult> OnPostPermissionAsync(long roleId, string permission, bool grant)
     {
         var parts = permission.Split('.', 2);
         if (parts.Length != 2) { await LoadAsync(); Fail("Malformed permission."); return Page(); }
 
-        await tx.RunAsync(async s =>
+        var roleName = await tx.RunAsync(async s =>
         {
             var existing = await s.Auth.Permissions.FirstOrDefaultAsync(
                 p => p.RoleId == roleId && p.Module == parts[0] && p.Action == parts[1]);
@@ -135,10 +140,16 @@ public class UsersModel(
                 CorrelationId = Guid.NewGuid(), Tier = 2,
             });
             await s.Kernel.SaveChangesAsync();
-            return 0;
+            return (await s.Auth.Roles.AsNoTracking()
+                .Where(r => r.Id == roleId).Select(r => r.Name).FirstOrDefaultAsync()) ?? "";
         });
 
-        Toast($"{(grant ? "Granted" : "Revoked")} {permission} — applies at next sign-in", "admin_panel_settings");
+        // Bump every holder's security stamp so the change is enforced mid-session.
+        if (roleName.Length > 0)
+            foreach (var holder in await userManager.GetUsersInRoleAsync(roleName))
+                await userManager.UpdateSecurityStampAsync(holder);
+
+        Toast($"{(grant ? "Granted" : "Revoked")} {permission} — enforced within minutes", "admin_panel_settings");
         return Redirect("/admin/users");
     }
 }

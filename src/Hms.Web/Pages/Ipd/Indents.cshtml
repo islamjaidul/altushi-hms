@@ -1,0 +1,65 @@
+@page "/ipd/indents"
+@using Hms.Ipd.Data
+@model Hms.Web.Pages.Ipd.IndentsModel
+@{
+    ViewData["Title"] = "Ward Indents";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        Ward requisitions (5A-9)
+        <span class="spacer"></span>
+        <span class="card-hint">raise an indent from the patient's folio; pharmacy issues it</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>#</th><th>Patient</th><th>Items</th><th>Raised</th><th>State</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="tabular">@row.Id</td>
+                    <td>
+                        <a href="/ipd/folio/@row.AdmissionId">@row.Patient</a>
+                        <div class="card-hint">@row.AdmissionNo @(row.Note is not null ? $"· {row.Note}" : "")</div>
+                    </td>
+                    <td>
+                        @foreach (var (product, requested, issued, returned) in row.Items)
+                        {
+                            <div>@product · @(issued > 0 ? $"{issued} issued" : $"{requested} requested")@(returned > 0 ? $", {returned} returned" : "")</div>
+                        }
+                    </td>
+                    <td class="tabular">@Ui.Local(row.RequestedAt).ToString("dd MMM HH:mm")</td>
+                    <td><span class="pill @(row.State switch {
+                        IndentState.Issued => "good", IndentState.Cancelled => "bad", _ => "warn" })">@Ui.Humanize(row.State)</span></td>
+                    <td>
+                        @if (row.State == IndentState.Requested)
+                        {
+                            <form method="post" asp-page-handler="Cancel">
+                                <input type="hidden" name="IndentId" value="@row.Id" />
+                                <button type="submit" class="btn-tint">Cancel</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">receipt_long</span>
+                    No indents yet — raise one from a patient's folio.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

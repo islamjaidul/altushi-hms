@@ -42,12 +42,8 @@ public class NewModel(
         if (string.IsNullOrWhiteSpace(input)) return (null, null, null, false);
         var raw = input.Trim();
 
-        string[] dateFormats =
-        [
-            "d/M/yyyy", "dd/MM/yyyy", "d-M-yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "d/M/yy", "dd/MM/yy",
-        ];
-        if (DateOnly.TryParseExact(raw, dateFormats, null,
-                System.Globalization.DateTimeStyles.None, out var dob))
+        // The date branch is the kernel contract (ADR-0020) — same formats everywhere.
+        if (Hms.Kernel.Time.FlexibleDate.TryParse(raw, out var dob))
             return (dob, null, null, false);
 
         var digits = new string(raw.TakeWhile(char.IsDigit).ToArray());

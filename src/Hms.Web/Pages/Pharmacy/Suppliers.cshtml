@@ -1,0 +1,113 @@
+@page "/pharmacy/suppliers"
+@model Hms.Web.Pages.Pharmacy.SuppliersModel
+@{
+    ViewData["Title"] = "Suppliers & Ledger";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Suppliers
+                <span class="spacer"></span>
+                <span class="card-hint">payable = purchases − payments − return credits</span>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Supplier</th><th>Phone</th><th class="num">Payable</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var s in Model.Rows)
+                    {
+                        <tr>
+                            <td><b>@s.Name</b></td>
+                            <td class="tabular">@(s.Phone ?? "—")</td>
+                            <td class="num @(s.Payable > 0 ? "text-warning" : "")">@Ui.Money(s.Payable)</td>
+                            <td><a class="btn-tint" href="/pharmacy/suppliers?Ledger=@s.Id">Ledger</a></td>
+                        </tr>
+                    }
+                    @if (Model.Rows.Count == 0)
+                    {
+                        <tr><td colspan="4"><div class="empty-state">
+                            <span class="icon" aria-hidden="true">local_shipping</span>
+                            No suppliers yet.
+                        </div></td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @if (Model.LedgerFor is not null)
+        {
+            <div class="card card-clip">
+                <div class="card-head">Ledger — @Model.LedgerFor</div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>When</th><th>Entry</th><th class="num">Amount</th><th>Note</th></tr></thead>
+                        <tbody>
+                        @foreach (var e in Model.Entries)
+                        {
+                            <tr>
+                                <td class="tabular">@Ui.Local(e.At).ToString("dd MMM yyyy HH:mm")</td>
+                                <td><span class="pill @(e.Kind == "payment" ? "good" : e.Kind == "purchase" ? "" : "warn")">@Ui.Humanize(e.Kind)</span></td>
+                                <td class="num">@Ui.Money(e.Amount)</td>
+                                <td>@(e.Note ?? "—")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="stack">
+        <form method="post" asp-page-handler="Pay" class="card">
+            <div class="card-head">Record a payment</div>
+            <div class="card-body stack" style="gap:10px;padding-top:0">
+                <label class="field">
+                    <span class="field-label">Supplier</span>
+                    <select class="select" asp-for="SupplierId">
+                        @foreach (var s in Model.Rows)
+                        {
+                            <option value="@s.Id">@s.Name (@Ui.Money(s.Payable) due)</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Amount (৳)</span>
+                    <input class="input input-num" asp-for="Amount" inputmode="numeric" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Note</span>
+                    <input class="input" asp-for="Note" placeholder="cheque no / reference" />
+                </label>
+                <button type="submit" class="btn btn-primary">Record payment</button>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="Create" class="card">
+            <div class="card-head">Add a supplier</div>
+            <div class="card-body stack" style="gap:8px;padding-top:0">
+                <label class="field">
+                    <span class="field-label">Name</span>
+                    <input class="input" asp-for="Name" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Phone</span>
+                    <input class="input" asp-for="Phone" />
+                </label>
+                <button type="submit" class="btn">Add</button>
+            </div>
+        </form>
+    </div>
+</div>

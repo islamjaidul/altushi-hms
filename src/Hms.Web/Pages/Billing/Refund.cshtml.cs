@@ -24,7 +24,8 @@ public sealed record PendingReversal(
 /// </summary>
 [Authorize(Policy = Perm.BillingReceiptCreate)]
 public class RefundModel(
-    HmsTx tx, BillingService billing, ApprovalEngine approvals) : HmsPageModel
+    HmsTx tx, BillingService billing, ApprovalEngine approvals,
+    Hms.Pharmacy.StockService stock) : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty] public long InvoiceId { get; set; }
@@ -45,16 +46,31 @@ public class RefundModel(
         {
             Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
 
-            var invoices = await s.Bill.Invoices.AsNoTracking()
-                .Where(i => i.State != InvoiceState.Cancelled)
-                .OrderByDescending(i => i.Id).Take(200)
+            // The search contract (ADR-0020): predicate in SQL, so any invoice is findable
+            // however old. Patient terms resolve to ids in reg first (ADR-0003 boundary).
+            var term = Q?.Trim();
+            var invQuery = s.Bill.Invoices.AsNoTracking()
+                .Where(i => i.State != InvoiceState.Cancelled);
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                var like = $"%{term}%";
+                var matchedPatients = await s.Reg.Patients.AsNoTracking()
+                    .Where(p => EF.Functions.ILike(p.FullName, like) ||
+                                EF.Functions.ILike(p.Uhid, like) ||
+                                (p.Phone != null && EF.Functions.ILike(p.Phone, like)))
+                    .Select(p => p.Id).Take(500).ToListAsync();
+                invQuery = invQuery.Where(i =>
+                    EF.Functions.ILike(i.InvoiceNo, like) || matchedPatients.Contains(i.PatientId));
+            }
+            var invoices = await invQuery
+                .OrderByDescending(i => i.Id).Take(25)
                 .Select(i => new { i.Id, i.InvoiceNo, i.PatientId, i.Net, i.State, i.CreatedAt })
                 .ToListAsync();
 
             var ids = invoices.Select(i => i.Id).ToList();
             var paid = (await s.Bill.Receipts.AsNoTracking()
-                    .Where(r => ids.Contains(r.InvoiceId))
-                    .Select(r => new { r.InvoiceId, r.Amount }).ToListAsync())
+                    .Where(r => r.InvoiceId != null && ids.Contains(r.InvoiceId.Value))
+                    .Select(r => new { InvoiceId = r.InvoiceId!.Value, r.Amount }).ToListAsync())
                 .GroupBy(r => r.InvoiceId).ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
             var dues = await s.Bill.Dues.AsNoTracking()
                 .Where(d => ids.Contains(d.InvoiceId)).ToDictionaryAsync(d => d.InvoiceId, d => d.Balance);
@@ -63,20 +79,13 @@ public class RefundModel(
             var patients = await s.Reg.Patients.AsNoTracking()
                 .Where(p => patientIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
 
-            var rows = invoices.Select(i =>
+            Candidates = invoices.Select(i =>
             {
                 patients.TryGetValue(i.PatientId, out var p);
                 return new RefundCandidate(i.Id, i.InvoiceNo, p?.FullName ?? "(unknown)",
                     p?.Uhid ?? "—", i.Net, paid.GetValueOrDefault(i.Id),
                     dues.GetValueOrDefault(i.Id), i.State, i.CreatedAt);
-            });
-
-            Candidates = (string.IsNullOrWhiteSpace(Q)
-                ? rows.Take(25)
-                : rows.Where(r =>
-                    r.InvoiceNo.Contains(Q!.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                    r.PatientName.Contains(Q.Trim(), StringComparison.OrdinalIgnoreCase) ||
-                    r.Uhid.Contains(Q.Trim(), StringComparison.OrdinalIgnoreCase)).Take(25)).ToList();
+            }).ToList();
 
             // The Request Center view (5A-21): what this operator has raised and where it stands.
             var types = new[] { "refund", "cancel" };
@@ -176,6 +185,10 @@ public class RefundModel(
                 else
                     await billing.RefundAsync(s.Bill, s.Kernel, BranchId, invoiceId, Session!.Id,
                         amount, reason, ActorId, ActorName, approvalId);
+
+                // A reversed pharmacy sale is a goods return (§5 M11 [M]): put the stock back
+                // on the exact batches the sale allocated (spec 0016; ADR-0021 #5).
+                await stock.RestockAsync(s.Pharm, BranchId, invoiceId, ActorId);
                 return 0;
             });
             return null;

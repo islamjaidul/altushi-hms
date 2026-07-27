@@ -36,6 +36,19 @@ public static class Ui
     /// <summary>Zero renders as an em dash so a full due column reads at a glance (§7 U12).</summary>
     public static string MoneyOrDash(long value) => value == 0 ? "—" : Money(value);
 
+    /// <summary>R3 public surface (spec 0019, P15 default): first name + surname initial —
+    /// "Rahim Uddin" → "Rahim U." — never a full identity on an unauthenticated screen (§8 N5).</summary>
+    public static string MaskName(string fullName)
+    {
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "—",
+            1 => parts[0],
+            _ => $"{parts[0]} {char.ToUpperInvariant(parts[^1][0])}.",
+        };
+    }
+
     private static readonly string[] Ones =
     [
         "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",

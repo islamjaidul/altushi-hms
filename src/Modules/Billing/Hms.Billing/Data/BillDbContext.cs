@@ -95,7 +95,8 @@ public class Invoice
     public required string InvoiceNo { get; set; }
     public required string FiscalYear { get; set; }
     public long PatientId { get; set; }
-    public long EncounterId { get; set; }
+    public long? EncounterId { get; set; }
+    public long? FolioId { get; set; }                 // settlement parent (M6, spec 0017)
     public long CounterSessionId { get; set; }
     public long Gross { get; set; }
     public long Discount { get; set; }
@@ -130,7 +131,8 @@ public class Receipt
     public long Id { get; set; }
     public long BranchId { get; set; }
     public required string ReceiptNo { get; set; }
-    public long InvoiceId { get; set; }
+    public long? InvoiceId { get; set; }
+    public long? FolioId { get; set; }                 // folio-parented = advance (spec 0017)
     public long CounterSessionId { get; set; }
     public long Amount { get; set; }                   // negative = refund (edge 20)
     public required string Tender { get; set; }        // cash|card|bkash|nagad|corporate
@@ -161,6 +163,7 @@ public class DayCloseSummary
     public long Net { get; set; }
     public long DueCreated { get; set; }
     public long DueCollected { get; set; }
+    public long AdvancesTaken { get; set; }            // folio advances through this session (spec 0017)
     public long Refunds { get; set; }
     public long Variance { get; set; }
     public int Version { get; set; } = 1;
@@ -189,17 +192,24 @@ public class BillDbContext(DbContextOptions<BillDbContext> options) : DbContext(
             "ck_charge_parent", "num_nonnulls(encounter_id, folio_id) = 1")));
         b.Entity<Invoice>(e =>
         {
-            e.ToTable("invoice", t => t.HasCheckConstraint(
-                "ck_invoice_identity", "net = gross - discount + tax + rounding_adj"));   // G6, structural
+            e.ToTable("invoice", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_invoice_identity", "net = gross - discount + tax + rounding_adj");   // G6, structural
+                t.HasCheckConstraint(
+                    "ck_invoice_parent", "num_nonnulls(encounter_id, folio_id) = 1");        // M6 seam
+            });
             e.HasIndex(x => x.InvoiceNo).IsUnique();
             e.Property(x => x.Version).IsConcurrencyToken();
         });
         b.Entity<InvoiceLine>(e => e.ToTable("invoice_line"));
         b.Entity<Receipt>(e =>
         {
-            e.ToTable("receipt");
+            e.ToTable("receipt", t => t.HasCheckConstraint(
+                "ck_receipt_parent", "num_nonnulls(invoice_id, folio_id) = 1"));
             e.HasIndex(x => x.ReceiptNo).IsUnique();
             e.HasIndex(x => x.CounterSessionId);
+            e.HasIndex(x => x.FolioId);
         });
         b.Entity<Due>(e =>
         {

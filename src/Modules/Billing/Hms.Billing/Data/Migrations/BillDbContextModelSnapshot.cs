@@ -218,6 +218,10 @@ namespace Hms.Billing.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<long>("AdvancesTaken")
+                        .HasColumnType("bigint")
+                        .HasColumnName("advances_taken");
+
                     b.Property<long>("BranchId")
                         .HasColumnType("bigint")
                         .HasColumnName("branch_id");
@@ -395,7 +399,7 @@ namespace Hms.Billing.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("discount_approval_id");
 
-                    b.Property<long>("EncounterId")
+                    b.Property<long?>("EncounterId")
                         .HasColumnType("bigint")
                         .HasColumnName("encounter_id");
 
@@ -403,6 +407,10 @@ namespace Hms.Billing.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("fiscal_year");
+
+                    b.Property<long?>("FolioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio_id");
 
                     b.Property<long>("Gross")
                         .HasColumnType("bigint")
@@ -453,6 +461,8 @@ namespace Hms.Billing.Data.Migrations
                     b.ToTable("invoice", "bill", t =>
                         {
                             t.HasCheckConstraint("ck_invoice_identity", "net = gross - discount + tax + rounding_adj");
+
+                            t.HasCheckConstraint("ck_invoice_parent", "num_nonnulls(encounter_id, folio_id) = 1");
                         });
                 });
 
@@ -537,7 +547,11 @@ namespace Hms.Billing.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("counter_session_id");
 
-                    b.Property<long>("InvoiceId")
+                    b.Property<long?>("FolioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio_id");
+
+                    b.Property<long?>("InvoiceId")
                         .HasColumnType("bigint")
                         .HasColumnName("invoice_id");
 
@@ -569,11 +583,17 @@ namespace Hms.Billing.Data.Migrations
                     b.HasIndex("CounterSessionId")
                         .HasDatabaseName("ix_receipt_counter_session_id");
 
+                    b.HasIndex("FolioId")
+                        .HasDatabaseName("ix_receipt_folio_id");
+
                     b.HasIndex("ReceiptNo")
                         .IsUnique()
                         .HasDatabaseName("ix_receipt_receipt_no");
 
-                    b.ToTable("receipt", "bill");
+                    b.ToTable("receipt", "bill", t =>
+                        {
+                            t.HasCheckConstraint("ck_receipt_parent", "num_nonnulls(invoice_id, folio_id) = 1");
+                        });
                 });
 #pragma warning restore 612, 618
         }

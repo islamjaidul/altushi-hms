@@ -34,7 +34,6 @@ public class OrderModel(
     public OpenSession? Session { get; private set; }
     public IReadOnlyList<TestItem> Catalog { get; private set; } = [];
     public IReadOnlyList<TestItem> Cart { get; private set; } = [];
-    public IReadOnlyList<PatientPick> Patients { get; private set; } = [];
     public string? PatientName { get; private set; }
     public IReadOnlyList<ReferrerPick> Referrers { get; private set; } = [];
 
@@ -42,7 +41,6 @@ public class OrderModel(
     public int SlowestTat => Cart.Count == 0 ? 0 : Cart.Max(c => c.TatMinutes);
     public DateTimeOffset PromisedAt => clock.GetUtcNow().AddMinutes(SlowestTat);
 
-    public sealed record PatientPick(long Id, string Label);
     public sealed record ReferrerPick(long Id, string Label);
 
     public async Task OnGetAsync() => await LoadAsync();
@@ -85,12 +83,6 @@ public class OrderModel(
 
             var byId = catalog.ToDictionary(c => c.Id);
             Cart = Items.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
-
-            Patients = await s.Reg.Patients.AsNoTracking()
-                .Where(p => p.Active && p.MergedInto == null)
-                .OrderByDescending(p => p.Id).Take(60)
-                .Select(p => new PatientPick(p.Id, p.FullName + " — " + p.Uhid))
-                .ToListAsync();
 
             Referrers = await s.Adm.Referrers.AsNoTracking()
                 .Where(r => r.Active).OrderBy(r => r.Kind == "self" ? 0 : 1).ThenBy(r => r.Name)

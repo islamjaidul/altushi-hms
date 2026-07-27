@@ -12,11 +12,16 @@ export const USERS: Record<string, { password: string; role: string; permissions
   jashim: {
     password: PASSWORD,
     role: "Receptionist",
-    permissions: ["registration.create", "registration.read", "appointments.read", "appointments.create"],
+    // Spec 0017 (§12 front-desk row + US6.3): the front desk manages beds and admissions.
+    permissions: [
+      "registration.create", "registration.read", "appointments.read", "appointments.create",
+      "ipd.read", "ipd.manage",
+    ],
   },
   rasel: {
     password: PASSWORD,
     role: "Billing Operator",
+    // Spec 0017 (US6.2): settlement, advances and certificates belong to the billing operator.
     permissions: [
       "registration.read",
       "billing.invoice.create",
@@ -24,6 +29,8 @@ export const USERS: Record<string, { password: string; role: string; permissions
       "billing.session.open",
       "billing.session.close",
       "diagnostics.order.create",
+      "ipd.read",
+      "ipd.settle",
     ],
   },
   ripon: {
@@ -48,6 +55,7 @@ export const USERS: Record<string, { password: string; role: string; permissions
       "billing.receipt.create",
       "billing.session.close",
       "admin.approvals.decide",
+      "ipd.read",
     ],
   },
   admin: {
@@ -64,7 +72,29 @@ export const USERS: Record<string, { password: string; role: string; permissions
   md: {
     password: PASSWORD,
     role: "MD",
-    permissions: ["dashboard.read", "admin.approvals.decide", "admin.audit.read"],
+    permissions: ["dashboard.read", "admin.approvals.decide", "admin.audit.read", "pharmacy.read", "ipd.read"],
+  },
+  parvin: {
+    password: PASSWORD,
+    role: "Pharmacist",
+    // Spec 0016 (§12 Pharmacist row): C on pharmacy; counter open/close is the money custody
+    // the pharmacy POS rides (ADR-0021 #5).
+    permissions: [
+      "registration.read",
+      "pharmacy.read",
+      "pharmacy.sale.create",
+      "pharmacy.purchase.manage",
+      "pharmacy.stock.manage",
+      "billing.session.open",
+      "billing.session.close",
+      "billing.receipt.create",
+    ],
+  },
+  nasrin: {
+    password: PASSWORD,
+    role: "Nurse",
+    // Spec 0017 (§12 Nurse row / US6.1): posts services and requisitions, never money.
+    permissions: ["registration.read", "ipd.read", "ipd.service.post"],
   },
 };
 
@@ -111,6 +141,28 @@ export const ROUTES: RouteSpec[] = [
   { path: "/billing/reports", permission: "billing.session.close", user: "rasel", title: "Collection & Income Reports" },
   { path: "/admin/import", permission: "admin.masters.manage", user: "admin", title: "Price List & Catalog Import" },
   { path: "/admin/people", permission: "admin.masters.manage", user: "admin", title: "Doctors, Referrers & Consultants" },
+
+  // spec 0016 — M11 Pharmacy.
+  { path: "/pharmacy/pos", permission: "pharmacy.sale.create", user: "parvin", title: "Pharmacy Sale" },
+  { path: "/pharmacy/stock", permission: "pharmacy.stock.manage", user: "parvin", title: "Stock & Expiry" },
+  { path: "/pharmacy/purchase", permission: "pharmacy.purchase.manage", user: "parvin", title: "Purchase Orders" },
+  { path: "/pharmacy/products", permission: "pharmacy.purchase.manage", user: "parvin", title: "Products & Companies" },
+  { path: "/pharmacy/transfers", permission: "pharmacy.stock.manage", user: "parvin", title: "Outlet Transfers" },
+  { path: "/pharmacy/suppliers", permission: "pharmacy.purchase.manage", user: "parvin", title: "Suppliers & Ledger" },
+  { path: "/pharmacy/reports", permission: "pharmacy.read", user: "parvin", title: "Pharmacy Reports" },
+  { path: "/pharmacy/dashboard", permission: "pharmacy.read", user: "parvin", title: "Pharmacy Dashboard" },
+
+  // spec 0017 — M6 IPD & folio (+R4).
+  { path: "/ipd/board", permission: "ipd.read", user: "jashim", title: "Ward Board" },
+  { path: "/ipd/admit", permission: "ipd.manage", user: "jashim", title: "New Admission" },
+  { path: "/ipd/admissions", permission: "ipd.read", user: "jashim", title: "Admissions & Census" },
+  { path: "/ipd/indents", permission: "ipd.service.post", user: "nasrin", title: "Ward Indents" },
+  { path: "/ipd/certificates", permission: "ipd.settle", user: "rasel", title: "Certificates" },
+  { path: "/ipd/reports", permission: "ipd.read", user: "jashim", title: "IPD Reports" },
+  { path: "/pharmacy/indents", permission: "pharmacy.stock.manage", user: "parvin", title: "Indoor Issue Queue" },
+
+  // spec 0018 — M2 Front Desk.
+  { path: "/frontdesk", permission: "ipd.read", user: "jashim", title: "Help Desk" },
 ];
 
 /** Document (`.sheet`) pages — 05 §6 / U10, and the print-CSS check. */
@@ -137,6 +189,16 @@ export const DENIED_PAIRS: { path: string; user: string; permission: string }[] 
   { path: "/billing/reports", user: "jashim", permission: "billing.session.close" },
   { path: "/admin/import", user: "rasel", permission: "admin.masters.manage" },
   { path: "/admin/people", user: "shahid", permission: "admin.masters.manage" },
+
+  // spec 0016 — pharmacy is the pharmacist's, not the billing floor's.
+  { path: "/pharmacy/pos", user: "rasel", permission: "pharmacy.sale.create" },
+  { path: "/pharmacy/stock", user: "shahid", permission: "pharmacy.stock.manage" },
+  { path: "/pharmacy/purchase", user: "jashim", permission: "pharmacy.purchase.manage" },
+
+  // spec 0017 — the nurse never touches money or admissions; the lab never reaches the ward.
+  { path: "/ipd/admit", user: "nasrin", permission: "ipd.manage" },
+  { path: "/ipd/certificates", user: "nasrin", permission: "ipd.settle" },
+  { path: "/ipd/board", user: "ripon", permission: "ipd.read" },
 ];
 
 export function hasPermission(user: string, permission: string | null): boolean {

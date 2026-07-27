@@ -28,7 +28,10 @@ Status values: `Proposed` · `Accepted` · `Superseded by NNNN`. Superseded ADRs
 | [0016](0016-module-entitlement-licensing.md) | Module entitlement & licensing toggles | Accepted | Q12 | 2026-07-26 |
 | [0017](0017-beftn-payout-readiness.md) | BEFTN payout batch readiness (forward-looking) | Accepted | Q13 | 2026-07-26 |
 | [0018](0018-tds-vat-tax-engine-placement.md) | TDS/VAT tax engine placement (forward-looking) | Accepted | Q14 | 2026-07-26 |
-| [0019](0019-auth-hardening.md) | Auth hardening: 2FA, idle lock, dynamic menus, shared logins | Accepted | Q15 | 2026-07-26 |
+| [0019](0019-auth-hardening.md) | Auth hardening: 2FA, idle lock, dynamic menus, shared logins (amended 2026-07-27: security-stamp revalidation) | Accepted | Q15 | 2026-07-26 |
+| [0020](0020-shared-input-layer.md) | Shared input layer: one date/search/type-ahead contract | Accepted | review §1, 05 §3, §7 U5/U9/U13 | 2026-07-27 |
+| [0021](0021-stock-ledger-kernel.md) | Stock ledger kernel: append-only moves, FEFO issue, bill-spine sales | Accepted | §5 M11/M12, §11, 11-build-plan §4 | 2026-07-27 |
+| [0022](0022-upgrade-path-testing.md) | Upgrade-path testing: boot against previous release's data in CI | Accepted | review debt #1 | 2026-07-27 |
 
 ## Required coverage
 

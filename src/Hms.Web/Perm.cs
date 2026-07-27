@@ -35,4 +35,14 @@ public static class Perm
     public const string AdminMastersManage = P + "admin.masters.manage";
 
     public const string NotificationsRead = P + "notifications.read";
+
+    public const string PharmacyRead = P + "pharmacy.read";
+    public const string PharmacySaleCreate = P + "pharmacy.sale.create";
+    public const string PharmacyPurchaseManage = P + "pharmacy.purchase.manage";
+    public const string PharmacyStockManage = P + "pharmacy.stock.manage";
+
+    public const string IpdRead = P + "ipd.read";
+    public const string IpdManage = P + "ipd.manage";
+    public const string IpdServicePost = P + "ipd.service.post";
+    public const string IpdSettle = P + "ipd.settle";
 }

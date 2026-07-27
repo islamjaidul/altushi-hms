@@ -64,5 +64,11 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0011-release-candidate](0011-release-candidate/spec.md) | S7: buffer, rehearsals, release candidate | Draft | §9A | 2026-07-26 |
 | [0012-ui-pass](0012-ui-pass/spec.md) | UI pass: working screens per Altushi reference | Done | §7, §9A.2 | 2026-07-26 |
 | [0013-mvp-requirement-gaps](0013-mvp-requirement-gaps/spec.md) | Close the MVP requirement gaps ([M] items with no screen) + traceability matrix | Done | §5, §5A, §9A.2 | 2026-07-26 |
+| [0014-phase2-review-and-plan](0014-phase2-review-and-plan/spec.md) | Architect review of the MVP + Phase-2 build plan (fourteen modules released) | Done | §5, §5A, §9, §9A.3 | 2026-07-27 |
+| [0015-shared-input-layer](0015-shared-input-layer/spec.md) | Shared input layer (date/search/type-ahead) + Wave-0 safety rails | Done | §7, §12, §14 | 2026-07-27 |
+| [0016-pharmacy](0016-pharmacy/spec.md) | M11 Pharmacy — outdoor core + multi-outlet stock spine (Wave 1) | Done | §5 M11, §5A-11, §11, §12 | 2026-07-27 |
+| [0017-ipd-folio](0017-ipd-folio/spec.md) | M6 IPD & patient folio + R4 bill-block (Wave 2) | Done | §5 M6, §5A-8/9, R4, §11, §12 | 2026-07-27 |
+| [0018-front-desk](0018-front-desk/spec.md) | M2 Front Desk / help desk (Wave 2) | Done | §5 M2, §12 | 2026-07-27 |
+| [0019-public-displays](0019-public-displays/spec.md) | R3 public queue display + report-status self-lookup (Wave 2) | Done | §5A.2 R3, §8 N5 | 2026-07-27 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

@@ -7,7 +7,7 @@
 
 <form method="get" class="row no-print" style="margin-bottom:14px">
     <label class="sr-only" for="Range">Period</label>
-    <select id="Range" name="range" class="select" style="width:180px" onchange="this.form.submit()">
+    <select id="Range" name="range" class="select" style="width:180px" data-submit>
         @foreach (var (value, label) in new[]
         {
             ("today", "Today"), ("yesterday", "Yesterday"), ("week", "Last 7 days"),
@@ -17,12 +17,13 @@
             <option value="@value" selected="@(Model.Range == value)">@label</option>
         }
     </select>
+    @* Typing a date implies the custom period — explicit dates always win (ADR-0020). *@
     <label class="sr-only" for="From">From</label>
-    <input id="From" type="date" name="from" class="input" style="width:150px"
-           value="@Model.FromDate.ToString("yyyy-MM-dd")" />
+    <input id="From" hms-date hms-date-implies="#Range" name="from" class="input" style="width:150px"
+           value="@(Model.Range == "custom" ? Model.FromDate.ToString("dd MMM yyyy") : "")" />
     <label class="sr-only" for="To">To</label>
-    <input id="To" type="date" name="to" class="input" style="width:150px"
-           value="@Model.ToDate.ToString("yyyy-MM-dd")" />
+    <input id="To" hms-date hms-date-implies="#Range" name="to" class="input" style="width:150px"
+           value="@(Model.Range == "custom" ? Model.ToDate.ToString("dd MMM yyyy") : "")" />
     <button type="submit" class="btn">Apply</button>
     <span class="spacer"></span>
     <button type="button" class="btn btn-primary" onclick="window.print()">

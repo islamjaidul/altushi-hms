@@ -1,0 +1,213 @@
+@page "/ipd/discharge/{admissionId:long}"
+@using Hms.Ipd.Data
+@model Hms.Web.Pages.Ipd.DischargeModel
+@{
+    ViewData["Title"] = $"Discharge — {Model.PatientName}";
+    ViewData["Crumb"] = "Indoor (IPD)";
+    var admission = Model.Admission!;
+    var folio = Model.Folio;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card" style="margin-bottom:12px">
+    <div class="card-body row" style="gap:14px;flex-wrap:wrap">
+        <b>@Model.PatientName</b>
+        <span class="card-hint">@admission.AdmissionNo</span>
+        <span class="pill @(admission.State switch {
+            AdmissionState.Discharged => "good", AdmissionState.Blocked => "bad", _ => "warn" })">
+            @Ui.Humanize(admission.State)
+        </span>
+        <span class="spacer"></span>
+        <a class="btn" href="/ipd/folio/@admission.Id">Back to folio</a>
+    </div>
+</div>
+
+@if (admission.State == AdmissionState.Blocked)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">block</span>
+        <span>Blocked for dues (R4) — discharge resumes after release (Admissions → Block list).</span>
+    </div>
+}
+else if (admission.State == AdmissionState.Admitted)
+{
+    <form method="post" asp-page-handler="Initiate" class="card" style="max-width:680px">
+        <div class="card-head">1 · Initiate discharge — clinical summary</div>
+        <div class="card-body stack" style="gap:10px;padding-top:0">
+            <label class="field">
+                <span class="field-label">Clinical summary (printed on the discharge certificate)</span>
+                <textarea class="input" name="ClinicalSummary" rows="5"
+                          placeholder="Condition on discharge, treatment given, advice…"></textarea>
+            </label>
+            <button type="submit" class="btn btn-primary">Initiate discharge</button>
+        </div>
+    </form>
+}
+else if (admission.State == AdmissionState.DischargeInitiated)
+{
+    <div class="card" style="max-width:680px">
+        <div class="card-head">2 · Clinical clearance</div>
+        <div class="card-body stack" style="gap:10px;padding-top:0">
+            <p>@admission.ClinicalSummary</p>
+            <form method="post" asp-page-handler="Clear">
+                <button type="submit" class="btn btn-primary">Clinically cleared</button>
+            </form>
+        </div>
+    </div>
+}
+else if (admission.State == AdmissionState.ClinicallyCleared && folio is not null)
+{
+    @if (folio.State == FolioState.Open)
+    {
+        <div class="card" style="max-width:680px">
+            <div class="card-head">3 · Prepare the settlement</div>
+            <div class="card-body stack" style="gap:10px;padding-top:0">
+                <p class="card-hint">
+                    Bed days are caught up, the service charge (@admission.ServiceChargePct%)
+                    posts, and the folio freezes for billing. Nothing can be posted after this
+                    without a supervisor approval.
+                </p>
+                @if (Model.CanSettle)
+                {
+                    <form method="post" asp-page-handler="Prepare">
+                        <button type="submit" class="btn btn-primary">Prepare settlement draft</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="card-hint">A billing operator prepares and confirms the settlement.</p>
+                }
+            </div>
+        </div>
+    }
+    else if (folio.State == FolioState.SettlementDraft)
+    {
+        <div class="grid grid-main-side">
+            <div class="card card-clip">
+                <div class="card-head">4 · Settlement draft (US6.2 — assembled, zero re-entry)</div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Description</th><th>Source</th><th>Qty</th><th>Amount</th></tr></thead>
+                        <tbody>
+                        @foreach (var line in Model.Draft)
+                        {
+                            <tr>
+                                <td>@line.Description</td>
+                                <td><span class="pill">@line.Source</span></td>
+                                <td class="tabular">@line.Qty</td>
+                                <td class="tabular">@Ui.Money(line.Amount)</td>
+                            </tr>
+                        }
+                        </tbody>
+                        <tfoot>
+                            <tr><td colspan="3"><b>Gross</b></td><td class="tabular"><b>@Ui.Money(Model.Gross)</b></td></tr>
+                            <tr><td colspan="3">Advance held</td><td class="tabular">− @Ui.Money(Model.AdvanceHeld)</td></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div class="stack">
+                @if (Model.CanSettle)
+                {
+                    <form method="post" asp-page-handler="Confirm" class="card">
+                        <div class="card-head">Confirm settlement</div>
+                        <div class="card-body stack" style="gap:10px;padding-top:0">
+                            @if (Model.Session is null)
+                            {
+                                <div class="card-hint">Open your counter session first — advances and change move through the drawer.</div>
+                                <a class="btn" href="/billing/session">Open counter…</a>
+                            }
+                            else
+                            {
+                                @if (Model.DiscountPending)
+                                {
+                                    <div class="alert">
+                                        <span class="icon icon-sm" aria-hidden="true">schedule</span>
+                                        <span>A discount request is waiting in the approvals inbox.</span>
+                                    </div>
+                                }
+                                @if (Model.ApprovedDiscountAmount > 0)
+                                {
+                                    <div class="alert">
+                                        <span class="icon icon-sm" aria-hidden="true">fact_check</span>
+                                        <span>Approved discount available: @Ui.Money(Model.ApprovedDiscountAmount)</span>
+                                    </div>
+                                }
+                                <label class="field">
+                                    <span class="field-label">Discount (৳, flat)</span>
+                                    <input class="input input-num" asp-for="DiscountFlat" inputmode="numeric" />
+                                </label>
+                                <label class="field">
+                                    <span class="field-label">Discount reason</span>
+                                    <input class="input" asp-for="DiscountReason" placeholder="required when discounting" />
+                                </label>
+                                <button type="submit" class="btn btn-primary btn-cta">
+                                    Create settlement invoice
+                                </button>
+                                <div class="card-hint">
+                                    Advances apply to the due automatically; any excess is returned
+                                    from the drawer. Collect the balance on the invoice screen.
+                                </div>
+                            }
+                        </div>
+                    </form>
+
+                    <form method="post" asp-page-handler="Reopen" class="card">
+                        <div class="card-body stack" style="gap:8px">
+                            <div class="card-hint">A charge is missing? Reopen the draft, post it on the folio, prepare again.</div>
+                            <button type="submit" class="btn">Reopen draft</button>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+}
+else if (admission.State == AdmissionState.FinanciallySettled && folio is not null)
+{
+    <div class="card" style="max-width:680px">
+        <div class="card-head">5 · Settled — gate pass</div>
+        <div class="card-body stack" style="gap:10px;padding-top:0">
+            <p>
+                Invoice <b>@Model.SettledInvoiceNo</b> · advance applied @Ui.Money(folio.AdvanceApplied)
+                · due @Ui.Money(Model.SettledDue)
+                — <a href="/billing/invoice/@folio.SettlementInvoiceId">collect / print</a>
+            </p>
+            @if (Model.SettledDue > 0)
+            {
+                <div class="alert">
+                    <span class="icon icon-sm" aria-hidden="true">payments</span>
+                    <span>A due remains — it is tracked on the dues screen. Discharging now records it.</span>
+                </div>
+            }
+            <form method="post" asp-page-handler="Discharge">
+                <button type="submit" class="btn btn-primary btn-cta">Discharge — print gate pass</button>
+            </form>
+        </div>
+    </div>
+}
+else if (admission.State is AdmissionState.Discharged or AdmissionState.Death or AdmissionState.Absconded)
+{
+    <div class="card print-sheet" style="max-width:680px">
+        <div class="card-head">
+            Gate pass
+            <span class="spacer"></span>
+            <button class="btn" onclick="window.print()">Print</button>
+        </div>
+        <div class="card-body stack" style="gap:8px">
+            <p><b>@Model.PatientName</b> · @admission.AdmissionNo</p>
+            <p>Admitted @Ui.Local(admission.AdmittedAt).ToString("dd MMM yyyy") —
+               @(admission.DischargedAt is DateTimeOffset gone ? Ui.Local(gone).ToString("dd MMM yyyy") : "")</p>
+            <p>Status: @Ui.Humanize(admission.State). The patient party may leave the ward.</p>
+            <p class="card-hint">Certificates are issued from Indoor (IPD) → Certificates.</p>
+        </div>
+    </div>
+}

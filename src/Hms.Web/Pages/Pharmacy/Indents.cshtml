@@ -1,0 +1,74 @@
+@page "/pharmacy/indents"
+@model Hms.Web.Pages.Pharmacy.IndentsModel
+@{
+    ViewData["Title"] = "Indoor Issue Queue";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        Requested ward indents
+        <span class="spacer"></span>
+        <span class="card-hint">FEFO issue — expired batches never leave the shelf (US11.1)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>#</th><th>Patient</th><th>Items (requested / sellable stock)</th><th>Raised</th><th>Issue</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Queue)
+            {
+                <tr>
+                    <td class="tabular">@row.Id</td>
+                    <td>
+                        @row.Patient
+                        <div class="card-hint">@row.AdmissionNo @(row.Note is not null ? $"· {row.Note}" : "")</div>
+                    </td>
+                    <td>
+                        @foreach (var (product, requested, available) in row.Items)
+                        {
+                            <div>
+                                @product · @requested
+                                <span class="card-hint">(@available in stock)</span>
+                                @if (available < requested)
+                                {
+                                    <span class="pill bad">short</span>
+                                }
+                            </div>
+                        }
+                    </td>
+                    <td class="tabular">@Ui.Local(row.RequestedAt).ToString("dd MMM HH:mm")</td>
+                    <td>
+                        <form method="post" asp-page-handler="Issue" class="row" style="gap:6px">
+                            <input type="hidden" name="IndentId" value="@row.Id" />
+                            <label class="sr-only" for="outlet-@row.Id">Outlet</label>
+                            <select id="outlet-@row.Id" class="select" name="OutletId" style="width:140px">
+                                <option value="0">outlet…</option>
+                                @foreach (var o in Model.Outlets)
+                                {
+                                    <option value="@o.Id">@o.Name</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn-tint">Issue FEFO</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Queue.Count == 0)
+            {
+                <tr><td colspan="5"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">receipt_long</span>
+                    No indents waiting.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

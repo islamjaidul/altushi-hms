@@ -2,6 +2,8 @@ using Hms.Admin.Data;
 using Hms.Appointments.Data;
 using Hms.Billing.Data;
 using Hms.Notifications.Data;
+using Hms.Ipd.Data;
+using Hms.Pharmacy.Data;
 using Hms.Diagnostics.Data;
 using Hms.Kernel.Data;
 using Hms.Kernel.Auth;
@@ -63,6 +65,8 @@ public sealed class TxScope(NpgsqlConnection conn, NpgsqlTransaction tx) : IAsyn
     public AdmDbContext Adm => Attach<AdmDbContext>(o => new(o), "adm_data");
     public ApptDbContext Appt => Attach<ApptDbContext>(o => new(o), "appt");
     public NotifDbContext Notif => Attach<NotifDbContext>(o => new(o), "notif");
+    public PharmDbContext Pharm => Attach<PharmDbContext>(o => new(o), "pharm");
+    public IpdDbContext Ipd => Attach<IpdDbContext>(o => new(o), "ipd");
 
     public async ValueTask DisposeAsync()
     {

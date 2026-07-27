@@ -1,0 +1,158 @@
+@page "/pharmacy/purchase"
+@using Hms.Pharmacy.Data
+@model Hms.Web.Pages.Pharmacy.PurchaseModel
+@{
+    ViewData["Title"] = "Purchase Orders";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        @foreach (var po in Model.Orders)
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    PO #@po.Id · @po.Supplier → @po.Outlet
+                    <span class="spacer"></span>
+                    <span class="pill @(po.State switch { PoState.Closed => "good", PoState.Cancelled => "bad", PoState.Received => "good", _ => "warn" })">
+                        @Ui.Humanize(po.State)
+                    </span>
+                </div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr>
+                            <th>Product</th><th class="num">Ordered</th><th class="num">Received</th>
+                            <th class="num">Est. cost</th><th>Receive (GRN)</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach (var l in po.Lines)
+                        {
+                            <tr>
+                                <td>@l.Product</td>
+                                <td class="num">@l.Qty</td>
+                                <td class="num">@l.ReceivedQty</td>
+                                <td class="num">@Ui.Money(l.ExpectedCost)</td>
+                                <td>
+                                    @if ((po.State is PoState.Ordered or PoState.PartiallyReceived)
+                                         && l.ReceivedQty < l.Qty)
+                                    {
+                                        <form method="post" asp-page-handler="Receive" class="row" style="gap:6px;flex-wrap:wrap">
+                                            <input type="hidden" name="PoId" value="@po.Id" />
+                                            <input type="hidden" name="PoLineId" value="@l.Id" />
+                                            <label class="sr-only" for="bn-@l.Id">Batch no</label>
+                                            <input id="bn-@l.Id" name="BatchNo" class="input input-sm" style="width:90px" placeholder="batch" />
+                                            <label class="sr-only" for="ex-@l.Id">Expiry</label>
+                                            <input id="ex-@l.Id" name="Expiry" hms-date class="input input-sm" style="width:110px" placeholder="expiry" />
+                                            <label class="sr-only" for="q-@l.Id">Quantity</label>
+                                            <input id="q-@l.Id" name="Qty" class="input input-sm input-num" style="width:70px" placeholder="qty" inputmode="numeric" />
+                                            <label class="sr-only" for="c-@l.Id">Unit cost</label>
+                                            <input id="c-@l.Id" name="UnitCost" class="input input-sm input-num" style="width:70px" placeholder="cost" inputmode="numeric" />
+                                            <label class="sr-only" for="m-@l.Id">MRP</label>
+                                            <input id="m-@l.Id" name="UnitMrp" class="input input-sm input-num" style="width:70px" placeholder="MRP" inputmode="numeric" />
+                                            <button type="submit" class="btn-tint">Receive</button>
+                                        </form>
+                                    }
+                                    else if (l.ReceivedQty >= l.Qty)
+                                    {
+                                        <span class="pill good">complete</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row" style="padding:12px;gap:8px">
+                    @if (po.State is PoState.Requested or PoState.Approved or PoState.Received)
+                    {
+                        <form method="post" asp-page-handler="Advance">
+                            <input type="hidden" name="PoId" value="@po.Id" />
+                            <button type="submit" class="btn btn-primary">
+                                @(po.State switch
+                                {
+                                    PoState.Requested => "Confirm approval ⚿",
+                                    PoState.Approved => "Mark ordered",
+                                    _ => "Close order",
+                                })
+                            </button>
+                        </form>
+                    }
+                    @if (po.State is PoState.Requested or PoState.Approved or PoState.Ordered)
+                    {
+                        <form method="post" asp-page-handler="Cancel">
+                            <input type="hidden" name="PoId" value="@po.Id" />
+                            <button type="submit" class="btn">Cancel</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+        @if (Model.Orders.Count == 0)
+        {
+            <div class="card"><div class="empty-state">
+                <span class="icon" aria-hidden="true">receipt_long</span>
+                No purchase orders yet — raise the first one on the right.
+            </div></div>
+        }
+    </div>
+
+    <form method="post" asp-page-handler="Create" class="card sticky-top">
+        <div class="card-head">New purchase order</div>
+        <div class="card-body stack" style="gap:10px;padding-top:0">
+            <label class="field">
+                <span class="field-label">Supplier <span class="req">*</span></span>
+                <select class="select" asp-for="SupplierId">
+                    <option value="0">— Pick supplier —</option>
+                    @foreach (var s in Model.Suppliers)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Deliver to outlet <span class="req">*</span></span>
+                <select class="select" asp-for="OutletId">
+                    <option value="0">— Pick outlet —</option>
+                    @foreach (var o in Model.Outlets)
+                    {
+                        <option value="@o.Id">@o.Name</option>
+                    }
+                </select>
+            </label>
+            @for (var i = 0; i < 3; i++)
+            {
+                <div class="field-grid cols-3">
+                    <label class="field">
+                        <span class="field-label">@(i == 0 ? "Product" : $"Line {i + 1}")</span>
+                        <select class="select" name="ProductIds">
+                            <option value="0">—</option>
+                            @foreach (var p in Model.Products)
+                            {
+                                <option value="@p.Id">@p.Brand @p.Strength</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Qty</span>
+                        <input class="input input-num" name="LineQtys" inputmode="numeric" value="0" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Est. cost/unit</span>
+                        <input class="input input-num" name="LineCosts" inputmode="numeric" value="0" />
+                    </label>
+                </div>
+            }
+            <button type="submit" class="btn btn-primary">Raise purchase order</button>
+            <span class="card-hint">Large orders route to the approvals inbox (§11 ⚿); small ones
+            approve under your limit automatically.</span>
+        </div>
+    </form>
+</div>

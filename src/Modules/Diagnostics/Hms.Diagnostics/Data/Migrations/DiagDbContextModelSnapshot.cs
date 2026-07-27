@@ -119,9 +119,13 @@ namespace Hms.Diagnostics.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("created_by");
 
-                    b.Property<long>("EncounterId")
+                    b.Property<long?>("EncounterId")
                         .HasColumnType("bigint")
                         .HasColumnName("encounter_id");
+
+                    b.Property<long?>("FolioId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("folio_id");
 
                     b.Property<long?>("InvoiceId")
                         .HasColumnType("bigint")
@@ -151,7 +155,10 @@ namespace Hms.Diagnostics.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_test_order");
 
-                    b.ToTable("test_order", "diag");
+                    b.ToTable("test_order", "diag", t =>
+                        {
+                            t.HasCheckConstraint("ck_test_order_parent", "num_nonnulls(encounter_id, folio_id) = 1");
+                        });
                 });
 #pragma warning restore 612, 618
         }

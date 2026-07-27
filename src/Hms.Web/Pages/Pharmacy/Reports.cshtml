@@ -1,0 +1,148 @@
+@page "/pharmacy/reports"
+@model Hms.Web.Pages.Pharmacy.ReportsModel
+@{
+    ViewData["Title"] = "Pharmacy Reports";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+<form method="get" class="row no-print" style="margin-bottom:14px">
+    <label class="sr-only" for="From">From</label>
+    <input id="From" hms-date name="From" class="input" style="width:150px"
+           value="@Model.FromDate.ToString("dd MMM yyyy")" />
+    <label class="sr-only" for="To">To</label>
+    <input id="To" hms-date name="To" class="input" style="width:150px"
+           value="@Model.ToDate.ToString("dd MMM yyyy")" />
+    <button type="submit" class="btn">Apply</button>
+    <span class="spacer"></span>
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+        <span class="icon icon-sm" aria-hidden="true">print</span> Print
+    </button>
+</form>
+
+<div class="card-hint" style="margin-bottom:14px">
+    @Ui.DateLong(Model.FromDate)@(Model.FromDate == Model.ToDate ? "" : " — " + Ui.DateLong(Model.ToDate))
+</div>
+
+<div class="tile-row" style="margin-bottom:14px">
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Sales takings</span></div>
+        <div class="tile-value">@Ui.Money(Model.TotalTakings)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Gross profit (MRP − cost)</span></div>
+        <div class="tile-value">@Ui.Money(Model.TotalProfit)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Purchases at cost</span></div>
+        <div class="tile-value">@Ui.Money(Model.TotalPurchases)</div>
+    </div>
+</div>
+
+<div class="grid grid-2col" style="margin-bottom:14px">
+    <div class="card card-clip">
+        <div class="card-head">Sales statement (daily)</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Day</th><th class="num">Sales</th><th class="num">Units</th><th class="num">Takings</th><th class="num">Profit</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Sales)
+                {
+                    <tr>
+                        <td class="tabular">@Ui.DateLong(r.Day)</td>
+                        <td class="num">@r.Sales</td>
+                        <td class="num">@r.Units</td>
+                        <td class="num">@Ui.Money(r.Takings)</td>
+                        <td class="num">@Ui.Money(r.Takings - r.Cost)</td>
+                    </tr>
+                }
+                @if (Model.Sales.Count == 0)
+                {
+                    <tr><td colspan="5"><div class="empty-state">No sales in this range.</div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">Purchase statement (daily)</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Day</th><th class="num">GRNs</th><th class="num">Units</th><th class="num">Value at cost</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Purchases)
+                {
+                    <tr>
+                        <td class="tabular">@Ui.DateLong(r.Day)</td>
+                        <td class="num">@r.Receipts</td>
+                        <td class="num">@r.Units</td>
+                        <td class="num">@Ui.Money(r.Value)</td>
+                    </tr>
+                }
+                @if (Model.Purchases.Count == 0)
+                {
+                    <tr><td colspan="4"><div class="empty-state">No stock received in this range.</div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card card-clip" style="margin-bottom:14px">
+    <div class="card-head">
+        Reorder shortlist (US11.3)
+        <span class="spacer"></span>
+        <span class="card-hint">sellable stock at or under the reorder level · 30-day sales shown</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Product</th><th>Company</th><th class="num">On hand</th><th class="num">Reorder at</th><th class="num">Sold, 30 days</th></tr></thead>
+            <tbody>
+            @foreach (var r in Model.Reorder)
+            {
+                <tr>
+                    <td><b>@r.Product</b></td>
+                    <td>@r.Company</td>
+                    <td class="num text-warning">@r.OnHand</td>
+                    <td class="num">@r.ReorderLevel</td>
+                    <td class="num">@r.Sold30d</td>
+                </tr>
+            }
+            @if (Model.Reorder.Count == 0)
+            {
+                <tr><td colspan="5"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">task_alt</span>
+                    Nothing needs reordering.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">Stock ledger (periodical, from the append-only move log)</div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>When</th><th>Product</th><th>Batch</th><th>Move</th><th class="num">Qty</th><th>Reason</th></tr></thead>
+            <tbody>
+            @foreach (var m in Model.Ledger)
+            {
+                <tr>
+                    <td class="tabular">@Ui.Local(m.At).ToString("dd MMM HH:mm")</td>
+                    <td>@m.Product</td>
+                    <td class="tabular">@m.BatchNo</td>
+                    <td><span class="pill">@Ui.Humanize(m.Kind)</span></td>
+                    <td class="num">@m.Qty</td>
+                    <td>@(m.Reason ?? "—")</td>
+                </tr>
+            }
+            @if (Model.Ledger.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state">No stock movement in this range.</div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

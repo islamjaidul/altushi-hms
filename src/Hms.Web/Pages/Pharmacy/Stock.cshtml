@@ -1,0 +1,219 @@
+@page "/pharmacy/stock"
+@using Hms.Pharmacy.Data
+@model Hms.Web.Pages.Pharmacy.StockModel
+@{
+    ViewData["Title"] = "Stock & Expiry";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="get" class="row no-print" style="margin-bottom:14px">
+    <label class="sr-only" for="OutletId">Outlet</label>
+    <select id="OutletId" name="OutletId" class="select" style="width:220px" onchange="this.form.submit()">
+        @foreach (var o in Model.Outlets)
+        {
+            <option value="@o.Id" selected="@(Model.OutletId == o.Id)">@o.Name</option>
+        }
+    </select>
+    @foreach (var (v, label) in new[] { ("all", "All batches"), ("near", "Near expiry"),
+                                        ("expired", "Expired"), ("quarantined", "Quarantined") })
+    {
+        <a class="btn @(Model.Show == v ? "btn-primary" : "")"
+           href="/pharmacy/stock?Show=@v&OutletId=@Model.OutletId">@label</a>
+    }
+    <span class="spacer"></span>
+    <span class="card-hint">Stock value at cost: <b>@Ui.Money(Model.StockValueAtCost)</b></span>
+</form>
+
+<div class="card card-clip" style="margin-bottom:14px">
+    <div class="card-head">
+        Batches
+        <span class="spacer"></span>
+        <span class="card-hint">FEFO: the sale always takes the earliest expiry first (US11.1)</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr>
+                <th>Product</th><th>Batch</th><th>Expiry</th><th class="num">On hand</th>
+                <th class="num">Cost</th><th class="num">MRP</th><th>State</th><th>Action</th>
+            </tr></thead>
+            <tbody>
+            @foreach (var r in Model.Rows)
+            {
+                <tr>
+                    <td><b>@r.Brand</b> @r.Strength @r.Form</td>
+                    <td class="tabular">@r.BatchNo</td>
+                    <td class="tabular">@Ui.DateLong(r.Expiry)</td>
+                    <td class="num">@r.OnHand</td>
+                    <td class="num">@Ui.Money(r.Cost)</td>
+                    <td class="num">@Ui.Money(r.Mrp)</td>
+                    <td>
+                        @if (r.State == BatchState.InStock && r.Expired)
+                        {
+                            <span class="pill bad">expired — sale blocked</span>
+                        }
+                        else if (r.State == BatchState.InStock && r.NearExpiry)
+                        {
+                            <span class="pill warn">near expiry</span>
+                        }
+                        else if (r.State == BatchState.InStock)
+                        {
+                            <span class="pill good">in stock</span>
+                        }
+                        else
+                        {
+                            <span class="pill @(r.State == BatchState.Quarantined ? "warn" : "")">@Ui.Humanize(r.State)</span>
+                            @if (r.StateReason is not null)
+                            {
+                                <span class="card-hint" style="margin-left:6px">@r.StateReason</span>
+                            }
+                        }
+                    </td>
+                    <td>
+                        @if (r.State == BatchState.InStock)
+                        {
+                            <form method="post" asp-page-handler="Quarantine" class="row" style="gap:6px">
+                                <input type="hidden" name="BatchId" value="@r.Id" />
+                                <input type="hidden" name="Show" value="@Model.Show" />
+                                <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                                <label class="sr-only" for="qr-@r.Id">Reason</label>
+                                <input id="qr-@r.Id" name="Reason" class="input input-sm" style="width:150px"
+                                       placeholder="@(r.Expired ? "expired" : "damaged / why")" />
+                                <button type="submit" class="btn-tint">Quarantine</button>
+                            </form>
+                        }
+                        else if (r.State == BatchState.Quarantined)
+                        {
+                            <div class="stack" style="gap:6px">
+                                <form method="post" asp-page-handler="Return" class="row" style="gap:6px">
+                                    <input type="hidden" name="BatchId" value="@r.Id" />
+                                    <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                                    <label class="sr-only" for="sup-@r.Id">Supplier</label>
+                                    <select id="sup-@r.Id" name="SupplierId" class="select input-sm" style="width:170px">
+                                        @foreach (var sup in Model.Suppliers)
+                                        {
+                                            <option value="@sup.Id">@sup.Name</option>
+                                        }
+                                    </select>
+                                    <label class="row" style="gap:4px"><input type="checkbox" name="Replacement" value="true" /> replacement</label>
+                                    <button type="submit" class="btn-tint">Return to supplier</button>
+                                </form>
+                                <form method="post" asp-page-handler="RequestWriteoff" class="row" style="gap:6px">
+                                    <input type="hidden" name="BatchId" value="@r.Id" />
+                                    <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                                    <label class="sr-only" for="wr-@r.Id">Reason</label>
+                                    <input id="wr-@r.Id" name="Reason" class="input input-sm" style="width:150px"
+                                           placeholder="why write off" />
+                                    <button type="submit" class="btn-tint">Request write-off ⚿</button>
+                                </form>
+                                <form method="post" asp-page-handler="Dispose">
+                                    <input type="hidden" name="BatchId" value="@r.Id" />
+                                    <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                                    <button type="submit" class="btn-tint">Dispose (needs approval)</button>
+                                </form>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">inventory_2</span>
+                    Nothing here — receive stock via a purchase order.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Stock count / audit
+        <span class="spacer"></span>
+        @if (Model.OpenAudit is null)
+        {
+            <form method="post" asp-page-handler="StartAudit">
+                <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                <button type="submit" class="btn-tint">Start a count</button>
+            </form>
+        }
+        else
+        {
+            <span class="pill warn">@Ui.Humanize(Model.OpenAudit.State)</span>
+        }
+    </div>
+    @if (Model.OpenAudit is not null)
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Batch</th><th class="num">System</th><th class="num">Counted</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var (line, label) in Model.OpenAuditLines)
+                {
+                    <tr>
+                        <td>@label</td>
+                        <td class="num">@line.SystemQty</td>
+                        <td class="num @(line.CountedQty != line.SystemQty ? "text-warning" : "")">@line.CountedQty</td>
+                        <td>
+                            <form method="post" asp-page-handler="Count" class="row" style="gap:6px">
+                                <input type="hidden" name="LineId" value="@line.Id" />
+                                <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                                <label class="sr-only" for="cnt-@line.Id">Counted quantity</label>
+                                <input id="cnt-@line.Id" name="CountedQty" class="input input-sm input-num"
+                                       style="width:90px" inputmode="numeric" value="@line.CountedQty" />
+                                <button type="submit" class="btn-tint">Record</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="row" style="padding:12px;gap:8px">
+            <form method="post" asp-page-handler="RequestAdjust">
+                <input type="hidden" name="AuditId" value="@Model.OpenAudit.Id" />
+                <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                <button type="submit" class="btn">Request adjustment approval ⚿</button>
+            </form>
+            <form method="post" asp-page-handler="PostAudit">
+                <input type="hidden" name="AuditId" value="@Model.OpenAudit.Id" />
+                <input type="hidden" name="OutletId" value="@Model.OutletId" />
+                <button type="submit" class="btn btn-primary">Post the count</button>
+            </form>
+        </div>
+    }
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>#</th><th>Outlet</th><th>Started</th><th class="num">Lines</th><th class="num">Variances</th><th>State</th></tr></thead>
+            <tbody>
+            @foreach (var a in Model.Audits)
+            {
+                <tr>
+                    <td class="tabular">@a.Id</td>
+                    <td>@a.Outlet</td>
+                    <td class="tabular">@Ui.Local(a.StartedAt).ToString("dd MMM yyyy HH:mm")</td>
+                    <td class="num">@a.Lines</td>
+                    <td class="num">@a.Variances</td>
+                    <td><span class="pill @(a.State == AuditState.Posted ? "good" : "warn")">@Ui.Humanize(a.State)</span></td>
+                </tr>
+            }
+            @if (Model.Audits.Count == 0)
+            {
+                <tr><td colspan="6"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">fact_check</span>
+                    No counts yet for this outlet.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

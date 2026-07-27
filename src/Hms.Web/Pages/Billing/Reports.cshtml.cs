@@ -20,8 +20,10 @@ public sealed record DueAgeRow(string InvoiceNo, string Patient, string? Phone, 
 [Authorize(Policy = Perm.BillingSessionClose)]
 public class ReportsModel(HmsTx tx, TimeProvider clock) : HmsPageModel
 {
-    [BindProperty(SupportsGet = true)] public DateOnly? From { get; set; }
-    [BindProperty(SupportsGet = true)] public DateOnly? To { get; set; }
+    /// <summary>Free text via the kernel date contract (ADR-0020) — forgiving formats, never a
+    /// native date input.</summary>
+    [BindProperty(SupportsGet = true)] public string? From { get; set; }
+    [BindProperty(SupportsGet = true)] public string? To { get; set; }
     [BindProperty(SupportsGet = true)] public string Range { get; set; } = "today";
 
     public DateOnly FromDate { get; private set; }
@@ -44,12 +46,20 @@ public class ReportsModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     public async Task OnGetAsync()
     {
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
+
+        // Explicit dates always win (ADR-0020 #4): an operator who typed a range gets that
+        // range, whatever the period dropdown happens to say. A date range that silently
+        // changes nothing is a defect class, and this is a money report.
+        var from = Hms.Kernel.Time.FlexibleDate.Parse(From);
+        var to = Hms.Kernel.Time.FlexibleDate.Parse(To);
+        if (from is not null || to is not null) Range = "custom";
+
         (FromDate, ToDate) = Range switch
         {
             "yesterday" => (today.AddDays(-1), today.AddDays(-1)),
             "week" => (today.AddDays(-6), today),
             "month" => (new DateOnly(today.Year, today.Month, 1), today),
-            "custom" => (From ?? today, To ?? today),
+            "custom" => (from ?? to ?? today, to ?? from ?? today),
             _ => (today, today),
         };
         if (ToDate < FromDate) (FromDate, ToDate) = (ToDate, FromDate);

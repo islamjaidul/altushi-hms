@@ -47,9 +47,10 @@ public sealed class DayCloseService(AuditWriter audit, TimeProvider clock)
         var invoiceIds = invoices.Select(i => i.Id).ToList();
         var dueOutstanding = await bill.Dues
             .Where(d => invoiceIds.Contains(d.InvoiceId)).SumAsync(d => d.Balance, ct);
-        var refunds = receipts.Where(r => r.Amount < 0).Sum(r => -r.Amount);
-        var dueCollected = receipts.Where(r => r.Amount > 0
-            && !invoiceIds.Contains(r.InvoiceId)).Sum(r => r.Amount); // collections against other days' invoices
+        var refunds = receipts.Where(r => r.Amount < 0 && r.InvoiceId != null).Sum(r => -r.Amount);
+        var dueCollected = receipts.Where(r => r.Amount > 0 && r.InvoiceId is long inv
+            && !invoiceIds.Contains(inv)).Sum(r => r.Amount);         // collections against other days' invoices
+        var advancesTaken = receipts.Where(r => r.FolioId != null).Sum(r => r.Amount); // net (spec 0017)
 
         session.State = SessionState.Closed;
         session.ClosedAt = clock.GetUtcNow();
@@ -71,6 +72,7 @@ public sealed class DayCloseService(AuditWriter audit, TimeProvider clock)
             Net = invoices.Sum(i => i.Net),
             DueCreated = dueOutstanding,
             DueCollected = dueCollected,
+            AdvancesTaken = advancesTaken,
             Refunds = refunds,
             Variance = variance,
             Version = 1,

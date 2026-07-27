@@ -1,0 +1,236 @@
+@page "/pharmacy/pos"
+@model Hms.Web.Pages.Pharmacy.PosModel
+@{
+    ViewData["Title"] = "Pharmacy Sale";
+    ViewData["Crumb"] = "Pharmacy";
+    ViewData["FKeys"] = "F3 Item search · F10 Payment";
+    var net = Model.Gross - Math.Max(0, Math.Min(Model.Gross, Model.DiscountFlat));
+}
+
+@if (Model.Session is null)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">lock</span>
+        <span>
+            <b>Your counter is closed.</b> Sales are attributed to a counter session, so selling
+            starts by opening yours.
+            <a href="/billing/session" style="margin-left:6px">Open counter →</a>
+        </span>
+    </div>
+}
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+@if (Model.ApprovedDiscountId > 0)
+{
+    <div class="alert good">
+        <span class="icon icon-sm" aria-hidden="true">task_alt</span>
+        <span>
+            A discount of up to <b>@Ui.Money(Model.ApprovedDiscountAmount)</b> is approved for this
+            customer — enter it below and save to apply it.
+        </span>
+    </div>
+}
+
+<form method="post" class="grid grid-pos" data-pos data-gross="@Model.Gross">
+    @for (var i = 0; i < Model.Items.Count; i++)
+    {
+        <input type="hidden" name="Items" value="@Model.Items[i]" />
+        <input type="hidden" name="Qtys" value="@Model.Qtys[i]" />
+    }
+
+    <div class="stack">
+        <div class="card card-body">
+            <div class="field-grid cols-3">
+                <label class="field typeahead-host">
+                    <span class="field-label">Customer</span>
+                    @* Optional: blank = walk-in retail. Credit and discounts need a name. *@
+                    <input class="input" data-typeahead="/api/typeahead/patients"
+                           data-target="#PatientId" data-submit autocomplete="off"
+                           value="@Model.PatientName"
+                           placeholder="Walk-in — or type a name/UHID/phone" />
+                    <input type="hidden" id="PatientId" name="PatientId" value="@Model.PatientId" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Outlet</span>
+                    <select class="select" asp-for="OutletId" onchange="this.form.submit()">
+                        @foreach (var o in Model.Outlets)
+                        {
+                            <option value="@o.Id">@o.Name</option>
+                        }
+                    </select>
+                </label>
+                <div class="field">
+                    <span class="field-label">Counter</span>
+                    <input class="input" value="@(Model.Session?.CounterName ?? "Not open")" disabled />
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="cat-toolbar">
+                <span class="icon" aria-hidden="true">search</span>
+                <input class="cat-search" asp-for="Q"
+                       placeholder="Search by brand or generic…" autocomplete="off" />
+                <span class="card-hint">@Model.Shelf.Count products</span>
+            </div>
+            <div class="cat-list">
+                @foreach (var p in Model.Shelf)
+                {
+                    <div class="cat-row">
+                        <span class="cat-name">
+                            <b>@p.Brand</b> @p.Strength @p.Form
+                            <span class="card-hint" style="margin-left:6px">@p.Generic</span>
+                            @if (p.NearExpiry && p.OnHand > 0)
+                            {
+                                <span class="pill warn" style="margin-left:6px">near expiry</span>
+                            }
+                        </span>
+                        @if (p.OnHand > 0)
+                        {
+                            <span class="pill">@p.OnHand left</span>
+                            <span class="cat-price">@Ui.Money(p.Mrp)</span>
+                            <button type="submit" class="cat-add" asp-page-handler="Add"
+                                    name="productId" value="@p.ProductId" title="Add @p.Brand"
+                                    aria-label="Add @p.Brand">
+                                <span class="icon icon-sm" aria-hidden="true">add</span>
+                            </button>
+                        }
+                        else
+                        {
+                            @* US11.1 / §7 U7: nothing sellable → no add control, a worded state. *@
+                            <span class="pill bad">out of stock</span>
+                        }
+                    </div>
+                }
+                @if (Model.Shelf.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span class="icon" aria-hidden="true">inventory_2</span>
+                        No products match. Register products under Products &amp; Companies.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-clip sticky-top">
+        <div class="card-head">
+            Sale
+            <span class="spacer"></span>
+            <span class="card-hint">@(Model.PatientName ?? "Walk-in customer")</span>
+        </div>
+
+        @if (Model.Cart.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="icon" aria-hidden="true">receipt_long</span>
+                No medicines yet — add them from the shelf.
+            </div>
+        }
+        else
+        {
+            @for (var i = 0; i < Model.Cart.Count; i++)
+            {
+                <div class="cart-line">
+                    <span class="cart-name">@Model.Cart[i].Label
+                        <span class="pill" style="margin-left:6px">× @Model.Cart[i].Qty</span>
+                    </span>
+                    <span class="cart-price">@Ui.Money(Model.Cart[i].Qty * Model.Cart[i].UnitMrp)</span>
+                    <button type="submit" class="cart-del" asp-page-handler="Remove"
+                            name="index" value="@i" title="Remove" aria-label="Remove @Model.Cart[i].Label">
+                        <span class="icon icon-sm" aria-hidden="true">close</span>
+                    </button>
+                </div>
+            }
+        }
+
+        <div class="totals">
+            <div class="total-line">
+                <span>Gross total</span>
+                <span class="val">@Ui.Money(Model.Gross)</span>
+            </div>
+            <label class="total-line" style="cursor:pointer">
+                <span>Staff sale (5A-11)</span>
+                <input type="checkbox" asp-for="StaffSale" />
+            </label>
+            <div class="total-line">
+                <label for="DiscountFlat">Discount (৳)</label>
+                <input id="DiscountFlat" class="input input-sm input-num" style="width:100px"
+                       asp-for="DiscountFlat" data-discount inputmode="numeric" />
+            </div>
+            <div id="discount-reason" style="display:none">
+                <span class="micro-label">Why the discount <span class="req">*</span></span>
+                <input class="input input-sm" asp-for="DiscountReason"
+                       placeholder="e.g. staff purchase" />
+            </div>
+            <div class="total-line total-net">
+                <span>Net payable</span>
+                <span class="val" data-net-out>@Ui.Money(net)</span>
+            </div>
+
+            <div class="tender-row">
+                <span>
+                    <span class="micro-label">Paid now</span>
+                    <input class="input input-sm input-num" asp-for="PaidNow" data-paid inputmode="numeric" />
+                </span>
+                <span>
+                    <span class="micro-label">Mode</span>
+                    <select class="select input-sm" asp-for="Tender">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bkash">bKash</option>
+                        <option value="nagad">Nagad</option>
+                    </select>
+                </span>
+            </div>
+
+            <button type="button" class="btn-tint" id="split-toggle" style="align-self:flex-start">
+                <span class="icon icon-sm" aria-hidden="true">add</span> Split across a second mode
+            </button>
+
+            <div class="tender-row" id="tender-2" style="display:none">
+                <span>
+                    <span class="micro-label">Also paid</span>
+                    <input class="input input-sm input-num" asp-for="PaidNow2" data-paid2 inputmode="numeric" />
+                </span>
+                <span>
+                    <span class="micro-label">Mode</span>
+                    <select class="select input-sm" asp-for="Tender2">
+                        <option value="card">Card</option>
+                        <option value="bkash">bKash</option>
+                        <option value="nagad">Nagad</option>
+                        <option value="cash">Cash</option>
+                    </select>
+                </span>
+                <span>
+                    <span class="micro-label">Txn no</span>
+                    <input class="input input-sm" asp-for="TenderRef2" placeholder="optional" />
+                </span>
+            </div>
+
+            <div class="total-line total-due">
+                <span>Due after payment</span>
+                <span data-due-out>@Ui.Money(net)</span>
+            </div>
+
+            @* Error-proofing by absence (§7 U7): with no open counter there is no save control. *@
+            @if (Model.Session is null)
+            {
+                <a class="btn" href="/billing/session">Open your counter to sell</a>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-primary btn-lg" asp-page-handler="Save"
+                        accesskey="s">
+                    <span class="icon icon-sm" aria-hidden="true">receipt_long</span>
+                    Save sale &amp; print receipt
+                </button>
+            }
+        </div>
+    </div>
+</form>

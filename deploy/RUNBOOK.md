@@ -34,3 +34,18 @@ by construction, ADR-0004).
 ## 8. Disk pressure
 Alert at 70% (admin banner), 85% pauses PDF archival + prunes oldest local backups (off-site
 copies exist). The DB is never the first casualty (06 §3). Sentinel job lands with S6 polish.
+
+## 9. Go-live switch (execute BEFORE the first real patient record — spec 0015, review §4.4)
+Run in order, on the PM's written instruction (P16 names the owner):
+1. **Seed off:** set `HMS_SEED=false` in `deploy/.env`, redeploy (§4). Seeding is idempotent
+   and only ever ran with the flag on — no schema change involved.
+2. **Rotate the demo cast:** in `/admin/users`, set a strong unique password per account that
+   stays (real staff take over their own accounts), **deactivate** every demo account that
+   doesn't (deactivation, never deletion — receipts keep their names). The security-stamp
+   bump kills any live demo session immediately.
+3. **Verify:** the shared demo password signs in **nowhere** (try 2–3 accounts); `/health` 200;
+   an operator can still sign in with a rotated credential.
+4. **Provisional prices:** `/admin/masters` shows zero provisional items (P8 — billing on a
+   provisional price is blocked from go-live).
+5. **Snapshot:** take a labelled backup (`§5`) marked `pre-go-live` — the restore point that
+   contains no real patient data.

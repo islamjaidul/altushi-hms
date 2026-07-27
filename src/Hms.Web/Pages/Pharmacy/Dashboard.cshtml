@@ -1,0 +1,47 @@
+@page "/pharmacy/dashboard"
+@model Hms.Web.Pages.Pharmacy.DashboardModel
+@{
+    ViewData["Title"] = "Pharmacy Dashboard";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+<div class="tile-row" style="margin-bottom:14px">
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Today's takings</span></div>
+        <div class="tile-value">@Ui.Money(Model.TodayTakings)</div>
+        <div class="tile-sub">@Model.TodaySales sale(s)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Today's gross profit</span></div>
+        <div class="tile-value">@Ui.Money(Model.TodayProfit)</div>
+        <div class="tile-sub">MRP − batch cost (US11.4)</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Stock value at cost</span></div>
+        <div class="tile-value">@Ui.Money(Model.StockValueAtCost)</div>
+        <div class="tile-sub">sellable batches only</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head"><span class="tile-label">Supplier payable</span></div>
+        <div class="tile-value">@Ui.Money(Model.SupplierPayable)</div>
+        <div class="tile-sub">purchases − payments − credits</div>
+    </div>
+</div>
+
+<div class="tile-row">
+    <a class="tile" href="/pharmacy/stock?Show=near">
+        <div class="tile-head"><span class="tile-label">Near expiry</span></div>
+        <div class="tile-value @(Model.NearExpiryBatches > 0 ? "text-warning" : "")">@Model.NearExpiryBatches</div>
+        <div class="tile-sub">batch(es) inside the warning window — sell first</div>
+    </a>
+    <a class="tile" href="/pharmacy/stock?Show=expired">
+        <div class="tile-head"><span class="tile-label">Expired / quarantined</span></div>
+        <div class="tile-value @(Model.ExpiredAwaitingAction > 0 ? "text-warning" : "")">@Model.ExpiredAwaitingAction</div>
+        <div class="tile-sub">awaiting quarantine, return or write-off</div>
+    </a>
+    <a class="tile" href="/pharmacy/reports">
+        <div class="tile-head"><span class="tile-label">Short items</span></div>
+        <div class="tile-value @(Model.ShortItems > 0 ? "text-warning" : "")">@Model.ShortItems</div>
+        <div class="tile-sub">at or under reorder level (US11.3)</div>
+    </a>
+</div>

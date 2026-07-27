@@ -72,5 +72,7 @@
     if (target) target.value = li.dataset.value;
     input.dispatchEvent(new CustomEvent("typeahead:selected",
       { detail: { value: li.dataset.value, label: li.textContent }, bubbles: true }));
+    // data-submit: choosing drives the form the way the old onchange-select did (ADR-0020).
+    if (input.dataset.submit !== undefined && input.form) input.form.submit();
   }
 })();

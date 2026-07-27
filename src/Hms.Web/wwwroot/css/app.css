@@ -347,6 +347,7 @@ input, select, textarea, button { font-family: inherit; }
 }
 .input:disabled, .select:disabled { background: var(--surface-1); color: var(--muted-1); }
 .input-sm { height: var(--control-h-sm); font-size: 0.8125rem; border-radius: var(--radius-pill); }
+.input-invalid { border-color: var(--danger); }
 .input-num { text-align: right; font-variant-numeric: tabular-nums; }
 .field-grid { display: grid; gap: 14px 16px; }
 .cols-2 { grid-template-columns: 1fr 1fr; }

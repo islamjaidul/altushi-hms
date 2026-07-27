@@ -20,7 +20,8 @@ public class TestOrder
     public long Id { get; set; }
     public long BranchId { get; set; }
     public long PatientId { get; set; }
-    public long EncounterId { get; set; }
+    public long? EncounterId { get; set; }
+    public long? FolioId { get; set; }                 // indoor parent (M6, spec 0017) — XOR below
     public long? OrderingDoctorId { get; set; }
     public long? ReferrerId { get; set; }              // payout attribution (ADR-0017)
     public string State { get; set; } = TestOrderState.Ordered;
@@ -60,7 +61,8 @@ public class DiagDbContext(DbContextOptions<DiagDbContext> options) : DbContext(
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.HasDefaultSchema("diag");
-        b.Entity<TestOrder>(e => e.ToTable("test_order"));
+        b.Entity<TestOrder>(e => e.ToTable("test_order", t => t.HasCheckConstraint(
+            "ck_test_order_parent", "num_nonnulls(encounter_id, folio_id) = 1")));
         b.Entity<OrderTest>(e => e.ToTable("order_test"));
         b.Entity<DeliveryLog>(e => e.ToTable("delivery_log"));
     }

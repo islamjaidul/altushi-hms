@@ -35,6 +35,10 @@ builder.Services.AddDbContext<Hms.Appointments.Data.ApptDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "appt")).UseSnakeCaseNamingConvention());
 builder.Services.AddDbContext<Hms.Notifications.Data.NotifDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "notif")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Pharmacy.Data.PharmDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "pharm")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Ipd.Data.IpdDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "ipd")).UseSnakeCaseNamingConvention());
 
 builder.Services
     .AddIdentity<AppUser, AppRole>(o =>
@@ -48,6 +52,12 @@ builder.Services
     .AddEntityFrameworkStores<AuthDbContext>()
     .AddClaimsPrincipalFactory<PermissionClaimsFactory>()
     .AddDefaultTokenProviders();
+
+// ADR-0019 amendment: a revoked grant must die mid-shift, not at the next voluntary sign-in.
+// The stamp check re-runs PermissionClaimsFactory, so the cookie's permissions refresh too.
+builder.Services.Configure<SecurityStampValidatorOptions>(o =>
+    o.ValidationInterval = TimeSpan.FromMinutes(
+        builder.Configuration.GetValue("Auth:RevalidationMinutes", 5)));
 
 builder.Services.ConfigureApplicationCookie(o =>
 {
@@ -90,6 +100,11 @@ builder.Services.AddSingleton<ApprovalEngine>();
 builder.Services.AddSingleton<Hms.Admin.RateResolver>();
 builder.Services.AddSingleton<Hms.Admin.CatalogImportService>();
 builder.Services.AddSingleton<Hms.Appointments.AppointmentsService>();
+builder.Services.AddSingleton<Hms.Pharmacy.StockService>();
+builder.Services.AddSingleton<Hms.Pharmacy.PurchaseService>();
+builder.Services.AddSingleton<Hms.Ipd.IpdService>();
+builder.Services.AddSingleton<Hms.Ipd.FolioService>();
+builder.Services.AddSingleton<Hms.Ipd.CertificateService>();
 builder.Services.AddSingleton(Hms.Notifications.SmsOptions.From(
     builder.Configuration["HMS_SMS_MODE"]));                                 // edge 3: simulation default
 builder.Services.AddSingleton<Hms.Notifications.SmsQueue>();
@@ -132,6 +147,8 @@ using (var scope = app.Services.CreateScope())
         await sp.GetRequiredService<Hms.Admin.Data.AdmDbContext>().Database.MigrateAsync();
         await sp.GetRequiredService<Hms.Appointments.Data.ApptDbContext>().Database.MigrateAsync();
         await sp.GetRequiredService<Hms.Notifications.Data.NotifDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Pharmacy.Data.PharmDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Ipd.Data.IpdDbContext>().Database.MigrateAsync();
         await DevSeed.RunAsync(sp);
     }
     finally
@@ -162,6 +179,30 @@ app.MapGet("/health", async (KernelDbContext db) =>
     var canConnect = await db.Database.CanConnectAsync();
     return canConnect ? Results.Ok(new { status = "ok" }) : Results.StatusCode(503);
 }).AllowAnonymous();
+
+// Kernel type-ahead source (ADR-0020, §7 U5): 2+ chars over name/UHID/phone, ranked
+// prefix-first, served from the trigram-indexed patient table. Same authZ as the directory.
+app.MapGet("/api/typeahead/patients", async (string? q, HmsTx tx) =>
+{
+    var term = q?.Trim();
+    if (term is null || term.Length < 2) return Results.Json(Array.Empty<object>());
+
+    var like = $"%{term}%";
+    var prefix = $"{term}%";
+    var hits = await tx.RunAsync(async s => await s.Reg.Patients.AsNoTracking()
+        .Where(p => p.Active && p.MergedInto == null &&
+                    (EF.Functions.ILike(p.FullName, like) ||
+                     EF.Functions.ILike(p.Uhid, like) ||
+                     (p.Phone != null && EF.Functions.ILike(p.Phone, like))))
+        .OrderByDescending(p => EF.Functions.ILike(p.FullName, prefix) ||
+                                EF.Functions.ILike(p.Uhid, prefix))
+        .ThenByDescending(p => p.Id)
+        .Take(10)
+        .Select(p => new { value = p.Id, label = p.FullName + " — " + p.Uhid +
+                                                 (p.Phone == null ? "" : " · " + p.Phone) })
+        .ToListAsync());
+    return Results.Json(hits);
+}).RequireAuthorization(Perm.RegistrationRead);
 
 app.MapRazorPages();
 

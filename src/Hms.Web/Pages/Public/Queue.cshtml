@@ -1,0 +1,63 @@
+@page "/public/queue"
+@model Hms.Web.Pages.Public.QueueModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="refresh" content="15" />
+    <title>Today's Doctors</title>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <style>
+        /* Lobby TV: big type, high contrast, nothing interactive. */
+        body { padding: 24px; }
+        .tv-table td, .tv-table th { font-size: 1.5rem; padding: 14px 18px; }
+        .tv-head { font-size: 2rem; font-weight: 700; margin-bottom: 16px; }
+        .tv-serial { font-size: 2.2rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="tv-head">
+        Today's Doctors — @Model.Today.ToString("dd MMM yyyy")
+    </div>
+    <div class="card card-clip">
+        <div class="table-wrap">
+            <table class="data tv-table">
+                <thead><tr><th>Doctor</th><th>Room</th><th>Now serving</th><th>Waiting</th><th>Seen</th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.Doctor</td>
+                        <td>@(row.Room ?? "—")</td>
+                        <td>
+                            @if (row.InChamberSerial is int serial)
+                            {
+                                <span class="tv-serial">#@serial</span> <span>@row.InChamberName</span>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </td>
+                        <td class="tabular">@row.Waiting</td>
+                        <td class="tabular">@row.Done</td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="5">No chambers scheduled today.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <p style="margin-top:14px;opacity:.7">
+        Report ready? Check at <b>/public/report-status</b> with the order number on your receipt.
+    </p>
+</body>
+</html>

@@ -136,15 +136,14 @@
     <form method="post" asp-page-handler="Issue" class="card">
         <div class="card-head">New appointment</div>
         <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
-            <label class="field">
+            <label class="field typeahead-host">
                 <span class="field-label">Patient <span class="req">*</span></span>
-                <select class="select" asp-for="PatientId" data-advance>
-                    <option value="">— Select patient —</option>
-                    @foreach (var p in Model.Patients)
-                    {
-                        <option value="@p.Id">@p.Label</option>
-                    }
-                </select>
+                @* §7 U5: 2–3 characters of name/UHID/phone, ranked — never a scroll-list (ADR-0020). *@
+                <input class="input" data-typeahead="/api/typeahead/patients"
+                       data-target="#PatientId" data-advance autocomplete="off"
+                       value="@Model.SelectedPatientName"
+                       placeholder="Type name, UHID or phone…" />
+                <input type="hidden" id="PatientId" name="PatientId" value="@Model.PatientId" />
             </label>
             <label class="field">
                 <span class="field-label">Doctor <span class="req">*</span></span>

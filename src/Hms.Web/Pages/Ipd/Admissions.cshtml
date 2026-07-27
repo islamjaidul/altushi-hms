@@ -1,0 +1,125 @@
+@page "/ipd/admissions"
+@using Hms.Ipd.Data
+@model Hms.Web.Pages.Ipd.AdmissionsModel
+@{
+    ViewData["Title"] = "Admissions & Census";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="row" style="gap:8px;margin-bottom:12px">
+    <a class="btn @(Model.Tab == "inhouse" ? "btn-primary" : "")" href="/ipd/admissions?Tab=inhouse">In-house</a>
+    <a class="btn @(Model.Tab == "blocked" ? "btn-primary" : "")" href="/ipd/admissions?Tab=blocked">Block list (R4)</a>
+    <a class="btn @(Model.Tab == "reserved" ? "btn-primary" : "")" href="/ipd/admissions?Tab=reserved">Reservations</a>
+    <a class="btn @(Model.Tab == "closed" ? "btn-primary" : "")" href="/ipd/admissions?Tab=closed">Discharged</a>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        @(Model.Tab switch { "blocked" => "Blocked patients — barred from service and discharge",
+            "reserved" => "Bed reservations", "closed" => "Closed admissions", _ => "In-house census" })
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr>
+                <th>Admission</th><th>Patient</th><th>Consultant</th><th>Bed</th>
+                <th>Admitted</th><th>Balance</th><th>State</th><th></th>
+            </tr></thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="tabular">@row.AdmissionNo</td>
+                    <td><a href="/ipd/folio/@row.Id">@row.Patient</a></td>
+                    <td>@(row.Doctor ?? "—")</td>
+                    <td class="tabular">@row.Bed</td>
+                    <td class="tabular">@Ui.Local(row.AdmittedAt).ToString("dd MMM HH:mm")</td>
+                    <td class="tabular">@Ui.Money(row.Balance)</td>
+                    <td><span class="pill @(row.State switch {
+                        AdmissionState.Blocked => "bad",
+                        AdmissionState.Admitted => "good",
+                        AdmissionState.Discharged => "", _ => "warn" })">@Ui.Humanize(row.State)</span></td>
+                    <td>
+                        @if (Model.CanManage)
+                        {
+                            <div class="stack" style="gap:6px">
+                            @if (row.State == AdmissionState.Reserved)
+                            {
+                                <form method="post" asp-page-handler="ConfirmReservation">
+                                    <input type="hidden" name="AdmissionId" value="@row.Id" />
+                                    <button type="submit" class="btn-tint">Confirm admission</button>
+                                </form>
+                                <form method="post" asp-page-handler="CancelReservation">
+                                    <input type="hidden" name="AdmissionId" value="@row.Id" />
+                                    <button type="submit" class="btn-tint">Cancel</button>
+                                </form>
+                            }
+                            else if (row.State == AdmissionState.Blocked)
+                            {
+                                @if (row.ApprovedReleaseApproval is long releaseId)
+                                {
+                                    <form method="post" asp-page-handler="ApplyRelease">
+                                        <input type="hidden" name="AdmissionId" value="@row.Id" />
+                                        <input type="hidden" name="ApprovalId" value="@releaseId" />
+                                        <button type="submit" class="btn-tint">Apply release ⚿</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="RaiseRelease" class="row" style="gap:6px">
+                                        <input type="hidden" name="AdmissionId" value="@row.Id" />
+                                        <label class="sr-only" for="rel-@row.Id">Reason</label>
+                                        <input id="rel-@row.Id" class="input" name="Reason" placeholder="release reason…" style="width:130px" />
+                                        <button type="submit" class="btn-tint">Request release</button>
+                                    </form>
+                                }
+                            }
+                            else if (row.State is AdmissionState.Admitted or AdmissionState.DischargeInitiated
+                                     or AdmissionState.ClinicallyCleared)
+                            {
+                                @if (row.ApprovedBlockApproval is long blockId)
+                                {
+                                    <form method="post" asp-page-handler="ApplyBlock">
+                                        <input type="hidden" name="AdmissionId" value="@row.Id" />
+                                        <input type="hidden" name="ApprovalId" value="@blockId" />
+                                        <button type="submit" class="btn-tint">Apply block ⚿</button>
+                                    </form>
+                                }
+                                else if (row.PendingBlockApproval is not null)
+                                {
+                                    <span class="card-hint">block awaiting approval…</span>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="RaiseBlock" class="row" style="gap:6px">
+                                        <input type="hidden" name="AdmissionId" value="@row.Id" />
+                                        <label class="sr-only" for="blk-@row.Id">Reason</label>
+                                        <input id="blk-@row.Id" class="input" name="Reason" placeholder="unpaid dues…" style="width:130px" />
+                                        <button type="submit" class="btn-tint">Request block</button>
+                                    </form>
+                                }
+                                <a class="btn-tint" href="/ipd/discharge/@row.Id">Discharge…</a>
+                            }
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="8"><div class="empty-state">
+                    <span class="icon" aria-hidden="true">group</span>
+                    Nothing here.
+                </div></td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

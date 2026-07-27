@@ -13,7 +13,6 @@ public sealed record QueueRow(
     long Id, int SerialNo, string PatientName, string Uhid, string? Phone,
     string DoctorName, string State, DateTimeOffset CreatedAt);
 
-public sealed record PatientOption(long Id, string Label);
 
 /// <summary>
 /// §9A.2 module 2 (deliberately lite) / 05 §5 screen 9. The serial constraint is surfaced as
@@ -30,7 +29,7 @@ public class IndexModel(
     public DateOnly Today { get; private set; }
     public IReadOnlyList<DoctorCard> Doctors { get; private set; } = [];
     public IReadOnlyList<QueueRow> Queue { get; private set; } = [];
-    public IReadOnlyList<PatientOption> Patients { get; private set; } = [];
+    public string? SelectedPatientName { get; private set; }
 
     public int Waiting => Queue.Count(q => q.State is AppointmentState.Booked or AppointmentState.Arrived);
     public int Done => Queue.Count(q => q.State == AppointmentState.Done);
@@ -42,7 +41,7 @@ public class IndexModel(
         Today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
         var today = Today;
 
-        (Doctors, Queue, Patients) = await tx.RunAsync(async s =>
+        (Doctors, Queue, SelectedPatientName) = await tx.RunAsync(async s =>
         {
             var schedules = await s.Appt.Schedules.AsNoTracking().ToListAsync();
             var appts = await s.Appt.Appointments.AsNoTracking()
@@ -75,15 +74,14 @@ public class IndexModel(
                 names.GetValueOrDefault(a.DoctorId, "Doctor"),
                 a.State, a.CreatedAt)).ToList();
 
-            // The picker is a short recent list; the type-ahead endpoint covers the long tail (§7 U5).
-            var options = await s.Reg.Patients.AsNoTracking()
-                .Where(p => p.Active && p.MergedInto == null)
-                .OrderByDescending(p => p.Id).Take(50)
-                .Select(p => new PatientOption(p.Id, p.FullName + " — " + p.Uhid))
-                .ToListAsync();
+            // Re-render after a failed post: echo the already-chosen patient (§7 U9 banner).
+            var selectedName = PatientId is > 0
+                ? await s.Reg.Patients.AsNoTracking()
+                    .Where(p => p.Id == PatientId).Select(p => p.FullName + " — " + p.Uhid)
+                    .FirstOrDefaultAsync()
+                : null;
 
-            return ((IReadOnlyList<DoctorCard>)byDoctor, (IReadOnlyList<QueueRow>)rows,
-                    (IReadOnlyList<PatientOption>)options);
+            return ((IReadOnlyList<DoctorCard>)byDoctor, (IReadOnlyList<QueueRow>)rows, selectedName);
         });
     }
 

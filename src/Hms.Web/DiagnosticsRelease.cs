@@ -54,7 +54,7 @@ public static class DiagnosticsRelease
     /// Edge 33: one tube can carry several tests and one test can need several tubes, so samples
     /// are grouped by sample type — CBC + ESR share the EDTA tube; imaging raises none at all.
     /// </summary>
-    private static async Task CreateSamplesAsync(
+    public static async Task CreateSamplesAsync(
         TxScope s, LisService lis, long branchId, long orderId, long actorId, CancellationToken ct)
     {
         var orderTests = await s.Diag.OrderTests.AsNoTracking()

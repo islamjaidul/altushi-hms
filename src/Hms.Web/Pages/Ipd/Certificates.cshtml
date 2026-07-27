@@ -1,0 +1,89 @@
+@page "/ipd/certificates"
+@using System.Text.Json
+@model Hms.Web.Pages.Ipd.CertificatesModel
+@{
+    ViewData["Title"] = "Certificates";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Issued certificates
+            <span class="spacer"></span>
+            <span class="card-hint">sequential numbers · reprints counted and audited</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>No.</th><th>Kind</th><th>Patient</th><th>Admission</th><th>Issued</th><th>Prints</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td class="tabular"><b>@row.CertNo</b></td>
+                        <td><span class="pill">@row.Kind</span></td>
+                        <td>@row.Patient</td>
+                        <td class="tabular">@row.AdmissionNo</td>
+                        <td class="tabular">@Ui.Local(row.IssuedAt).ToString("dd MMM HH:mm")</td>
+                        <td class="tabular">@row.PrintCount</td>
+                        <td>
+                            <form method="post" asp-page-handler="Reprint">
+                                <input type="hidden" name="CertificateId" value="@row.Id" />
+                                <button type="submit" class="btn-tint">Reprint</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="7"><div class="empty-state">
+                        <span class="icon" aria-hidden="true">verified</span>
+                        No certificates yet.
+                    </div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Issue" class="card">
+        <div class="card-head">Issue a certificate</div>
+        <div class="card-body stack" style="gap:10px;padding-top:0">
+            <label class="field">
+                <span class="field-label">Admission</span>
+                <select class="select" asp-for="AdmissionId">
+                    <option value="0">—</option>
+                    @foreach (var a in Model.Eligible)
+                    {
+                        <option value="@a.Id">@a.AdmissionNo — @a.Patient (@Ui.Humanize(a.State))</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Kind</span>
+                <select class="select" asp-for="Kind">
+                    <option value="discharge">Discharge certificate</option>
+                    <option value="death">Death certificate</option>
+                    <option value="birth">Birth certificate</option>
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Extra line (e.g. newborn name / cause note)</span>
+                <input class="input" asp-for="Extra" />
+            </label>
+            <button type="submit" class="btn btn-primary">Issue with next number</button>
+            <div class="card-hint">
+                Discharge certificates need a settled admission; death certificates need a
+                death-recorded one. The body freezes at issue — reprints never recompute.
+            </div>
+        </div>
+    </form>
+</div>

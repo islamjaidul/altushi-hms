@@ -22,6 +22,7 @@ jobs:
           sh eng/check-no-external-hosts.sh src
           sh eng/check-ui-tokens.sh src
           sh eng/check-fkeys.sh src
+          sh eng/check-no-native-date.sh src
       - name: Unit + architecture tests
         run: |
           dotnet test tests/Hms.Kernel.Tests --no-build -c Release
@@ -45,3 +46,28 @@ jobs:
           sh eng/check-additive-migrations.sh auth.sql
       - name: Image build
         run: docker build -f deploy/app.Dockerfile -t hms-app:ci .
+
+  # ADR-0022 (spec 0015): boot the current build against the PREVIOUS release's data.
+  # Clean-database-only testing hid a production defect once (spec 0013); never again.
+  upgrade-path:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: dev-only-super
+        ports: ["5455:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Upgrade gate
+        run: bash eng/verify/upgrade/run.sh
+        env:
+          PGHOST: localhost
+          PGPORT: "5455"
+          PGUSER: postgres
+          PGPASSWORD: dev-only-super

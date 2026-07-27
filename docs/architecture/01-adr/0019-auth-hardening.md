@@ -32,3 +32,7 @@ Market expectation (both live competitors): two-step auth, lock screens, dynamic
 ## Reversal trigger
 
 Pilot evidence that fast-switch still loses to shared logins at real counters → escalate to hardware second factors on approver actions (cheap USB/NFC tokens or supervisor barcode-badge co-sign), costed then.
+
+## Amendment — 2026-07-27: security-stamp revalidation (Phase-2 review, `10-mvp-review.md` §4.3)
+
+As shipped, permissions are stamped into the auth cookie at sign-in (`PermissionClaimsFactory`, `Program.cs:49`) and never revalidated, so a revoked grant survives until the next voluntary sign-in. For a hospital with shift handover that is not acceptable: a supervisor grant pulled mid-shift must die mid-shift. **Decision:** enable ASP.NET Core Identity security-stamp validation with a ≤ 5-minute interval; permission/role changes update the user's security stamp, forcing principal refresh (re-stamping current permissions) or sign-out on the next request after the interval. The permission model, dynamic menus and server-side policies are unchanged — only staleness is bounded. Cost: one DB read per user per interval, negligible at §14 volumes. Implemented in the Wave-0 spec.

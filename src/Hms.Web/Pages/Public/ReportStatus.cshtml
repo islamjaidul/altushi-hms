@@ -1,0 +1,56 @@
+@page "/public/report-status"
+@model Hms.Web.Pages.Public.ReportStatusModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Report Status</title>
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <style>body { padding: 24px; max-width: 560px; margin: 0 auto; }</style>
+</head>
+<body>
+    <h1 style="font-size:1.6rem;margin-bottom:14px">Is my report ready?</h1>
+
+    <form method="get" class="card">
+        <div class="card-body stack" style="gap:10px">
+            <label class="field">
+                <span class="field-label">Order number from your money receipt (e.g. LB-00042)</span>
+                <input class="input" name="orderNo" value="@Model.OrderNo" autofocus
+                       placeholder="LB-00042" />
+            </label>
+            <button type="submit" class="btn btn-primary">Check status</button>
+        </div>
+    </form>
+
+    @if (Model.NoMatch)
+    {
+        <div class="alert" style="margin-top:14px">
+            <span>No report found for that number — please check the receipt or ask at the counter.</span>
+        </div>
+    }
+    else if (Model.Tests.Count > 0)
+    {
+        <div class="card" style="margin-top:14px">
+            <div class="card-head">@Model.OrderNo — @Model.MaskedName</div>
+            <div class="card-body stack" style="gap:8px;padding-top:0">
+                @foreach (var test in Model.Tests)
+                {
+                    <div class="row" style="gap:10px">
+                        <span>@test.Test</span>
+                        <span class="spacer"></span>
+                        <span class="pill @(test.Status == "In progress" ? "warn" : "good")">@test.Status</span>
+                    </div>
+                }
+                <div class="card-hint">
+                    Ready reports are collected at the delivery counter with your receipt.
+                </div>
+            </div>
+        </div>
+    }
+</body>
+</html>

@@ -14,7 +14,7 @@ openssl pkey -in eng/dev-keys/vendor-private.pem -pubout -out src/Hms.Web/vendor
 
 payload=$(mktemp)
 cat > "$payload" <<'JSON'
-{"customer":"Altushi General Hospital (DEV)","modules":["Registration","Appointments","Billing","Diagnostics","Lis","Dashboard","Admin","Notifications"],"branches":1,"expiresUtc":"2028-07-01T00:00:00Z","graceDays":30}
+{"customer":"Altushi General Hospital (DEV)","modules":["Registration","Appointments","Billing","Diagnostics","Lis","Dashboard","Admin","Notifications","Pharmacy","Ipd"],"branches":1,"expiresUtc":"2028-07-01T00:00:00Z","graceDays":30}
 JSON
 
 payload_b64=$(base64 < "$payload" | tr -d '\n')

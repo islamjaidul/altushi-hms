@@ -111,9 +111,8 @@
                                         <input id="np-@r.Kind-@r.Id" name="NewPrice" class="input input-sm input-num"
                                                style="width:88px" inputmode="numeric" placeholder="৳" />
                                         <label class="sr-only" for="ef-@r.Kind-@r.Id">Effective from</label>
-                                        <input id="ef-@r.Kind-@r.Id" name="EffectiveFrom" type="date"
-                                               value="@Model.Today.AddDays(1).ToString("yyyy-MM-dd")"
-                                               min="@Model.Today.ToString("yyyy-MM-dd")"
+                                        <input id="ef-@r.Kind-@r.Id" name="EffectiveFrom" hms-date
+                                               value="@Model.Today.AddDays(1).ToString("dd MMM yyyy")"
                                                class="input input-sm" style="width:140px" />
                                         <button type="submit" class="btn-tint">Apply</button>
                                     </form>

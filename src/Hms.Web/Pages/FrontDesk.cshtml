@@ -1,0 +1,130 @@
+@page "/frontdesk"
+@model Hms.Web.Pages.FrontDeskModel
+@{
+    ViewData["Title"] = "Help Desk";
+    ViewData["Crumb"] = "Front Desk";
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <form method="get" class="card">
+            <div class="card-head">Patient enquiry (§5 M2)</div>
+            <div class="card-body stack" style="gap:10px;padding-top:0">
+                <label class="field typeahead-host">
+                    <span class="field-label">Type 2–3 letters of name, UHID or phone</span>
+                    <input class="input" data-typeahead="/api/typeahead/patients"
+                           data-target="#patientId" data-submit autocomplete="off"
+                           placeholder="e.g. Rah…" />
+                    <input type="hidden" id="patientId" name="patientId" value="@Model.PatientId" />
+                </label>
+            </div>
+        </form>
+
+        @if (Model.PatientName is not null)
+        {
+            <div class="card">
+                <div class="card-head">
+                    @Model.PatientName
+                    <span class="card-hint">@Model.PatientUhid · @Model.PatientPhone</span>
+                </div>
+                <div class="card-body stack" style="gap:10px;padding-top:0">
+                    @if (Model.Admission is { } adm)
+                    {
+                        <div class="row" style="gap:10px;flex-wrap:wrap">
+                            <span class="pill @(adm.State == "blocked" ? "bad" : "good")">@Ui.Humanize(adm.State)</span>
+                            <span>@adm.AdmissionNo</span>
+                            <span><b>@(adm.Bed ?? "—")</b> · @(adm.Ward ?? "—")</span>
+                            <span>@(adm.Doctor ?? "—")</span>
+                            <span class="card-hint">since @Ui.Local(adm.AdmittedAt).ToString("dd MMM yyyy")</span>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data">
+                                <tbody>
+                                    <tr><td>Charges posted so far</td><td class="tabular">@Ui.Money(adm.Posted)</td></tr>
+                                    <tr><td>Bed days accrued (not yet posted)</td><td class="tabular">@Ui.Money(adm.Accrued)</td></tr>
+                                    <tr><td>Advance paid</td><td class="tabular">− @Ui.Money(adm.Advance)</td></tr>
+                                    @if (adm.SettledDue > 0)
+                                    {
+                                        <tr><td>Due on settlement invoice</td><td class="tabular">@Ui.Money(adm.SettledDue)</td></tr>
+                                    }
+                                    <tr><td><b>Net payable now (estimate)</b></td>
+                                        <td class="tabular"><b>@Ui.Money(Model.EstimateTotal)</b></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-hint">
+                            US2.2: this figure equals the folio balance including today — it is an
+                            estimate for the patient party; billing happens at discharge.
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="card-hint">Not admitted right now.</p>
+                    }
+
+                    @if (Model.History.Count > 0)
+                    {
+                        <div class="card-head" style="padding:0">Previous visits</div>
+                        @foreach (var v in Model.History)
+                        {
+                            <div class="row" style="gap:8px">
+                                <span class="pill">@v.What</span>
+                                <span>@v.Detail</span>
+                                <span class="spacer"></span>
+                                <span class="card-hint tabular">@Ui.Local(v.At).ToString("dd MMM yyyy")</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card card-clip">
+            <div class="card-head">
+                Today's doctors
+                <span class="spacer"></span>
+                <a class="btn-tint" href="/appointments">Serials / queue…</a>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Doctor</th><th>Room</th><th>Booked</th><th>Waiting</th><th>Done</th></tr></thead>
+                    <tbody>
+                    @foreach (var d in Model.Doctors)
+                    {
+                        <tr>
+                            <td>@d.Name</td>
+                            <td>@(d.Room ?? "—")</td>
+                            <td class="tabular">@d.Booked</td>
+                            <td class="tabular">@d.Waiting</td>
+                            <td class="tabular">@d.Done</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            Beds free now (US2.1)
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/ipd/board">Full board…</a>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Class</th><th>Free</th><th>Total</th></tr></thead>
+                <tbody>
+                @foreach (var row in Model.BedSummary)
+                {
+                    <tr>
+                        <td>@row.Class.ToUpperInvariant()</td>
+                        <td class="tabular"><b>@row.Free</b></td>
+                        <td class="tabular">@row.Total</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

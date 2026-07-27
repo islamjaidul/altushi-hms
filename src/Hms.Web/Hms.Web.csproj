@@ -10,6 +10,8 @@
     <ProjectReference Include="..\Modules\Dashboard\Hms.Dashboard\Hms.Dashboard.csproj" />
     <ProjectReference Include="..\Modules\Admin\Hms.Admin\Hms.Admin.csproj" />
     <ProjectReference Include="..\Modules\Notifications\Hms.Notifications\Hms.Notifications.csproj" />
+    <ProjectReference Include="..\Modules\Pharmacy\Hms.Pharmacy\Hms.Pharmacy.csproj" />
+    <ProjectReference Include="..\Modules\Ipd\Hms.Ipd\Hms.Ipd.csproj" />
   </ItemGroup>
 
   <ItemGroup>

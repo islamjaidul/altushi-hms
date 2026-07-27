@@ -17,11 +17,15 @@ public static class DevSeed
 {
     private static readonly Dictionary<string, string[]> Roles = new()
     {
+        // §12 front-desk row + US6.3: the front desk manages beds, admissions and transfers.
         ["Receptionist"] =
-            ["registration.create", "registration.read", "appointments.read", "appointments.create"],
+            ["registration.create", "registration.read", "appointments.read", "appointments.create",
+             "ipd.read", "ipd.manage"],
+        // US6.2: the billing operator settles discharges, takes advances, issues certificates.
         ["Billing Operator"] =
             ["registration.read", "billing.invoice.create", "billing.receipt.create",
-             "billing.session.open", "billing.session.close", "diagnostics.order.create"],
+             "billing.session.open", "billing.session.close", "diagnostics.order.create",
+             "ipd.read", "ipd.settle"],
         // §12 gives both lab roles "Patient reg R" and "Diag order R"; the Pathologist's LIS
         // cell is "A(verify) + C", so verification and entry both belong to that role.
         ["Lab Technologist"] =
@@ -30,12 +34,22 @@ public static class DevSeed
             ["registration.read", "lis.worklist.read", "lis.result.enter", "lis.result.verify"],
         ["Billing Supervisor"] =
             ["registration.read", "billing.invoice.create", "billing.receipt.create",
-             "billing.session.close", "admin.approvals.decide"],
+             "billing.session.close", "admin.approvals.decide", "ipd.read"],
+        // §12 Nurse row: C on IPD service posting and requisitions, R elsewhere (US6.1).
+        ["Nurse"] =
+            ["registration.read", "ipd.read", "ipd.service.post"],
         ["Admin"] =
             ["admin.users.manage", "admin.audit.read", "admin.approvals.decide",
              "admin.masters.manage", "notifications.read"],
         ["MD"] =
-            ["dashboard.read", "admin.approvals.decide", "admin.audit.read"],
+            ["dashboard.read", "admin.approvals.decide", "admin.audit.read", "pharmacy.read",
+             "ipd.read"],
+        // §12 Pharmacist row: C on pharmacy, R on patient reg; counter open/close is the money
+        // custody the pharmacy POS rides (spec 0016 / ADR-0021 #5).
+        ["Pharmacist"] =
+            ["registration.read", "pharmacy.read", "pharmacy.sale.create", "pharmacy.purchase.manage",
+             "pharmacy.stock.manage", "billing.session.open", "billing.session.close",
+             "billing.receipt.create"],
     };
 
     private static readonly (string User, string Display, string Role)[] Cast =
@@ -47,6 +61,8 @@ public static class DevSeed
         ("shahid", "Shahid Alam", "Billing Supervisor"),
         ("admin", "System Admin", "Admin"),
         ("md", "Dr. Chairman", "MD"),
+        ("parvin", "Parvin Akter", "Pharmacist"),
+        ("nasrin", "Nasrin Sultana", "Nurse"),
     ];
 
     public const string DevPassword = "Demo#1234";   // on the demo card (07 §1)
@@ -107,6 +123,13 @@ public static class DevSeed
                 new Counter { BranchId = 1, Name = "Front Desk 1", Kind = "front-desk" },
                 new Counter { BranchId = 1, Name = "Diagnostics Counter", Kind = "diagnostics" },
                 new Counter { BranchId = 1, Name = "Emergency Counter", Kind = "er" });
+            await bill.SaveChangesAsync();
+        }
+        // Additive, not gated on the block above: a database seeded before spec 0016 has
+        // counters but no pharmacy counter — the upgrade gate caught exactly this.
+        if (!await bill.Counters.AnyAsync(c => c.Kind == "pharmacy"))
+        {
+            bill.Counters.Add(new Counter { BranchId = 1, Name = "Pharmacy Counter", Kind = "pharmacy" });
             await bill.SaveChangesAsync();
         }
 
@@ -237,6 +260,181 @@ public static class DevSeed
             backfilled++;
         }
         if (backfilled > 0) await adm.SaveChangesAsync();
+
+        await SeedPharmacyAsync(sp, kdb);
+        await SeedIpdAsync(sp, kdb);
+    }
+
+    /// <summary>Spec 0017: wards, beds with effective-dated class tariffs, the 5A-9 masters
+    /// (admission fee, service charge, package) and the R4/late-post approval policies —
+    /// every block is additive so a pre-0017 database upgrades cleanly (ADR-0022 lesson).</summary>
+    private static async Task SeedIpdAsync(IServiceProvider sp, KernelDbContext kdb)
+    {
+        var ipd = sp.GetRequiredService<Hms.Ipd.Data.IpdDbContext>();
+        var adm = sp.GetRequiredService<AdmDbContext>();
+
+        if (!await kdb.ApprovalPolicies.AnyAsync(p => p.Type == "folio-late-post"))
+        {
+            kdb.ApprovalPolicies.AddRange(
+                new ApprovalPolicy { Type = "folio-late-post", Tier = 1, Role = "Billing Supervisor" },
+                new ApprovalPolicy { Type = "patient-block", Tier = 1, Role = "Billing Supervisor" },
+                new ApprovalPolicy { Type = "patient-block", Tier = 2, Role = "MD" },
+                new ApprovalPolicy { Type = "patient-release", Tier = 1, Role = "Billing Supervisor" },
+                new ApprovalPolicy { Type = "patient-release", Tier = 2, Role = "MD" });
+            await kdb.SaveChangesAsync();
+        }
+
+        // IPD catalog services (bed tariffs + 5A-8/5A-9 masters), additive by code.
+        var from = new DateOnly(2026, 1, 1);
+        var ipdServices = new (string Code, string Name, string Dept, long Price)[]
+        {
+            ("IPD-BED-GEN", "Bed — General Ward (per day)", "IPD", 1200),
+            ("IPD-BED-CAB", "Bed — Cabin (per day)", "IPD", 3500),
+            ("IPD-BED-ICU", "Bed — ICU (per day)", "IPD", 8000),
+            ("IPD-ADM-FEE", "Admission Fee", "IPD", 500),
+            ("IPD-SVC-PCT", "Service Charge (settlement %)", "IPD", 0),
+            ("IPD-OXY", "Oxygen (per hour)", "IPD", 150),
+            ("IPD-NURS", "Nursing Care (per day)", "IPD", 400),
+            ("IPD-VISIT", "Consultant Visit (indoor)", "IPD", 800),
+            ("IPD-XBED", "Extra Bed — Attendant (per day)", "IPD", 600),
+            ("IPD-VCARD", "Visitor Card Fee", "IPD", 50),
+            ("IPD-PKG-ND", "Normal Delivery Package", "IPD", 25000),
+        };
+        var serviceIds = new Dictionary<string, long>();
+        foreach (var (code, name, dept, price) in ipdServices)
+        {
+            var existing = await adm.Services.SingleOrDefaultAsync(x => x.Code == code);
+            if (existing is null)
+            {
+                existing = new Service { Code = code, Name = name, Dept = dept, Kind = "procedure" };
+                adm.Services.Add(existing);
+                await adm.SaveChangesAsync();
+                if (price > 0)
+                    adm.RateVersions.Add(new RateVersion
+                    {
+                        BranchId = 1, CatalogKind = "service", CatalogId = existing.Id,
+                        Price = price, ValidFrom = from, AuthorId = 1,
+                    });
+            }
+            serviceIds[code] = existing.Id;
+        }
+        await adm.SaveChangesAsync();
+
+        if (!await ipd.Wards.AnyAsync())
+        {
+            var wards = new[]
+            {
+                new Hms.Ipd.Data.Ward { BranchId = 1, Name = "General Ward (Male)", Class = "general" },
+                new Hms.Ipd.Data.Ward { BranchId = 1, Name = "General Ward (Female)", Class = "general" },
+                new Hms.Ipd.Data.Ward { BranchId = 1, Name = "Cabin Block", Class = "cabin" },
+                new Hms.Ipd.Data.Ward { BranchId = 1, Name = "ICU", Class = "icu" },
+            };
+            ipd.Wards.AddRange(wards);
+            await ipd.SaveChangesAsync();
+
+            void Beds(Hms.Ipd.Data.Ward ward, string prefix, int count, string tariffCode)
+            {
+                for (var i = 1; i <= count; i++)
+                    ipd.Beds.Add(new Hms.Ipd.Data.Bed
+                    {
+                        BranchId = 1, WardId = ward.Id, Code = $"{prefix}-{i:D2}",
+                        TariffServiceId = serviceIds[tariffCode],
+                    });
+            }
+            Beds(wards[0], "GWM", 4, "IPD-BED-GEN");
+            Beds(wards[1], "GWF", 4, "IPD-BED-GEN");
+            Beds(wards[2], "CAB", 3, "IPD-BED-CAB");
+            Beds(wards[3], "ICU", 2, "IPD-BED-ICU");
+            await ipd.SaveChangesAsync();
+        }
+
+        if (!await ipd.Packages.AnyAsync())
+        {
+            ipd.Packages.Add(new Hms.Ipd.Data.AdmissionPackage
+            {
+                BranchId = 1, Name = "Normal Delivery Package",
+                ServiceCatalogId = serviceIds["IPD-PKG-ND"], DefaultServiceChargePct = 5,
+            });
+            await ipd.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>Spec 0016: enough pharmacy reality for the demo — companies, products, one
+    /// supplier, two outlets, and batches that exercise every expiry path (fresh, near-expiry,
+    /// expired) so US11.1's blocks are demonstrable, not hypothetical.</summary>
+    private static async Task SeedPharmacyAsync(IServiceProvider sp, KernelDbContext kdb)
+    {
+        var pharm = sp.GetRequiredService<Hms.Pharmacy.Data.PharmDbContext>();
+        if (!await kdb.ApprovalPolicies.AnyAsync(p => p.Type == "stock-writeoff"))
+        {
+            kdb.ApprovalPolicies.AddRange(
+                new ApprovalPolicy { Type = "stock-writeoff", Tier = 1, Role = "Billing Supervisor" },
+                new ApprovalPolicy { Type = "stock-writeoff", Tier = 2, Role = "MD" },
+                new ApprovalPolicy { Type = "purchase-order", Tier = 1, Role = "Billing Supervisor" },
+                new ApprovalPolicy { Type = "purchase-order", Tier = 2, Role = "MD" });
+            await kdb.SaveChangesAsync();
+        }
+        if (await pharm.Products.AnyAsync()) return;
+
+        var square = new Hms.Pharmacy.Data.Company { Name = "Square Pharmaceuticals" };
+        var beximco = new Hms.Pharmacy.Data.Company { Name = "Beximco Pharma" };
+        pharm.Companies.AddRange(square, beximco);
+        var supplier = new Hms.Pharmacy.Data.Supplier { Name = "Square Distribution, Sylhet", Phone = "01711-000001" };
+        pharm.Suppliers.Add(supplier);
+        var main = new Hms.Pharmacy.Data.Outlet { BranchId = 1, Name = "Main Pharmacy", Kind = "main" };
+        var sub = new Hms.Pharmacy.Data.Outlet { BranchId = 1, Name = "Emergency Sub-Store", Kind = "sub" };
+        pharm.Outlets.AddRange(main, sub);
+        await pharm.SaveChangesAsync();
+
+        var now = DateTimeOffset.UtcNow;
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+        Hms.Pharmacy.Data.PharmProduct P(Hms.Pharmacy.Data.Company c, string brand, string generic,
+            string strength, string form, string unit, int rol) => new()
+        {
+            BranchId = 1, CompanyId = c.Id, Brand = brand, Generic = generic, Strength = strength,
+            Form = form, Unit = unit, ReorderLevel = rol, CreatedAt = now, CreatedBy = 1,
+        };
+        var napa = P(beximco, "Napa", "Paracetamol", "500 mg", "tablet", "pcs", 200);
+        var seclo = P(square, "Seclo", "Omeprazole", "20 mg", "capsule", "pcs", 100);
+        var fexo = P(square, "Fexo", "Fexofenadine", "120 mg", "tablet", "pcs", 50);
+        var amoxSyp = P(square, "Moxacil", "Amoxicillin", "125 mg/5 ml", "syrup", "bottle", 20);
+        pharm.Products.AddRange(napa, seclo, fexo, amoxSyp);
+        await pharm.SaveChangesAsync();
+
+        Hms.Pharmacy.Data.Batch B(Hms.Pharmacy.Data.PharmProduct p, string no, int addDays, int qty,
+            long cost, long mrp) => new()
+        {
+            BranchId = 1, OutletId = main.Id, ProductId = p.Id, BatchNo = no,
+            Expiry = today.AddDays(addDays), QtyOnHand = qty, Cost = cost, Mrp = mrp,
+            ReceivedAt = now, ReceivedBy = 1,
+        };
+        var batches = new[]
+        {
+            B(napa, "NP-2601", 540, 500, 1, 2),          // fresh
+            B(napa, "NP-2412", 45, 80, 1, 2),            // near-expiry: FEFO must pick this first
+            B(seclo, "SC-2603", 700, 300, 4, 6),
+            B(seclo, "SC-2401", -10, 60, 4, 6),          // expired: sale-blocked, awaiting quarantine
+            B(fexo, "FX-2602", 400, 30, 6, 9),           // below its reorder level of 50
+            B(amoxSyp, "MX-2605", 300, 40, 28, 40),
+        };
+        pharm.Batches.AddRange(batches);
+        await pharm.SaveChangesAsync();
+        foreach (var b in batches)
+            pharm.StockMoves.Add(new Hms.Pharmacy.Data.StockMove
+            {
+                BranchId = 1, OutletId = b.OutletId, BatchId = b.Id, ProductId = b.ProductId,
+                Kind = Hms.Pharmacy.Data.MoveKind.Receive, Qty = b.QtyOnHand,
+                RefTable = null, RefId = null, Reason = "opening stock (seed)", ActorId = 1, At = now,
+            });
+        // The seeded opening stock is a purchase on credit — the supplier ledger opens with
+        // a real payable so the payments screen has something true to show.
+        pharm.SupplierLedger.Add(new Hms.Pharmacy.Data.SupplierLedgerEntry
+        {
+            BranchId = 1, SupplierId = supplier.Id, Kind = "purchase",
+            Amount = batches.Sum(b => (long)b.QtyOnHand * b.Cost),
+            Note = "Opening stock (seed)", ActorId = 1, At = now,
+        });
+        await pharm.SaveChangesAsync();
     }
 
     private static void ThrowIfFailed(this IdentityResult result)

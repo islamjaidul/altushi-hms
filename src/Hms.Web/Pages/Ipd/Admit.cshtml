@@ -1,0 +1,92 @@
+@page "/ipd/admit"
+@model Hms.Web.Pages.Ipd.AdmitModel
+@{
+    ViewData["Title"] = "New Admission";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="post" class="card" style="max-width:760px">
+    <div class="card-head">Admission (§5 M6)</div>
+    <div class="card-body stack" style="gap:12px;padding-top:0">
+        <label class="field typeahead-host">
+            <span class="field-label">Patient — type 2–3 letters of name, UHID or phone</span>
+            <input class="input" data-typeahead="/api/typeahead/patients"
+                   data-target="#PatientId" autocomplete="off"
+                   placeholder="e.g. Rah…" />
+            <input type="hidden" id="PatientId" name="PatientId" value="@Model.PatientId" />
+        </label>
+
+        <div class="field-grid cols-2">
+            <label class="field">
+                <span class="field-label">Admitting consultant</span>
+                <select class="select" asp-for="DoctorId">
+                    <option value="">—</option>
+                    @foreach (var d in Model.Doctors)
+                    {
+                        <option value="@d.Id">@d.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Source</span>
+                <select class="select" asp-for="Source">
+                    <option value="direct">Direct</option>
+                    <option value="opd">OPD referral</option>
+                    <option value="er">Emergency</option>
+                </select>
+            </label>
+        </div>
+
+        <label class="field">
+            <span class="field-label">Provisional diagnosis</span>
+            <input class="input" asp-for="ProvisionalDx" placeholder="e.g. Acute appendicitis" />
+        </label>
+
+        <label class="field">
+            <span class="field-label">Bed (free now)</span>
+            <select class="select" asp-for="BedId">
+                <option value="">—</option>
+                @foreach (var b in Model.FreeBeds)
+                {
+                    <option value="@b.Id">@b.Code — @b.Ward (@b.Class, @Ui.Money(b.Tariff)/day)</option>
+                }
+            </select>
+        </label>
+
+        <div class="field-grid cols-2">
+            <label class="field">
+                <span class="field-label">Admission package (5A-9, optional)</span>
+                <select class="select" asp-for="PackageId">
+                    <option value="">— none —</option>
+                    @foreach (var p in Model.Packages)
+                    {
+                        <option value="@p.Id">@p.Name — @Ui.Money(p.Price) (svc @p.SvcPct%)</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Service charge % (blank = package default)</span>
+                <input class="input input-num" asp-for="ServiceChargePct" inputmode="numeric" />
+            </label>
+        </div>
+
+        <label class="row" style="gap:8px">
+            <input type="checkbox" asp-for="ReserveOnly" />
+            <span>Reserve the bed only (admission confirmed later)</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-cta">Admit patient</button>
+        <div class="card-hint">
+            The admission fee and package post to the folio automatically. The advance/deposit is
+            taken on the folio screen by an operator with an open counter.
+        </div>
+    </div>
+</form>

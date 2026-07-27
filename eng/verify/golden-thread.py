@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Drive the §9A.2 golden thread through the real HTTP surface, as the demo script does."""
-import re, sys, urllib.parse, http.cookiejar, urllib.request
+import json, re, sys, urllib.parse, http.cookiejar, urllib.request
 
 BASE = "http://localhost:5199"
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -62,11 +62,13 @@ check(uhid is not None, f"UHID issued: {uhid}")
 # 2 — serial -----------------------------------------------------------------
 step(2, "Serial issued for the doctor's queue")
 appts = recep.get("/appointments")
-pid = re.search(r'<option value="(\d+)">Rahim Uddin', appts)
-check(pid is not None, "patient appears in the appointment picker")
+# The picker is the shared type-ahead now (ADR-0020, §7 U5): 2-3 chars resolve the patient.
+hits = json.loads(recep.get("/api/typeahead/patients?q=Rahim"))
+pid = str(hits[0]["value"]) if hits else None
+check(pid is not None, "type-ahead finds the patient from 5 characters")
 if pid:
     url, html = recep.post("/appointments?handler=Issue",
-                           {"PatientId": pid.group(1), "DoctorId": "1"}, appts)
+                           {"PatientId": pid, "DoctorId": "1"}, appts)
     q = recep.get("/appointments")
     check("Rahim Uddin" in q, "patient is on today's serial list")
 
@@ -80,8 +82,9 @@ check("Your counter is open" in bill.get("/billing/session"), "counter session i
 # 4 — diagnostic order -------------------------------------------------------
 step(4, "Diagnostic order: CBC + RBS, invoiced and paid")
 order = bill.get("/diagnostics/order")
-pid2 = re.search(r'<option value="(\d+)">Rahim Uddin', order)
-order = bill.post("/diagnostics/order", {"PatientId": pid2.group(1)}, order)[1]
+hits = json.loads(bill.get("/api/typeahead/patients?q=Rahim"))
+pid2 = str(hits[0]["value"])
+order = bill.post("/diagnostics/order", {"PatientId": pid2}, order)[1]
 
 # map catalogue code -> id straight off the add buttons
 rows = re.findall(r'<span class="cat-code">([A-Z\-0-9]+)</span>.*?name="catalogId" value="(\d+)"',
@@ -93,7 +96,7 @@ items = []
 for code in ("CBC", "RBS"):
     items.append(cat[code])
     order = bill.post("/diagnostics/order",
-                      {"PatientId": pid2.group(1), "Items": items[:-1] + [cat[code]],
+                      {"PatientId": pid2, "Items": items[:-1] + [cat[code]],
                        "catalogId": cat[code], "handler": "Add"}, order)[1]
 
 gross = re.search(r'data-gross="(\d+)"', order)
@@ -102,7 +105,7 @@ promised = "Report promised by" in order
 check(promised, "TAT promise shown before payment")
 
 url, html = bill.post("/diagnostics/order?handler=Save", {
-    "PatientId": pid2.group(1), "Items": items,
+    "PatientId": pid2, "Items": items,
     "DiscountFlat": "0", "PaidNow": "550", "Tender": "cash",
 }, order)
 check("/diagnostics/order/" in url, f"order slip issued: {url.split('/')[-1]}")

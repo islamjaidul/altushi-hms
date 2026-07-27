@@ -1,0 +1,148 @@
+@page "/pharmacy/transfers"
+@using Hms.Pharmacy.Data
+@model Hms.Web.Pages.Pharmacy.TransfersModel
+@{
+    ViewData["Title"] = "Outlet Transfers";
+    ViewData["Crumb"] = "Pharmacy";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Transfer ledger
+            <span class="spacer"></span>
+            <span class="card-hint">indent → sent (FEFO at source) → received (batch identity kept)</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>#</th><th>From → To</th><th>Lines</th><th>Raised</th><th>State</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var t in Model.Rows)
+                {
+                    <tr>
+                        <td class="tabular">@t.Id</td>
+                        <td>@t.From → <b>@t.To</b></td>
+                        <td>
+                            @foreach (var (product, requested, sent) in t.Lines)
+                            {
+                                <div>@product · @(sent > 0 ? $"{sent} sent" : $"{requested} requested")</div>
+                            }
+                        </td>
+                        <td class="tabular">@Ui.Local(t.CreatedAt).ToString("dd MMM HH:mm")</td>
+                        <td><span class="pill @(t.State switch { TransferState.Received => "good", TransferState.Cancelled => "bad", _ => "warn" })">@Ui.Humanize(t.State)</span></td>
+                        <td>
+                            @if (t.State == TransferState.Indent)
+                            {
+                                <div class="row" style="gap:6px">
+                                    <form method="post" asp-page-handler="Send">
+                                        <input type="hidden" name="TransferId" value="@t.Id" />
+                                        <button type="submit" class="btn-tint">Send</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Cancel">
+                                        <input type="hidden" name="TransferId" value="@t.Id" />
+                                        <button type="submit" class="btn-tint">Cancel</button>
+                                    </form>
+                                </div>
+                            }
+                            else if (t.State == TransferState.Sent)
+                            {
+                                <form method="post" asp-page-handler="Receive">
+                                    <input type="hidden" name="TransferId" value="@t.Id" />
+                                    <button type="submit" class="btn-tint">Receive at @t.To</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr><td colspan="6"><div class="empty-state">
+                        <span class="icon" aria-hidden="true">sync_alt</span>
+                        No transfers yet — raise an indent on the right.
+                    </div></td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stack">
+        <form method="post" asp-page-handler="Indent" class="card">
+            <div class="card-head">New transfer indent</div>
+            <div class="card-body stack" style="gap:10px;padding-top:0">
+                <div class="field-grid cols-2">
+                    <label class="field">
+                        <span class="field-label">From</span>
+                        <select class="select" asp-for="FromOutletId">
+                            <option value="0">—</option>
+                            @foreach (var o in Model.Outlets.Where(o => o.Active))
+                            {
+                                <option value="@o.Id">@o.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">To</span>
+                        <select class="select" asp-for="ToOutletId">
+                            <option value="0">—</option>
+                            @foreach (var o in Model.Outlets.Where(o => o.Active))
+                            {
+                                <option value="@o.Id">@o.Name</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+                @for (var i = 0; i < 3; i++)
+                {
+                    <div class="field-grid cols-2">
+                        <label class="field">
+                            <span class="field-label">@(i == 0 ? "Product" : $"Line {i + 1}")</span>
+                            <select class="select" name="ProductIds">
+                                <option value="0">—</option>
+                                @foreach (var p in Model.Products)
+                                {
+                                    <option value="@p.Id">@p.Brand @p.Strength</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Qty</span>
+                            <input class="input input-num" name="LineQtys" inputmode="numeric" value="0" />
+                        </label>
+                    </div>
+                }
+                <button type="submit" class="btn btn-primary">Raise indent</button>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="Outlet" class="card">
+            <div class="card-head">Outlets master (5A-11)</div>
+            <div class="card-body stack" style="gap:8px;padding-top:0">
+                @foreach (var o in Model.Outlets)
+                {
+                    <div class="row" style="gap:8px">
+                        <span class="pill @(o.Kind == "main" ? "good" : "")">@o.Kind</span>
+                        <span>@o.Name</span>
+                    </div>
+                }
+                <div class="row" style="gap:8px">
+                    <label class="sr-only" for="OutletName">Outlet name</label>
+                    <input id="OutletName" class="input" asp-for="OutletName" placeholder="e.g. OPD Sub-Store" />
+                    <select class="select" asp-for="OutletKind" style="width:100px">
+                        <option value="sub">sub</option>
+                        <option value="main">main</option>
+                    </select>
+                    <button type="submit" class="btn">Add</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
