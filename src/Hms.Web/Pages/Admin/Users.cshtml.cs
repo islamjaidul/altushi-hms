@@ -109,6 +109,50 @@ public class UsersModel(
     }
 
     /// <summary>
+    /// RUNBOOK §9 step 2 needs this: at go-live every credential that stays is rotated and every
+    /// demo account that does not is deactivated. Rehearsing the runbook (spec 0023) found the
+    /// procedure asked for a rotation the product could not perform.
+    ///
+    /// Identity's reset bumps the security stamp, so the holder's live session dies within the
+    /// revalidation window (ADR-0019 amendment) rather than at their next voluntary sign-in.
+    /// The new password is never audited — only the fact of the reset.
+    /// </summary>
+    public async Task<IActionResult> OnPostResetPasswordAsync(long id, string? newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
+        { await LoadAsync(); Fail("Set a password of at least 8 characters."); return Page(); }
+
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user is null) { await LoadAsync(); Fail("No such account."); return Page(); }
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(user);
+        var reset = await userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!reset.Succeeded)
+        {
+            await LoadAsync();
+            Fail(string.Join(" ", reset.Errors.Select(e => e.Description)));
+            return Page();
+        }
+
+        await tx.RunAsync(async s =>
+        {
+            s.Kernel.AuditEvents.Add(new Hms.Kernel.Data.AuditEvent
+            {
+                BranchId = BranchId, At = clock.GetUtcNow(), ActorId = ActorId,
+                ActorNameSnapshot = ActorName, Action = "user.password.reset",
+                Entity = "adm.user", EntityId = id,
+                After = System.Text.Json.JsonSerializer.Serialize(new { user.UserName }),
+                CorrelationId = Guid.NewGuid(), Tier = 2,
+            });
+            await s.Kernel.SaveChangesAsync();
+            return 0;
+        });
+
+        Toast($"{user.DisplayName}'s password is changed — they are signed out now", "key");
+        return Redirect("/admin/users");
+    }
+
+    /// <summary>
     /// §12 as data. The change lands on the role, so it applies to everyone holding it. It
     /// takes effect within the security-stamp revalidation window (ADR-0019 amendment): the
     /// stamp bump below invalidates every holder's cookie, and the next check re-runs

@@ -33,6 +33,41 @@ No Kubernetes, no swarm — `restart: unless-stopped` + healthchecks are the sup
 
 Swap: 1 GB configured with `swappiness=10` as a crash cushion only — **steady state must not touch it** (alert if swap-in > 0 sustained; violates the brief otherwise).
 
+### 2a. Measured (spec 0023) — no longer an estimate
+
+Measured by `eng/verify/measure-rss.sh` against a database carrying **90 days of §14-shaped
+history**, generated through the real services (`dotnet run -- generate-history --days 90`).
+Measuring on an empty database would have told us nothing about a hospital's second year.
+
+**What the figures were measured against** (2026-07-28, 112 MB database):
+
+| patients | invoices | charge lines | receipts | test orders | results | stock moves | admissions | audit events |
+|---|---|---|---|---|---|---|---|---|
+| 9,101 | 35,363 | 84,957 | 35,363 | 8,190 | 11,206 | 24,433 | 1,009 | 84,882 |
+
+**Measured RSS** — developer Mac (arm64, Docker Desktop), app under `dotnet`, Postgres in
+`hms-dev-db`; peak sampled every 2 s across the full Playwright suite:
+
+| Component | At rest | Peak under suite | Hard limit | Verdict |
+|---|---|---|---|---|
+| ASP.NET Core app | **82 MB** | **253 MB** | 800 MB | inside budget; the estimate (250–400 MB) was pessimistic at rest, fair under load |
+| PostgreSQL | **220 MB** | **222 MB** | 550 MB | inside budget; the estimate (300–450 MB) was pessimistic |
+| **app + db peak** | | **475 MB** | | |
+
+**Measured page timings** on the same data (median of 5, server-side):
+`/registration` 11 ms · `/pharmacy/stock` 6 ms · `/ipd/board` 7 ms · `/billing/dues` 20 ms ·
+`/admin/audit` 30 ms · `/billing/reports` 51 ms · `/dashboard` 55 ms. Slowest single response
+across all samples: **244 ms**.
+
+**Abort criterion** (`11-build-plan-phase2.md` §2.9 — sustained RSS above 2.2 GB on the VM
+profile forces a consolidation stop): **clear**, with roughly 4.5× headroom on this profile. The
+measurement is re-run at every wave's deploy; the script exits non-zero if the line is crossed,
+so the criterion is now evaluable rather than aspirational.
+
+**What this measurement does not say.** It is a single-user functional suite, not a concurrency
+test. It says the working set of a loaded database fits the box comfortably; it says nothing
+about 40 operators at once, which remains the estimate in §5.
+
 ## 3. Container & operational details
 
 - **Images:** distroless/chiseled .NET runtime image for `app` (smaller RSS + attack surface); pinned digests; multi-arch (amd64 VM / arm64 Mac).
@@ -48,6 +83,11 @@ Swap: 1 GB configured with `swappiness=10` as a crash cushion only — **steady 
 `compose --profile demo`: same images + seeded DB volume; Caddy serves plain HTTP on localhost (no CA step); SMS forced to simulation; `demo-reset.sh` (see `07-demo-kit.md`) restores the golden snapshot in target **≤ 30 s**. **Two isolated instances** (edge 6): `compose -p demoA/-p demoB` with distinct ports/volumes — the script wraps this. Runs offline by construction: every asset is in the images.
 
 ## 5. Honest capacity & the scale-up path (the brief's §3 requirement)
+
+**Measured (spec 0023), single-user, on 90 days of §14 data:** every screen answers in under
+250 ms server-side and app+db peak at 475 MB — so the *data* volume is not the constraint the
+estimate below worries about, and the headroom the reasoning assumes is real. The concurrency
+figure itself is still an estimate; nothing here has yet put 40 operators on the box at once.
 
 **Estimated ceiling of the 3 GB box: ~25–40 concurrent operators** on the golden-thread mix (registration + billing + LIS + dashboard) at ≤ 1 s perceived billing latency (§8 N1). Reasoning from first principles (to be validated by the demo-load test, not asserted as measured): the workload is small-row OLTP — a billing save is ~10–20 statements in one transaction; 40 operators ≈ single-digit requests/sec sustained, well inside 2 vCPU — **RAM for DB cache, not CPU, is the binding constraint**, which is why the budget gives Postgres + page cache the slack. The §14 design ceiling (150 operators, 1,200 diagnostic invoices/day) **does not fit this box and we do not claim it does.**
 

@@ -39,13 +39,18 @@ copies exist). The DB is never the first casualty (06 §3). Sentinel job lands w
 Run in order, on the PM's written instruction (P16 names the owner):
 1. **Seed off:** set `HMS_SEED=false` in `deploy/.env`, redeploy (§4). Seeding is idempotent
    and only ever ran with the flag on — no schema change involved.
-2. **Rotate the demo cast:** in `/admin/users`, set a strong unique password per account that
-   stays (real staff take over their own accounts), **deactivate** every demo account that
-   doesn't (deactivation, never deletion — receipts keep their names). The security-stamp
-   bump kills any live demo session immediately.
-3. **Verify:** the shared demo password signs in **nowhere** (try 2–3 accounts); `/health` 200;
-   an operator can still sign in with a rotated credential.
+2. **Rotate the demo cast:** in `/admin/users`, use **Set password** on every account that stays
+   (real staff take over their own accounts) and **Deactivate** every demo account that doesn't
+   (deactivation, never deletion — receipts keep their names). Both actions bump the security
+   stamp, so any live demo session dies immediately rather than at its next sign-in.
+3. **Verify:** the shared demo password signs in **nowhere** (try 2–3 accounts); `/health` returns
+   `{"status":"ok"}`; an operator can still sign in with a rotated credential.
 4. **Provisional prices:** `/admin/masters` shows zero provisional items (P8 — billing on a
-   provisional price is blocked from go-live).
+   provisional price is blocked from go-live). A genuinely free item is priced **0**, not left
+   unpriced; unpriced is what the pill counts.
 5. **Snapshot:** take a labelled backup (`§5`) marked `pre-go-live` — the restore point that
    contains no real patient data.
+
+**Rehearse first, always.** `eng/verify/golive-rehearsal.sh` runs all of this against two scratch
+databases and proves each claim (spec 0023) — including that the seed flag really gates seeding.
+Run it before the live cutover; it takes about two minutes and touches nothing real.

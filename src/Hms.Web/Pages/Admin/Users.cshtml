@@ -51,6 +51,15 @@
                             }
                         </td>
                         <td class="num">
+                            @* RUNBOOK §9 step 2: go-live rotates every credential that stays and
+                               deactivates every one that does not. Both live on this row. *@
+                            <form method="post" asp-page-handler="ResetPassword" style="display:inline"
+                                  data-confirm="Set a new password for this account? They are signed out immediately.">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <input class="input" name="newPassword" type="password" autocomplete="new-password"
+                                       placeholder="New password" style="width:150px;display:inline-block" />
+                                <button type="submit" class="btn-tint">Set password</button>
+                            </form>
                             <form method="post" asp-page-handler="Toggle" style="display:inline"
                                   data-confirm="Change this account's access? Their history stays on record either way.">
                                 <input type="hidden" name="id" value="@u.Id" />
