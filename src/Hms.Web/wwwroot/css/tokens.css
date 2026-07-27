@@ -145,6 +145,6 @@
   --radius: 3px;
   --radius-card: 4px;
   --radius-pill: 2px;
-  --sidebar-w: 236px;
+  --sidebar-w: 226px;              /* measured off the reference, not its default prop */
   --content-min: 1080px;             /* 1366×768 first (§16.1 A2) */
 }

@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hms.Web.Pages.Lis;
 
-public sealed record EntryParameter(string Code, string Name, string Unit, string Range, string? Existing);
+public sealed record EntryParameter(
+    string Code, string Name, string Unit, string Range,
+    decimal? Low, decimal? High, string? Existing);
 public sealed record EntryTest(
     long OrderTestId, string Name, bool HasResult, bool NarrativeOnly,
     IReadOnlyList<EntryParameter> Parameters, string? Narrative);
@@ -60,7 +62,7 @@ public class ResultsModel(HmsTx tx, LisService lis) : HmsPageModel
 
                 var parameters = (template?.Parameters ?? [])
                     .Select(p => new EntryParameter(p.Code, p.Name, p.Unit,
-                        ResultTemplates.RangeText(p),
+                        ResultTemplates.RangeText(p), p.Low, p.High,
                         stored.TryGetValue(p.Code, out var v) ? v.Value : null))
                     .ToList();
 

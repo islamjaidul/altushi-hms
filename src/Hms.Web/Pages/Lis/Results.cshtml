@@ -93,8 +93,9 @@
                                 <thead>
                                 <tr>
                                     <th>Parameter</th>
-                                    <th class="num" style="width:150px">Result</th>
-                                    <th style="width:110px">Unit</th>
+                                    <th class="num" style="width:140px">Result</th>
+                                    <th class="mid" style="width:70px">Flag</th>
+                                    <th style="width:100px">Unit</th>
                                     <th style="width:130px">Reference range</th>
                                 </tr>
                                 </thead>
@@ -112,7 +113,15 @@
                                                    value="@p.Existing"
                                                    class="input input-sm input-num"
                                                    readonly="@t.HasResult"
-                                                   data-advance inputmode="decimal" autocomplete="off" />
+                                                   data-advance inputmode="decimal" autocomplete="off"
+                                                   data-low="@(p.Low?.ToString() ?? "")"
+                                                   data-high="@(p.High?.ToString() ?? "")"
+                                                   data-flag-for="@fieldId" />
+                                        </td>
+                                        <td class="mid">
+                                            @* Abnormal values are visible while typing, not only
+                                               after save — the point of a reference range (§7 U12). *@
+                                            <span class="flag none" id="flag-@fieldId">—</span>
                                         </td>
                                         <td class="text-muted">@p.Unit</td>
                                         <td class="text-muted tabular">@p.Range</td>

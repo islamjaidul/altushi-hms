@@ -379,7 +379,7 @@ input, select, textarea, button { font-family: inherit; }
 .table-wrap { overflow-x: auto; }
 table.data { width: 100%; border-collapse: collapse; }
 table.data th {
-  padding: 8px 12px;
+  padding: 6px 12px;               /* reference density — rows read tighter at register volume */
   text-align: left;
   font-size: 0.6875rem; font-weight: 700;
   letter-spacing: 0.05em; text-transform: uppercase;
@@ -389,7 +389,7 @@ table.data th {
   white-space: nowrap;
 }
 table.data td {
-  padding: 8px 12px;
+  padding: 6px 12px;
   font-size: 0.8125rem;
   border-bottom: 1px solid var(--td-rule);
   vertical-align: middle;

@@ -93,3 +93,28 @@
     window.location.href = "/registration?q=" + encodeURIComponent(code);
   };
 })();
+
+// ---- live H/L flags on result entry (§7 U12, 02 §2.2) -------------------
+// The server recomputes and stores the flag with the range it used; this is the
+// operator's immediate feedback, never the record of truth.
+(function () {
+  "use strict";
+  const inputs = document.querySelectorAll("[data-flag-for]");
+  if (!inputs.length) return;
+
+  function paint(input) {
+    const out = document.getElementById("flag-" + input.dataset.flagFor);
+    if (!out) return;
+    const low = parseFloat(input.dataset.low);
+    const high = parseFloat(input.dataset.high);
+    const value = parseFloat(input.value);
+    if (isNaN(value) || isNaN(low) || isNaN(high)) {
+      out.className = "flag none"; out.textContent = "—"; return;
+    }
+    if (value < low) { out.className = "flag low"; out.textContent = "Low"; }
+    else if (value > high) { out.className = "flag high"; out.textContent = "High"; }
+    else { out.className = "flag none"; out.textContent = "—"; }
+  }
+
+  inputs.forEach((input) => { input.addEventListener("input", () => paint(input)); paint(input); });
+})();
