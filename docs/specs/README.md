@@ -82,5 +82,6 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0029-lifecycle-suite-rerunnable](0029-lifecycle-suite-rerunnable/spec.md) | The lifecycle suite must survive being run twice (fixture return, crash-to-failure, nav-smoke) | Done | §8, §14 | 2026-07-28 |
 | [0030-grant-drift-and-appointments-authz](0030-grant-drift-and-appointments-authz/spec.md) | Grant drift on the deployment, and a permission enforced nowhere | Done | §12, §3.2, §5 M3 | 2026-07-28 |
 | [0031-lifecycle-coverage-high-gaps](0031-lifecycle-coverage-high-gaps/spec.md) | Close the High-severity lifecycle gaps (money invariants, control gates, concurrency) | Done | §5 M4/M6/M8/M9, §8, §11, §12 | 2026-07-28 |
+| [0032-module-qa-sweep](0032-module-qa-sweep/spec.md) | Module-by-module QA sweep — per-module coverage on UI/e2e/business-logic axes | Done | §5, §5A, §7, §11, §12 | 2026-07-28 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

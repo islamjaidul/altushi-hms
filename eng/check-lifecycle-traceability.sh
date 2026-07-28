@@ -40,6 +40,26 @@ else
   note ok "every cited verification script exists"
 fi
 
+# Every xUnit CLASS named in a coverage cell must exist too. Until spec 0032 this check did not
+# exist, and three rows cited classes that were never there — LC-BIL-12 `RateTests` (it is
+# `ApprovalAndRateTests`), LC-PHA-18 `PharmacyTests` (it is `PharmacyStockTests`), and LC-XCUT-05
+# "architecture tests", which is a category and not a class at all. A `xunit` citation was the
+# one kind of coverage claim nothing verified, which is exactly where the register rotted:
+# LC-BIL-09 claimed `MoneySpineTests` proved the refund path while that file had no refund test.
+#
+# This catches a name that does not resolve. It cannot catch a class that exists but does not
+# assert what the row claims — that needs a human reading the tests, which is what a periodic
+# module sweep is for (docs/qa/module-coverage.md).
+missing_classes=""
+for c in $(grep -oE '`xunit` [A-Za-z]+Tests' "$DOC" | awk '{print $2}' | sort -u); do
+  grep -rqs --include='*.cs' "class $c" tests/ || missing_classes="$missing_classes $c"
+done
+if [ -n "$missing_classes" ]; then
+  note FAIL "coverage cites xUnit classes that do not exist:$missing_classes"; fail=1
+else
+  note ok "every cited xUnit test class exists"
+fi
+
 # --- 2. performing users ----------------------------------------------------
 cast=$(grep -oE '\("[a-z]+", "[^"]+", "[^"]+"\)' "$SEED" | cut -d'"' -f2 | sort -u)
 badusers=""

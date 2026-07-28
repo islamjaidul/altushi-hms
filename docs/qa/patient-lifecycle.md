@@ -94,19 +94,22 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-REG-02 | Found by name | type-ahead returns the patient | `jashim` | `auto` lifecycle-thread 1 |
 | LC-REG-03 | Found by phone typed as plain digits | matches (spec 0020 gap 1) | `jashim` | `auto` lifecycle-thread 1 |
 | LC-REG-04 | Found by the tail of the number | matches on last 6 digits | `jashim` | `auto` lifecycle-thread 1 |
-| LC-REG-05 | Phone typed `+880…`, with dashes or spaces | `phone_digits` normalises, still matches | `jashim` | `gap` |
+| LC-REG-05 | Phone typed `+880…`, with dashes or spaces | `phone_digits` normalises, still matches | `jashim` | `auto` lifecycle-thread 1 |
 | LC-REG-06 | Directory search accepts digits | same rows as type-ahead | `jashim` | `auto` lifecycle-thread 1 |
 | LC-REG-07 | Near-duplicate name and age | guard fires, needs acknowledgement (edge 23) | `jashim` | `auto` lifecycle-thread 1 |
 | LC-REG-08 | Duplicate acknowledged | save proceeds, both records exist | `jashim` | `auto` lifecycle-thread 1 |
-| LC-REG-09 | Patient with **no phone** | registration still completes | `jashim` | `gap` |
-| LC-REG-10 | Unknown / unconscious patient, no name or age | registerable under a placeholder identity | `jashim` | `gap` |
-| LC-REG-11 | Age entered instead of date of birth | both accepted, stored consistently | `jashim` | `gap` |
-| LC-REG-12 | Minor with a guardian | guardian captured | `jashim` | `gap` |
+| LC-REG-09 | Patient with **no phone** | registration still completes | `jashim` | `xunit` RegistrationTests |
+| LC-REG-10 | Unknown / unconscious patient, no name or age | registerable under a placeholder identity | `jashim` | `xunit` RegistrationTests |
+| LC-REG-11 | Age entered instead of date of birth | both accepted, stored consistently — DOB wins over both age columns | `jashim` | `xunit` RegistrationTests |
+| LC-REG-12 | Minor with a guardian | guardian captured | `jashim` | `xunit` RegistrationTests |
 | LC-REG-13 | UHID is unique under parallel registration | no collision | — | `xunit` NumberSeriesTests |
-| LC-REG-14 | Patient-type general vs corporate | type recorded, drives later pricing | `jashim` | `gap` |
+| LC-REG-14 | Patient-type general vs corporate | type recorded (nothing reads it yet — see the register) | `jashim` | `xunit` RegistrationTests |
 | LC-REG-15 | ID card prints, and reprints | print sheet renders | `jashim` | `ui` documents.spec |
 | LC-REG-16 | Patient merged after records exist | history from both survives, no orphan money | `admin` | `gap` |
 | LC-REG-17 | Returning patient's history is visible | prior visits listed | `jashim` | `auto` lifecycle-thread 9 |
+| LC-REG-18 | Infant aged in **months** registers | `8 months` stored as months, not rounded to a year or a false DOB (M1-D1) | `jashim` | `xunit` RegistrationTests |
+| LC-REG-19 | Receptionist completes a **no-phone** registration on the screen | the form saves; LC-REG-09 proves the rule, this proves the path | `jashim` | `auto` lifecycle-thread 1 |
+| LC-REG-20 | Receptionist completes an **unknown-identity** registration on the screen | the ER path: name blank, box ticked, UHID becomes the name. Returned **HTTP 500** until spec 0032 — see the register | `jashim` | `auto` lifecycle-thread 1 |
 
 ---
 
@@ -115,12 +118,14 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | ID | Case | Expected | By | Coverage |
 |---|---|---|---|---|
 | LC-QUE-01 | Serial issued for a doctor's session | number allocated in order | `jashim` | `auto` golden-thread 2 |
-| LC-QUE-02 | Queue advances | next serial called | `jashim` | `ui` smoke |
+| LC-QUE-02 | Queue advances, and a stale second click loses safely | state-guarded UPDATE (edge 28) | `jashim` | `ui` smoke · `xunit` AppointmentQueueTests |
 | LC-QUE-03 | Doctor has no session today | refused with a plain message | `jashim` | `gap` |
 | LC-QUE-04 | Session is full | refused or overflow handled | `jashim` | `gap` |
-| LC-QUE-05 | No-show, then re-issue | patient can be re-queued | `jashim` | `gap` |
+| LC-QUE-05 | No-show or cancel, then re-issue | the next patient is queued; the ended serial is never handed out again | `jashim` | `xunit` AppointmentQueueTests |
+| LC-QUE-09 | **Cancelling the day's top serial does not block the next one** | re-issue succeeds (M3-D1: it used to fail until midnight) | `jashim` | `xunit` AppointmentQueueTests |
+| LC-QUE-10 | The "next serial" the screen offers is the one the patient receives | label and allocator share one arithmetic (M3-D2) | `jashim` | `xunit` AppointmentQueueTests |
 | LC-QUE-06 | Lobby display masks names | no full name, no money on the public page | anon | `auto` edge-cases 8 |
-| LC-QUE-07 | Parallel serial issuance | no duplicate numbers | — | `xunit` NumberSeriesTests |
+| LC-QUE-07 | Parallel serial issuance | no duplicate numbers | — | `xunit` NumberSeriesTests · `xunit` AppointmentQueueTests |
 | LC-QUE-08 | **Issuing a serial requires `appointments.create`** | a read-only grant must not be able to issue | `jashim` | `auto` money-and-controls 8 · `xunit` HandlerPermissionTests |
 
 ---
@@ -133,7 +138,8 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-FD-02 | Advance subtracted from the estimate | estimate = charges − advance | `jashim` | `auto` frontdesk-check |
 | LC-FD-03 | Reading the screen twice changes nothing | genuinely read-only | `jashim` | `auto` frontdesk-check |
 | LC-FD-04 | Admitted patient buying at the counter | banner warns, sale still allowed | `rasel` | `auto` lifecycle-thread 5 |
-| LC-FD-05 | Free bed availability shown | ward occupancy accurate | `jashim` | `auto` frontdesk-check |
+| LC-FD-05 | Free bed availability shown | ward occupancy accurate — admitting takes exactly one bed off that class's Free and leaves Total alone; releasing restores it | `jashim` | `auto` frontdesk-check |
+| LC-FD-06 | Today's doctors panel tracks the queue | issuing a serial moves booked and waiting; calling the patient in changes **nothing** (in-chamber still counts as waiting); finishing moves waiting into done | `jashim` | `auto` frontdesk-check |
 
 ---
 
@@ -146,8 +152,8 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-EMR-03 | Ordered tests reach the billing counter | nothing re-typed | `chowdhury` → `rasel` | `auto` emr-thread 4 |
 | LC-EMR-04 | Longitudinal record reads across modules | one patient, five schemas | `chowdhury` | `auto` emr-thread 5 |
 | LC-EMR-05 | A signed prescription is **corrected, never edited** | supersedes, new version | `chowdhury` | `auto` emr-thread 6 |
-| LC-EMR-06 | Draft saved and resumed later | draft survives | `chowdhury` | `gap` |
-| LC-EMR-07 | Template and favourite reuse | prefills the note | `chowdhury` | `gap` |
+| LC-EMR-06 | Draft saved and resumed later | draft survives | `chowdhury` | `xunit` EmrTests |
+| LC-EMR-07 | Template reuse prefills the note (the *favourite* half is still open) | prefills the note | `chowdhury` | `xunit` EmrTests |
 | LC-EMR-08 | Nurse cannot write or sign a note | refused at the handler, not just hidden | `nasrin` | `auto` role-journeys XCUT-03 |
 | LC-EMR-09 | Prescription prints | print sheet renders | `chowdhury` | `ui` spec-0024 |
 
@@ -175,15 +181,15 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-BIL-01 | Counter session opens with a float | session bound to the operator | `rasel` | `auto` golden-thread 3 |
 | LC-BIL-02 | OPD bill created and paid | receipt issued | `rasel` | `auto` lifecycle-thread 2 |
 | LC-BIL-03 | `net = gross − discount + tax + rounding_adj` | invoice identity holds | — | `xunit` MoneySpineTests |
-| LC-BIL-04 | `Σ receipts + due = net` | money spine balances | — | `xunit` MoneySpineTests |
+| LC-BIL-04 | `Σ receipts + due = realised value` | money spine balances **in every state, reversals included** — the unqualified `= net` form is false once anything is cancelled or refunded (spec 0032, M4-D1) | — | `xunit` MoneySpineTests |
 | LC-BIL-05 | **Double-click Save bills once** | one invoice, submission token | `rasel` | `auto` edge-cases 3, lifecycle-thread 10 |
 | LC-BIL-06 | Advance collected against a folio | advance applied at settlement | `rasel` | `auto` ipd-thread 4 |
 | LC-BIL-07 | Due collected later | due cleared | `rasel` | `auto` discount-and-dues 4 |
 | LC-BIL-08 | **Over-collection refused** | paying more than the balance rejected | `rasel` | `auto` discount-and-dues 5 |
 | LC-BIL-09 | Refund as a negative receipt, approval-gated | no hard delete | `rasel` → `shahid` | `xunit` MoneySpineTests |
-| LC-BIL-10 | Invoice cancelled, never deleted | reversal recorded | `rasel` | `auto` money-and-controls 3 |
+| LC-BIL-10 | Invoice cancelled, never deleted | reversal recorded | `rasel` | `auto` money-and-controls 3 · `xunit` MoneySpineTests |
 | LC-BIL-11 | **A price change never alters a historical invoice** | old invoice reproduces its old price | `admin` | `auto` money-and-controls 1 |
-| LC-BIL-12 | Effective-dated rate resolves by service date | correct `rate_version_id` on the line | `admin` | `xunit` RateTests |
+| LC-BIL-12 | Effective-dated rate resolves by service date | correct `rate_version_id` on the line | `admin` | `xunit` ApprovalAndRateTests |
 | LC-BIL-13 | Day-close variance = counted − expected | shortfall recorded, not blocked | `rasel` | `auto` golden-thread 9 |
 | LC-BIL-14 | **A 01:00 Dhaka receipt belongs to the previous business day** | night shift closes correctly (spec 0027) | `rasel` | `xunit` BusinessDayTests |
 | LC-BIL-15 | Carry-close approval when a session spans midnight | approval routed | `shahid` | `gap` |
@@ -203,7 +209,7 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-LAB-04 | Report is watermarked provisional until verified | watermark present | `ripon` | `ui` spec-0013 |
 | LC-LAB-05 | **Pathologist verifies and e-signs** | result final, signer recorded | `farhana` | `auto` golden-thread 7 |
 | LC-LAB-06 | **The technologist who entered cannot verify** | four eyes enforced at the handler | `ripon` | `auto` role-journeys XCUT-03 |
-| LC-LAB-07 | Rejected sample spawns a recollection | new sample, old one closed | `ripon` | `gap` |
+| LC-LAB-07 | Rejected sample spawns a recollection | new sample, old one closed | `ripon` | `xunit` LisAndDayCloseTests |
 | LC-LAB-08 | Amend after verification, approval-gated | result versioned, not overwritten | `farhana` | `auto` money-and-controls 7 |
 | LC-LAB-09 | Report delivered and handover logged | delivery recorded | `jashim` | `auto` golden-thread 8 |
 | LC-LAB-10 | Public report-status lookup leaks nothing | neutral answer, no money, no name | anon | `auto` edge-cases 8 |
@@ -245,7 +251,7 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-PHA-15 | Supplier ledger and payment | balance moves | `parvin` | `auto` pharmacy-full 8 |
 | LC-PHA-16 | Supplier replacement, not credit | distinct from a return | `parvin` | `auto` pharmacy-full 16 |
 | LC-PHA-17 | Reorder shortlist by reorder level | shortlist correct | `parvin` | `auto` pharmacy-full 7 |
-| LC-PHA-18 | **Stock can never go negative** | constraint holds under load | — | `xunit` PharmacyTests |
+| LC-PHA-18 | **Stock can never go negative** | constraint holds under load | — | `xunit` PharmacyStockTests |
 | LC-PHA-19 | Pharmacy dashboard tiles | takings, stock value, near expiry | `parvin` | `auto` pharmacy-thread 10 |
 
 ---
@@ -289,8 +295,8 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-OT-05 | Completing the case bills it (US7.2) | completion charges posted | `shaheen` | `auto` ot-thread 5 |
 | LC-OT-06 | **A completed case cannot be completed again** | idempotent terminal state | `shaheen` | `auto` ot-thread 6 |
 | LC-OT-07 | Case appears on the operation register | register lists it by patient | `shaheen` | `auto` ot-thread 7 |
-| LC-OT-08 | Case cancelled | no completion charge posted | `shaheen` | `gap` |
-| LC-OT-09 | Case postponed and rescheduled | original slot released | `shaheen` | `gap` |
+| LC-OT-08 | Case cancelled — the slot is freed | slot freed (asserted); **no completion charge posted** (open) | `shaheen` | `xunit` OtTests |
+| LC-OT-09 | Case postponed with a reason | reason required (asserted); **original slot released** (open) | `shaheen` | `xunit` OtTests |
 | LC-OT-10 | OT In-charge cannot bill the case | refused | `shaheen` | `auto` role-journeys LC-ROLE-08 |
 
 ---
@@ -340,10 +346,10 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-XCUT-02 | Anonymous surfaces answer without leaking | login, queue, report-status, health only | anon | `auto` role-journeys |
 | LC-XCUT-03 | **Hiding a button is not the control** | handler-level POST refused too | `nasrin`, `ripon` | `auto` role-journeys |
 | LC-XCUT-04 | Audit is append-only; app role has no DELETE grant | grant absent | — | `xunit` MoneySpineTests |
-| LC-XCUT-05 | One business action = one transaction across 14 contexts | no half-write | — | `xunit` architecture tests |
+| LC-XCUT-05 | One business action = one transaction across 14 contexts | no half-write | — | `xunit` ConcurrencyTests |
 | LC-XCUT-06 | Module boundaries hold (ADR-0003) | no cross-module reference | — | `xunit` ModuleBoundaryTests |
 | LC-XCUT-07 | Entitlement gating hides an unlicensed module | nav and endpoint both refuse | — | `xunit` EntitlementTests |
-| LC-XCUT-08 | SMS queued, and resendable | tray shows it | `admin` | `gap` |
+| LC-XCUT-08 | SMS queued, and resendable | tray shows it | `admin` | `xunit` SmsQueueTests *(e2e half still open)* |
 | LC-XCUT-09 | **Power cut mid-transaction leaves no half-write** | recovery clean | — | `xunit` ConcurrencyTests |
 | LC-XCUT-10 | **Two operators editing one folio concurrently** | one wins, other told plainly | — | `xunit` ConcurrencyTests |
 | LC-XCUT-11 | **Forty operators at once** | §8 N1 response budget holds | — | `gap` |
@@ -361,38 +367,88 @@ convenience or cosmetic. This register was the input to the remediation specs. T
 gaps were closed by specs **0030** (authorization) and **0031** (coverage) on 2026-07-28; the
 one that remains is LC-XCUT-11, and it remains deliberately — see its row.
 
+Spec **0032**'s M1 sweep closed six more on the same day — LC-REG-05, 09, 10, 11, 12 and 14 —
+and added LC-REG-18. Two of those six (LC-REG-09, LC-REG-10) were **never gaps**:
+`RegistrationTests.No_phone_registration_succeeds` and
+`RegistrationTests.Unknown_emergency_registers_without_identity` already asserted them at the
+service layer when the register was written, and the triage missed them. What is still unproven
+for both is the *page* path — that the ≤ 60-second screen itself accepts a nameless, ageless
+emergency admission. Because every `LC-REG` row names a **performer**, a case performed by
+`jashim` is a claim about that operator's path and a service-level fact does not discharge it.
+Rather than reopen closed ids (they are stable and append-only), the screen path is recorded as
+**LC-REG-19** and **LC-REG-20**, both open.
+
+The same sweep found **five more rows marked `gap` that were already asserted**, and removed them
+from this register rather than leaving it overstating the hole:
+
+- **LC-EMR-06** ← `EmrTests.Draft_is_resumed_not_duplicated`
+- **LC-EMR-07** ← `EmrTests.A_template_applies_its_drug_lines`; only the *favourite* half is open
+- **LC-LAB-07** ← `LisAndDayCloseTests.Sample_chain_collect_receive_reject_spawns_child_with_same_tests`
+  — new barcode, `RecollectionOf` chain, tests carried over
+- **LC-OT-08** ← `OtTests.A_cancelled_case_frees_its_slot`; the slot half only
+- **LC-OT-09** ← `OtTests.Cancelling_and_postponing_both_need_a_reason`; the reason half only
+
+And rows marked **covered that were not**. Two cited a script or class that does not assert what
+the row claims — LC-FD-05 (`auto` frontdesk-check, which never reads the beds panel) and LC-BIL-09
+(`xunit MoneySpineTests`, which had no refund test at all). Three more named a class that does not
+exist, found by mechanically resolving every `xunit` citation against `tests/`:
+
+- **LC-BIL-12** cited `RateTests`; the class is `ApprovalAndRateTests`
+- **LC-PHA-18** cited `PharmacyTests`; the class is `PharmacyStockTests`
+- **LC-XCUT-05** cited "architecture tests" — a category, not a class; it is `ConcurrencyTests`
+
+Every `xunit` citation in this document now resolves to a class that exists. The register drifted
+in both directions because
+`check-lifecycle-traceability.sh` validates only that a cited **`auto` script file exists**: it
+never checked `xunit` class names, never checked that a cited script asserts the case it is
+credited with, and nothing at all looks for a false gap.
+
 | ID | Gap | Severity |
 |---|---|---|
 | LC-XCUT-11 | **No load or concurrency test exists anywhere in the repo.** `docs/architecture/06-deployment.md` §2a says so plainly: the suite *"says nothing about 40 operators at once"*. Spec 0031 added `eng/verify/load-probe.py` as a first cut and deliberately did **not** mark this covered: what forty operators means, what mix of work they do, and what passing looks like on 2 vCPU / 3 GB are architecture questions, raised as **ADR-0024 (Proposed)**. Marking it green off a read-only probe would be the more damaging outcome. | **High** |
-| LC-REG-16 | Patient merge after records exist — no orphaned money, no lost history. | **Medium** |
-| LC-REG-10 | Unknown / unconscious patient. Real in an ER; no path is proven. | **Medium** |
-| LC-REG-05 | Phone typed `+880`, with dashes or spaces. Only plain digits and the tail are covered. | **Medium** |
-| LC-LAB-07 | Sample rejection and recollection. | **Medium** |
+| LC-REG-16 | Patient merge after records exist — no orphaned money, no lost history. **Not a test gap: the feature is unbuilt.** `reg.patient_merge` and `patient.merged_into` are read by `PatientSearch.Searchable`, `/registration` and `FindDuplicatesAsync`, and written by nothing in `src/` (verified by grep, spec 0032). The same is true of patient deactivation — `patient.active` has no writer. Both are PRD §5 M1 [S] sub-features and belong to the PM, not to QA. | **Medium** |
 | LC-LAB-03 | Age- and sex-specific reference bands. | **Medium** |
-| LC-OT-08 / LC-OT-09 | OT cancel and postpone — neither asserted, though completion is. | **Medium** |
+| LC-OT-08 / LC-OT-09 | OT cancel and postpone were marked wholly unasserted; both are **partly** asserted (`OtTests.A_cancelled_case_frees_its_slot`, `.Cancelling_and_postponing_both_need_a_reason`). What is genuinely open is narrower: that a cancelled case posts **no completion charge**, and that a postponement **releases the original slot** (spec 0032). | **Low** |
 | LC-ADM-05 / LC-ADM-06 / LC-ADM-07 | Reservation, out-of-service bed, and the no-free-bed refusal. | **Medium** |
 | LC-DX-07 | Order cancelled after payment. | **Medium** |
 | LC-BIL-15 | Carry-close approval for a session spanning midnight. | **Medium** |
-| LC-EMR-06 / LC-EMR-07 | Draft resume; template and favourite reuse. | **Medium** |
+| LC-EMR-07 | Draft resume and template reuse were **never gaps** — `EmrTests.Draft_is_resumed_not_duplicated` and `.A_template_applies_its_drug_lines` (spec 0032). Only `AddFavouriteAsync`, the *favourite* half, has no test. | **Low** |
 | LC-NUR-06 | A missed dose being visible as missed. | **Medium** |
 | LC-XCUT-08 | SMS queue and resend. | **Medium** |
 | LC-ROLE-13 | Sidebar equals permissions ∩ entitlements per role (`NavComposer`). | **Medium** |
-| LC-REG-09 / LC-REG-11 / LC-REG-12 / LC-REG-14 | No phone; age vs DOB; guardian; patient type. | **Low** |
-| LC-QUE-03 / LC-QUE-04 / LC-QUE-05 | No session today; session full; no-show re-issue. | **Low** |
+| LC-QUE-03 / LC-QUE-04 | No session today; session full. **LC-QUE-04 is not merely untested** — `MaxSerials` is displayed and never enforced, and US3.1's AC requires *"capacity limit enforced with waitlist option"*, so this is an unmet [M] acceptance criterion routed to the PM (spec 0032, M3-R1). LC-QUE-05 was closed by `AppointmentQueueTests`. | **Medium** |
 | LC-BIL-18 | Whole-taka-only asserted structurally but not end to end. | **Low** |
+| LC-XCUT-08 | SMS **queue and resend end to end**. The module's rules are now asserted (`SmsQueueTests` — G19 both ways, edge 24's recorded skip, resend-unchanged, live-vs-simulation), so this is no longer "nothing asserts this"; what is open is the tray showing it, on screen. | **Low** |
 
 ### Coverage summary
 
 | | Count |
 |---|---|
-| Cases in this document | 169 |
-| Covered — `auto` / `ui` / `xunit` | 143 (85%) |
-| `gap` — nothing asserts it | 26 (15%) |
+| Cases in this document | 175 |
+| Covered — `auto` / `ui` / `xunit` | 162 (93%) |
+| `gap` — nothing asserts it | 13 (7%) |
 | of which **High** severity | 1 — LC-XCUT-11, open by decision (ADR-0024) |
 
 Was 130 covered / 39 gaps / 13 High at the first QA pass (2026-07-28). Specs 0030 and 0031
 closed twelve of the thirteen High gaps the same day.
 
-The 26 gaps are grouped into the register rows above; several rows cover a related set.
+Spec **0032**'s module sweep then moved the number in three different ways, and the mix matters
+more than the total:
+
+| | |
+|---|---|
+| Genuinely closed by new tests | LC-REG-05, 11, 12, 14 · LC-REG-18, 19, 20 added and closed · LC-QUE-02, 05, 07 · LC-QUE-09, 10 added and closed · LC-BIL-04, 09, 10 · LC-FD-05 · LC-FD-06 added and closed · LC-XCUT-08 (business-logic half) |
+| **Corrected — never gaps** | LC-REG-09, 10 · LC-EMR-06, 07 · LC-LAB-07 · LC-OT-08, 09 |
+| **Corrected — never covered** | LC-FD-05 (reopened) · LC-BIL-12 (citation fixed) |
+| Newly opened by the sweep | LC-REG-19, 20 — the registration **screen** path |
+
+**Read this number carefully.** It counts rows in this document, not behaviour in the product.
+Seven of the rows above moved because the register was wrong, not because anything was built or
+tested — and the register was wrong in both directions at once. A percentage derived from a
+hand-maintained list measures the list. `check-lifecycle-traceability.sh` guarantees only that
+cited **`auto` script files exist**; it does not check `xunit` class names, does not check that a
+cited script asserts the case it is credited with, and cannot detect a false gap at all.
+Until it does, treat this figure as a working index and not as evidence.
+
 Counts are produced by `eng/check-lifecycle-traceability.sh --stats`, so they cannot drift from
 the tables.
