@@ -193,12 +193,21 @@ name, pid = new_patient("Edge Short")
 adm, bed = admit(pid)
 folio = nu.get(f"/ipd/folio/{adm}")
 napa = re.search(r'<option value="(\d+)">Napa', folio)
+# The issue queue holds every ward's pending indents, and on a deployment there are always
+# some — thirteen were waiting on hms.specshipper.com. Taking whatever is at the top issued
+# somebody else's small indent, which succeeded, so the over-issue this case exists to prove
+# was never attempted and the run reported a product failure. Identify OUR indent as the id
+# that appeared after we raised it — the guard `ipd-thread.py` step 6 already carries.
+before = set(re.findall(r'name="IndentId" value="(\d+)"', ph.get("/pharmacy/indents")))
 nu.post(f"/ipd/folio/{adm}?handler=Indent", {
     "AdmissionId": adm, "ProductIds": [napa.group(1), "0", "0"],
     "ItemQtys": ["99999", "0", "0"]}, folio)
 queue = ph.get("/pharmacy/indents")
-indent = re.search(r'name="IndentId" value="(\d+)"', queue)
-outlet = re.search(r'<option value="(\d+)">(?!outlet)', queue)
+mine = sorted(set(re.findall(r'name="IndentId" value="(\d+)"', queue)) - before, key=int)
+indent = fixture(re.match(r"(\d+)", mine[-1]) if mine else None,
+                 "the over-issue indent never reached the pharmacy queue")
+outlet = fixture(re.search(r'<option value="(\d+)">(?!outlet)', queue),
+                 "no pharmacy outlet available to issue from")
 _, out = ph.post("/pharmacy/indents?handler=Issue",
                  {"IndentId": indent.group(1), "OutletId": outlet.group(1)}, queue)
 check("sellable" in error_on(out).lower() or "sellable" in error_on(ph.get("/pharmacy/indents")).lower(),

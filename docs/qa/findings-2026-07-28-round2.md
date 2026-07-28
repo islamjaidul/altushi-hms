@@ -9,8 +9,8 @@ reset fresh. Deployment: `https://hms.specshipper.com`, redeployed from commit `
 deployment, and only after explicit human agreement (`HMS_QA_ENV=prod`, `HMS_QA_CONFIRM`).
 
 **Verdict.** All seven findings are closed. The one High-severity lifecycle gap that remains
-(`LC-XCUT-11`) is open **by decision**, recorded as ADR-0024. Round 2 found three new items, one
-of them a real defect in the remediation itself, all fixed here.
+(`LC-XCUT-11`) is open **by decision**, recorded as ADR-0024. Round 2 found four new items — two of them real defects in the remediation itself, one a
+long-standing harness assumption that only a deployment could expose — all fixed here.
 
 ---
 
@@ -83,6 +83,29 @@ retrofit is the outstanding follow-up.
 Consequence to be honest about: **reversing a production run today means finding its records by
 name**, not by reading a manifest.
 
+### R2-4 — `edge-cases.py` issued somebody else's indent · High · fixed
+
+The definitive deployment run failed one check: *"the over-issue is refused with the real
+remaining quantity"*. It reads as a product defect — the ward asked for 99,999 units and the
+pharmacy did not refuse. It is not.
+
+Case 4 raised its indent and then took **whatever was at the top of the pharmacy issue queue**.
+Locally the queue is usually empty, so the top was its own. On the deployment thirteen indents
+from earlier runs were waiting, so it issued a stranger's small indent, which succeeded, and the
+over-issue the case exists to prove was never attempted.
+
+`ipd-thread.py` step 6 already carried the guard for exactly this — *"on a database with history
+the queue holds other wards' indents too — issue OUR one, identified as the id that appeared
+after we raised it"*. `edge-cases.py` did not. It does now.
+
+This is the sharpest illustration of why running against a deployment matters: a whole class of
+"first row wins" assumption is invisible on a database only the test has ever touched, and
+certain on one a hospital has used. Worth a sweep of the remaining threads for the same shape.
+
+**Side note.** Those thirteen indents are themselves an unreturned fixture. Unlike a bed, a
+pending indent blocks nothing, so it is not a ratchet — but it is queue clutter that grows by a
+few rows per run, and the retrofit in R2-3 is where it would be addressed.
+
 ---
 
 ## The one High gap left, and why
@@ -103,6 +126,9 @@ register next to the one thing nobody has measured, which is worse than leaving 
 A tier-1 run against a real deployment is designed to be identifiable and reversible, never
 erasable (Rule 4). This one created 13 admissions, all closed, plus registrations, invoices,
 receipts and lab orders under the usual thread names.
+
+The definitive run after every round-2 fix: **10/10 scripts, 0 failed checks, 12/12 roles, ward
+census 13 free before and 13 after.**
 
 **Cannot be undone, by design:** `kernel.audit_event` rows, `ipd.bed_day` rows,
 `pharm.stock_move` ledger entries, consumed number-series values (UHIDs `ALT-…`, admissions
