@@ -21,8 +21,11 @@ HTTP login (no mocked auth) — this drives the same app a browser does.
    # restart the app so it migrates + re-seeds, then:
    python3 eng/verify/golden-thread.py
    python3 eng/verify/discount-and-dues.py
+   # spec 0031 added the eleven detail screens to ROUTES; /ot/case/1 needs an operation to
+   # exist, and only the OT thread creates one on a fresh database.
+   python3 eng/verify/ot-thread.py
    ```
-   Run both, in that order, **before** the Playwright run.
+   Run all three, in that order, **before** the Playwright run.
 
 ## Install
 

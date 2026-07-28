@@ -20,7 +20,7 @@ import urllib.request
 
 # Overridable so the same thread can be run against a deployed instance
 # (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
-BASE = os.environ.get("BASE_URL", "http://localhost:5199")
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 

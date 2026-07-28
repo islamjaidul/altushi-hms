@@ -3,9 +3,12 @@
 due -> refund restock -> quarantine/return -> transfer -> audit -> dashboard.
 Assertions track the records this run creates (by id), so the script is
 dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
-import datetime, json, re, sys, urllib.parse, http.cookiejar, urllib.request
+import datetime, http.cookiejar, json, os, pathlib, re, sys, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import fixture   # noqa: E402
+
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 
@@ -45,6 +48,19 @@ def check(cond, msg):
 
 print("PHARMACY THREAD (M11)")
 
+
+def named_customer():
+    """A patient to put a credit sale against — registered once, reused by later runs."""
+    hits = json.loads(ph.get("/api/typeahead/patients?q=Rahim"))
+    if not hits:
+        reg = Session("jashim", "Demo#1234")
+        reg.post("/registration/new", {
+            "FullName": "Rahim Uddin", "Sex": "M", "AgeOrDob": "40", "Phone": "01711223344",
+            "PatientType": "general", "action": "save"})
+        hits = json.loads(ph.get("/api/typeahead/patients?q=Rahim"))
+    return str(hits[0]["value"]) if hits else ""
+
+
 ph = Session("parvin", "Demo#1234")
 
 # 1 — counter --------------------------------------------------------------
@@ -60,16 +76,19 @@ check("Your counter is open" in ph.get("/billing/session"), "pharmacy counter se
 # 2 — purchase order + approval + GRN -------------------------------------
 step(2, "Purchase order walks §11: raise → approve⚿ → order → receive")
 pur = ph.get("/pharmacy/purchase")
-prod = re.search(r'<option value="(\d+)">Napa', pur)
+prod = fixture(re.search(r'<option value="(\d+)">Napa', pur),
+               "no demo product on the purchase-order form")
 check(prod is not None, "product available on the PO form")
-sup_opt = re.search(r'name="SupplierId">.*?<option value="(\d+)">(?!— )', pur, re.S)
-out_opt = re.search(r'name="OutletId">.*?<option value="(\d+)">(?!— )', pur, re.S)
+sup_opt = fixture(re.search(r'name="SupplierId">.*?<option value="(\d+)">(?!— )', pur, re.S),
+                  "no supplier to raise a purchase order against")
+out_opt = fixture(re.search(r'name="OutletId">.*?<option value="(\d+)">(?!— )', pur, re.S),
+                  "no pharmacy outlet to receive into")
 ph.post("/pharmacy/purchase?handler=Create", {
     "SupplierId": sup_opt.group(1), "OutletId": out_opt.group(1),
     "ProductIds": [prod.group(1), "0", "0"], "LineQtys": ["100", "0", "0"],
     "LineCosts": ["1", "0", "0"]}, pur)
 pur = ph.get("/pharmacy/purchase")
-po_id = re.search(r"PO #(\d+)", pur)
+po_id = fixture(re.search(r"PO #(\d+)", pur), "the purchase order was not created")
 check(po_id is not None, "purchase order created")
 check("Requested" in pur, "PO waits at Requested (no auto-approve for this role)")
 
@@ -84,7 +103,8 @@ ph.post("/pharmacy/purchase?handler=Advance", {"PoId": po_id.group(1)}, pur)   #
 pur = ph.get("/pharmacy/purchase")
 ph.post("/pharmacy/purchase?handler=Advance", {"PoId": po_id.group(1)}, pur)   # → Ordered
 pur = ph.get("/pharmacy/purchase")
-line_id = re.search(r'name="PoLineId" value="(\d+)"', pur)
+line_id = fixture(re.search(r'name="PoLineId" value="(\d+)"', pur),
+                  "the ordered PO offers no line to receive against")
 check(line_id is not None, "GRN form offered on the ordered PO")
 ph.post("/pharmacy/purchase?handler=Receive", {
     "PoId": po_id.group(1), "PoLineId": line_id.group(1),
@@ -133,27 +153,35 @@ check(expected[0][0] in receipt,
       f"FEFO took the earliest-expiring batch ({expected[0][0]}), printed on the receipt")
 walkin_invoice = url.rstrip("/").split("/")[-1]
 
-# 4 — expired stock is blocked ---------------------------------------------
-step(4, "Expired batch cannot be sold (US11.1)")
-pos = ph.get("/pharmacy/pos?Q=Seclo")
-seclo = re.search(r'name="productId" value="(\d+)"', pos)
-pos = ph.post("/pharmacy/pos?handler=Add", {"productId": seclo.group(1), "Q": "Seclo"}, pos)[1]
+# 4 — stock beyond what is sellable is blocked ------------------------------
+# Repeat-run safe (spec 0029 F3/F4). This used to ask for 310 units of seeded Seclo, whose
+# on-hand quantity the suite itself sold down to zero; once it hit zero the type-ahead stopped
+# listing the product, the regex matched nothing, and the thread died on
+# `'NoneType' object has no attribute 'group'` — a stock fact reported as a crash.
+#
+# The case is not about Seclo. It is about the counter refusing a quantity larger than the
+# unexpired stock behind it, so it is asserted against the batch THIS RUN received at step 2:
+# ask for one unit more than exists and it must be refused.
+step(4, "A sale beyond unexpired stock is refused (US11.1)")
+sellable_qty = sum(q for _, _, q in sellable_batches(ph.get("/pharmacy/stock?Show=all")))
+fixture(sellable_qty > 0, "no sellable stock of the demo product after our own GRN",
+        "step 2 receives 100 units; if none are on the shelf the GRN did not post")
+# Named customer, so the refusal under test is the stock one: a walk-in with nothing tendered
+# is refused earlier, for credit without a name, and would never reach the stock check.
+customer = named_customer()
+pos = ph.get("/pharmacy/pos")
+pos = ph.post("/pharmacy/pos?handler=Add",
+              {"productId": prod.group(1), "PatientId": customer}, pos)[1]
 url, html = ph.post("/pharmacy/pos?handler=Save", {
-    "Items": [seclo.group(1)], "Qtys": ["310"], "PaidNow": "1860", "Tender": "cash"}, pos)
+    "PatientId": customer, "Items": [prod.group(1)], "Qtys": [str(sellable_qty + 1)],
+    "PaidNow": "0", "Tender": "cash"}, pos)
 check("sellable" in html and "/billing/invoice/" not in url,
-      "asking beyond unexpired stock is refused — expired 60 uncounted")
+      f"asking for {sellable_qty + 1} when {sellable_qty} are sellable is refused")
 
 # 5 — credit sale needs a name; due lands on the shared dues screen ---------
 step(5, "Credit sale to a named patient raises a due")
-hits = json.loads(ph.get("/api/typeahead/patients?q=Rahim"))
-if not hits:
-    reg = Session("jashim", "Demo#1234")
-    reg.post("/registration/new", {
-        "FullName": "Rahim Uddin", "Sex": "M", "AgeOrDob": "40", "Phone": "01711223344",
-        "PatientType": "general", "action": "save"})
-    hits = json.loads(ph.get("/api/typeahead/patients?q=Rahim"))
-check(len(hits) > 0, "type-ahead finds the customer")
-pid = str(hits[0]["value"])
+pid = named_customer()
+check(pid != "", "type-ahead finds the customer")
 pos = ph.get("/pharmacy/pos")
 pos = ph.post("/pharmacy/pos?handler=Add", {"productId": prod.group(1), "PatientId": pid}, pos)[1]
 url, html = ph.post("/pharmacy/pos?handler=Save", {

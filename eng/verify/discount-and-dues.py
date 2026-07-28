@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """The F2 demo beat: OPD bill, discount above the operator's limit, supervisor approval, due collection."""
-import json, re, sys, urllib.parse, http.cookiejar, urllib.request
+import http.cookiejar, json, os, re, sys, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 

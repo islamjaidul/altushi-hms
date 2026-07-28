@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Drive the §9A.2 golden thread through the real HTTP surface, as the demo script does."""
-import json, re, sys, urllib.parse, http.cookiejar, urllib.request
+import http.cookiejar, json, os, re, sys, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 

@@ -13,15 +13,19 @@ usage: python3 eng/verify/emr-thread.py       (from the repo root, app on :5199)
 import http.cookiejar
 import json
 import os
+import pathlib
 import re
 import sys
 import time
 import urllib.parse
 import urllib.request
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import fixture, on_exit, settle_and_discharge   # noqa: E402
+
 # Overridable so the same thread can be run against a deployed instance
 # (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
-BASE = os.environ.get("BASE_URL", "http://localhost:5199")
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 
@@ -203,17 +207,23 @@ check("Acute pharyngitis" in original, "and still carries exactly what was signe
 # ---- 7. the ward's own paperwork (5A-7) --------------------------------------------
 print("\n7. nursing charts on an admitted patient (5A-7)")
 admit = desk.get("/ipd/admit")
-bed = re.search(r'<option value="(\d+)">(GW[MF]|CAB|ICU)', admit)
+bed = fixture(re.search(r'<option value="(\d+)">(GW[MF]|CAB|ICU)', admit),
+              "no free bed anywhere in the hospital",
+              "a thread that admits must discharge; reset the database if a run was killed")
 check(bed is not None, "a free bed is offered")
 if bed:
     url, _ = desk.post("/ipd/admit", {
         "PatientId": patient_id, "Source": "opd", "BedId": bed.group(1),
         "ServiceChargePct": "0", "ReserveOnly": "false"}, admit)
-    admission_id = re.search(r"/ipd/folio/(\d+)", url)
+    admission_id = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused")
     check(admission_id is not None, "the patient is admitted")
 
     if admission_id:
         admission_id = admission_id.group(1)
+        # Spec 0029 F3: this thread used to admit and walk away. Four of the thirteen seeded
+        # beds were held by EMR-thread patients admitted on previous days.
+        on_exit(f"admission {admission_id} discharged and bed returned",
+                lambda: settle_and_discharge(Session, admission_id, [bed.group(1)]))
         charts = nurse.get(f"/emr/charts/{admission_id}")
         check("Medicine chart (MAR)" in charts, "the MAR opens for this admission")
 

@@ -5,9 +5,12 @@ moment, being double-clicked, asking for more stock than exists.
 
 Every scenario provisions its own patient and hands its bed back, so the script is
 dirty-database tolerant and safe to run repeatedly (including in the upgrade gate)."""
-import json, re, sys, time, urllib.parse, http.cookiejar, urllib.request
+import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import fixture   # noqa: E402
+
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 SUBMIT_RE = re.compile(r'name="SubmissionToken" value="([0-9a-fA-F-]{36})"')
 ERR_RE = re.compile(r'class="alert bad".*?<span>(.*?)</span>', re.S)
@@ -82,14 +85,16 @@ def new_patient(prefix, age="50"):
 
 def admit(pid):
     page = fd.get("/ipd/admit")
-    bed = re.search(r'<option value="(\d+)">GW[MF]-\d+', page)
-    if bed is None:
-        return None, None
+    # Returning (None, None) here meant the next line asked for /ipd/folio/None and the run
+    # died on a bare `HTTPError: 404` — a full ward reported as a routing bug (spec 0029 F4).
+    bed = fixture(re.search(r'<option value="(\d+)">GW[MF]-\d+', page),
+                  "no free general-ward bed — every ward bed is occupied",
+                  "a thread that admits must discharge; reset the database if a run was killed")
     url, _ = fd.post("/ipd/admit", {
         "PatientId": pid, "Source": "direct", "BedId": bed.group(1),
         "ServiceChargePct": "0", "ReserveOnly": "false"}, page)
-    m = re.search(r"/ipd/folio/(\d+)", url)
-    return (m.group(1) if m else None), bed.group(1)
+    m = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused")
+    return m.group(1), bed.group(1)
 
 
 def free_bed(bed_id):
@@ -130,7 +135,8 @@ name, pid = new_patient("Edge Death")
 adm, bed = admit(pid)
 op.get(f"/ipd/folio/{adm}")                                     # bed day catch-up
 folio = nu.get(f"/ipd/folio/{adm}")
-oxygen = re.search(r'<option value="(\d+)">Oxygen[^<]*</option>', folio)
+oxygen = fixture(re.search(r'<option value="(\d+)">Oxygen[^<]*</option>', folio),
+                 "no Oxygen service in the ward catalog")
 nu.post(f"/ipd/folio/{adm}?handler=Service",
         {"AdmissionId": adm, "ServiceId": oxygen.group(1), "Qty": "3"}, folio)
 fd.post(f"/ipd/folio/{adm}?handler=Death", {"AdmissionId": adm}, fd.get(f"/ipd/folio/{adm}"))

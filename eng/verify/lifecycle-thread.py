@@ -3,9 +3,12 @@
 found the gaps this spec fixes. Unlike the per-module threads, this one exists to catch the
 SEAMS: what one module writes, another must see. Dirty-database tolerant (its patient is its
 own, asserted by id), so the upgrade gate runs it too."""
-import json, re, sys, time, urllib.parse, http.cookiejar, urllib.request
+import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import fixture, on_exit, release_bed, settle_and_discharge   # noqa: E402
+
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 
@@ -128,13 +131,19 @@ check(f'name="InvoiceId" value="{pharm_inv}"' in dues,
 # 5 — admission ------------------------------------------------------------
 step(5, "Admission: a bed, a folio, and the outdoor screens now warn")
 admit = fd.get("/ipd/admit")
-bed = re.search(r'<option value="(\d+)">GW[MF]-\d+', admit)
+bed = fixture(re.search(r'<option value="(\d+)">GW[MF]-\d+', admit),
+              "no free general-ward bed — every ward bed is occupied",
+              "a thread that admits must discharge; reset the database if a run was killed")
 url, _ = fd.post("/ipd/admit", {
     "PatientId": pid, "Source": "opd", "ProvisionalDx": "lifecycle",
     "BedId": bed.group(1), "ServiceChargePct": "0", "ReserveOnly": "false"}, admit)
-mm = re.search(r"/ipd/folio/(\d+)", url)
+mm = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused")
 check(mm is not None, "admitted, folio open")
 adm = mm.group(1)
+# Spec 0029 F3. This thread discharges on its happy path but never handed the bed back from
+# Cleaning, and a failure anywhere in steps 5-8 skipped the discharge entirely.
+on_exit(f"admission {adm} discharged and bed returned",
+        lambda: settle_and_discharge(lambda u: Session(u, "Demo#1234"), adm, [bed.group(1)]))
 pos = ph.get(f"/pharmacy/pos?PatientId={pid}")
 check("is <b>admitted</b>" in pos or "admitted" in pos.lower(),
       "pharmacy POS warns the patient is admitted (spec 0020 gap 3)")
@@ -205,6 +214,7 @@ dis = op.get(f"/ipd/discharge/{adm}")
 check("is still owed" not in dis, "nothing outstanding once collected")
 op.post(f"/ipd/discharge/{adm}?handler=Discharge", {"AdmissionId": adm}, dis)
 check("Gate pass" in op.get(f"/ipd/discharge/{adm}"), "gate pass printed on a clean account")
+release_bed(fd, bed.group(1))   # housekeeping: Cleaning → Free, or the ward shrinks by one a run
 
 # 9 — the record afterwards ------------------------------------------------
 step(9, "Afterwards: certificate, history, and a return visit still work")

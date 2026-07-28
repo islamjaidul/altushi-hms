@@ -9,9 +9,9 @@ payments and replacements, the sales/purchase statements, outlet creation, the d
 write-off with its approval, and the staff-sale variant.
 
 Dirty-database tolerant and repeat-run safe: everything it needs, it creates."""
-import json, re, sys, time, urllib.parse, http.cookiejar, urllib.request
+import http.cookiejar, json, os, re, sys, time, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 SUBMIT_RE = re.compile(r'name="SubmissionToken" value="([0-9a-fA-F-]{36})"')
 ERR_RE = re.compile(r'class="alert bad".*?<span>(.*?)</span>', re.S)

@@ -4,9 +4,12 @@ medicine indent FEFO -> indoor investigation -> return -> R4 block/release (incl
 the OPD counter guard) -> transfer -> settlement (advance applied) -> discharge ->
 certificate. Assertions track the records this run creates (by id/number), so the
 script is dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
-import json, re, sys, time, urllib.parse, http.cookiejar, urllib.request
+import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
-BASE = "http://localhost:5199"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import fixture, on_exit, release_bed, settle_and_discharge   # noqa: E402
+
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 
 
@@ -80,14 +83,25 @@ pid = str(hits[-1]["value"])
 # 2 — admission ------------------------------------------------------------
 step(2, "Admission into a free general bed (§5 M6)")
 admit = fd.get("/ipd/admit")
-bed = re.search(r'<option value="(\d+)">GW[MF]-\d+', admit)
+bed = fixture(re.search(r'<option value="(\d+)">GW[MF]-\d+', admit),
+              "no free general-ward bed — every ward bed is occupied",
+              "a thread that admits must discharge; reset the database if a run was killed")
 check(bed is not None, "a free general-ward bed is on offer")
 url, html = fd.post("/ipd/admit", {
     "PatientId": pid, "Source": "direct", "ProvisionalDx": "Acute gastritis",
     "BedId": bed.group(1), "ServiceChargePct": "5", "ReserveOnly": "false"}, admit)
-m = re.search(r"/ipd/folio/(\d+)", url)
+m = fixture(re.search(r"/ipd/folio/(\d+)", url), "admission was refused",
+            "the ward may be full, or the patient may already have an open admission")
 check(m is not None, "admitted — folio opened")
 adm = m.group(1)
+
+# The bed is now this run's to return. Registered here rather than at the end, because a
+# failure at any later step used to cost the ward a bed permanently (spec 0029 F3): every
+# occupied bed in the local database at the start of that spec came from a thread that died
+# before reaching its housekeeping step.
+OURS = [bed.group(1)]
+on_exit(f"admission {adm} discharged and bed(s) returned",
+        lambda: settle_and_discharge(lambda u: Session(u, "Demo#1234"), adm, OURS))
 
 # 3 — bed day + admission fee post on first money-side view ----------------
 step(3, "Folio catches up bed days idempotently (P18)")
@@ -114,7 +128,8 @@ check("5,000" in folio or "5000" in folio, "advance held on the folio")
 # 5 — nurse posts a ward service (US6.1) -----------------------------------
 step(5, "Nurse posts oxygen — price from the rate plan, her name on the line")
 folio = nu.get(f"/ipd/folio/{adm}")
-oxy = re.search(r'<option value="(\d+)">Oxygen[^<]*</option>', folio)
+oxy = fixture(re.search(r'<option value="(\d+)">Oxygen[^<]*</option>', folio),
+              "no Oxygen service in the ward catalog")
 check(oxy is not None, "oxygen service offered from the catalog")
 nu.post(f"/ipd/folio/{adm}?handler=Service",
         {"AdmissionId": adm, "ServiceId": oxy.group(1), "Qty": "2"}, folio)
@@ -123,7 +138,8 @@ check("Oxygen" in folio and "Nasrin" in folio, "posting appears with the nurse's
 
 # 6 — medicine indent -> pharmacy FEFO issue (5A-9) ------------------------
 step(6, "Ward indent issues FEFO at batch MRP to the folio")
-napa = re.search(r'<option value="(\d+)">Napa', folio)
+napa = fixture(re.search(r'<option value="(\d+)">Napa', folio),
+               "no medicine offered on the ward indent form")
 check(napa is not None, "medicine on the indent form")
 # On a database with history the queue holds other wards' indents too — issue OUR one,
 # identified as the id that appeared after we raised it (not whatever is at the top).
@@ -133,9 +149,11 @@ nu.post(f"/ipd/folio/{adm}?handler=Indent", {
     "ItemQtys": ["4", "0", "0"], "IndentNote": "post-op"}, folio)
 queue = ph.get("/pharmacy/indents")
 mine = sorted(set(re.findall(r'name="IndentId" value="(\d+)"', queue)) - before, key=int)
-iid = re.match(r"(\d+)", mine[-1]) if mine else None
+iid = fixture(re.match(r"(\d+)", mine[-1]) if mine else None,
+              "the ward indent never reached the pharmacy issue queue")
 check(iid is not None, "indent waits in the pharmacy issue queue")
-outlet = re.search(r'<option value="(\d+)">(?!outlet)', queue)
+outlet = fixture(re.search(r'<option value="(\d+)">(?!outlet)', queue),
+                 "no pharmacy outlet available to issue from")
 ph.post("/pharmacy/indents?handler=Issue",
         {"IndentId": iid.group(1), "OutletId": outlet.group(1)}, queue)
 folio = nu.get(f"/ipd/folio/{adm}")
@@ -143,7 +161,8 @@ check("batch" in folio and "Napa" in folio, "folio line carries the issuing batc
 
 # 7 — indoor investigation (§11 indoor branch) -----------------------------
 step(7, "Investigation indent: charge on folio, sample raised, no invoice gate")
-cbc = re.search(r'name="TestIds" value="(\d+)"', folio)
+cbc = fixture(re.search(r'name="TestIds" value="(\d+)"', folio),
+              "no test offered on the indoor investigation form")
 check(cbc is not None, "test catalog offered")
 nu.post(f"/ipd/folio/{adm}?handler=OrderTests",
         {"AdmissionId": adm, "TestIds": [cbc.group(1)]}, folio)
@@ -176,7 +195,8 @@ _, html = nu.post(f"/ipd/folio/{adm}?handler=Service",
                   {"AdmissionId": adm, "ServiceId": oxy.group(1), "Qty": "1"}, folio)
 check("blocked" in html.lower(), "service posting refused while blocked")
 opd = op.get("/billing/opd")
-svc = re.search(r'name="catalogId" value="(\d+)"', opd)
+svc = fixture(re.search(r'name="catalogId" value="(\d+)"', opd),
+              "no service on the OPD counter catalog")
 opd = op.post("/billing/opd?handler=Add", {"catalogId": svc.group(1), "PatientId": pid}, opd)[1]
 _, html = op.post("/billing/opd?handler=Save",
                   {"PatientId": pid, "Items": [svc.group(1)], "PaidNow": "0", "Tender": "cash"}, opd)
@@ -194,14 +214,23 @@ folio = nu.get(f"/ipd/folio/{adm}")
 check("Blocked for dues" not in folio, "released — folio open again")
 
 # 10 — transfer (US6.3) ----------------------------------------------------
-step(10, "Transfer to a cabin — history keeps the moment")
+step(10, "Transfer to another bed — history keeps the moment")
 folio = fd.get(f"/ipd/folio/{adm}")
-cab = re.search(r'<option value="(\d+)">CAB-\d+', folio)
-check(cab is not None, "a free cabin is on offer")
+# Any free bed, preferring a different class. The assertion is that the move is recorded with
+# its moment in the bed history; insisting on a *cabin* only meant one thread monopolised the
+# scarcest class there is — three of them — and failed the moment another run held one.
+targets = [(bid, code) for bid, code in
+           re.findall(r'<option value="(\d+)">([A-Z]+-\d+)', folio) if bid != bed.group(1)]
+targets.sort(key=lambda t: (t[1].startswith("GW"), t[1]))   # non-general first
+cab = fixture(targets[0] if targets else None,
+              "no second free bed to transfer into",
+              "the transfer test needs one free bed besides the one it admitted into")
+to_bed, to_code = cab
 fd.post(f"/ipd/folio/{adm}?handler=Transfer",
-        {"AdmissionId": adm, "ToBedId": cab.group(1)}, folio)
+        {"AdmissionId": adm, "ToBedId": to_bed}, folio)
+OURS.append(to_bed)
 folio = fd.get(f"/ipd/folio/{adm}")
-check("CAB-" in folio, "cabin stay open in the bed history")
+check(to_code in folio, f"the {to_code} stay is open in the bed history")
 
 # 11 — discharge & settlement (US6.2) --------------------------------------
 step(11, "Discharge: summary → clearance → draft → invoice with advance applied")
@@ -241,7 +270,8 @@ op.post("/ipd/certificates?handler=Issue",
 certs = op.get("/ipd/certificates")
 cert_no = re.search(r"(DIS-[\d-]+)", certs)
 check(cert_no is not None, "certificate issued with a DIS- number")
-cid = re.search(r'name="CertificateId" value="(\d+)"', certs)
+cid = fixture(re.search(r'name="CertificateId" value="(\d+)"', certs),
+              "the certificate was not issued, so there is nothing to reprint")
 op.post("/ipd/certificates?handler=Reprint", {"CertificateId": cid.group(1)}, certs)
 certs = op.get("/ipd/certificates")
 check(cert_no.group(1) in certs, "reprint kept the same number")
@@ -258,9 +288,8 @@ check("Cleaning" in board or "cleaning" in board, "the vacated bed is in cleanin
 # here the script does, or a ward of 8 beds would be exhausted after 8 runs and every later
 # run — including the upgrade gate's — would fail for want of a bed.
 step(14, "Housekeeping: hand the beds back to the ward")
-for bed_id in {bed.group(1), cab.group(1)}:
-    board = fd.get("/ipd/board")
-    fd.post("/ipd/board?handler=CleaningDone", {"BedId": bed_id}, board)
+for bed_id in set(OURS):
+    release_bed(fd, bed_id)
 board = fd.get("/ipd/board")
 check(board.count("Free") >= 1, "at least one bed is free again")
 

@@ -20,7 +20,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE = os.environ.get("BASE_URL", "http://localhost:5199")
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 DEMO_PASSWORD = "Demo#1234"
 NEW_PASSWORD = "GoLive#2026!kx"
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')

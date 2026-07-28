@@ -44,9 +44,10 @@ done
 echo "== smoke every route over the restored (old) data"
 FAILED=0
 smoke() {  # user pass paths...
-  OUT=$(sh eng/verify/nav-smoke.sh "$@")
-  echo "$OUT"
-  echo "$OUT" | awk '$2 ~ /^[0-9]+$/ && $2 != 200 && $2 != 302 { exit 1 }' || FAILED=1
+  # nav-smoke.sh now owns the verdict: it follows each redirect and fails on a /denied or
+  # /login target (spec 0029 F6). The awk filter that used to live here treated every 302 as
+  # a pass, which is precisely how a role refused every route produced a green gate.
+  bash eng/verify/nav-smoke.sh "$@" || FAILED=1
 }
 smoke jashim "Demo#1234" /registration /registration/new /registration/1/card /appointments
 smoke rasel  "Demo#1234" /billing/opd /billing/dues /billing/refund /billing/reports /billing/invoice/1 /diagnostics/order

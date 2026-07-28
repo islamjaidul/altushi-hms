@@ -45,11 +45,37 @@ async function admitFreshPatient(): Promise<{ pid: string; admissionId: string; 
   return { pid, admissionId, bedId };
 }
 
-/** Closes the admission and frees the bed so repeated runs never exhaust the ward. */
+/**
+ * Closes the admission and frees the bed so repeated runs never exhaust the ward.
+ *
+ * Absconding is only legal from an in-house state. The discharge-with-dues case above settles
+ * its folio first, so on that path the Absconded post is refused and the bed was never handed
+ * back — spec 0029's fixture ratchet, in the UI suite this time: a run of the Playwright suite
+ * cost the ward a bed permanently. If the admission is past that point, walk the discharge with
+ * a stated reason instead, exactly as `_harness.settle_and_discharge` does for the Python
+ * threads (§3.2 — a discharge with a due needs a reason, and QA's is as good as anyone's).
+ */
 async function releaseAdmission(admissionId: string, bedId: string) {
   const fd = await ctx("jashim");
   const folio = await (await fd.get(`/ipd/folio/${admissionId}`)).text();
   await postForm(fd, `/ipd/folio/${admissionId}?handler=Absconded`, { AdmissionId: admissionId }, folio);
+
+  const stillOpen = await (await fd.get(`/ipd/discharge/${admissionId}`)).text();
+  if (!stillOpen.includes("Gate pass")) {
+    const op = await ctx("rasel");
+    for (const handler of ["Initiate", "Clear"]) {
+      const page = await (await fd.get(`/ipd/discharge/${admissionId}`)).text();
+      await postForm(fd, `/ipd/discharge/${admissionId}?handler=${handler}`, {
+        AdmissionId: admissionId, ClinicalSummary: "QA teardown — returning the bed to the ward.",
+      }, page);
+    }
+    const page = await (await op.get(`/ipd/discharge/${admissionId}`)).text();
+    await postForm(op, `/ipd/discharge/${admissionId}?handler=Discharge`, {
+      AdmissionId: admissionId, OutstandingReason: "QA teardown — bed returned to the ward",
+    }, page);
+    await op.dispose();
+  }
+
   const board = await (await fd.get("/ipd/board")).text();
   await postForm(fd, "/ipd/board?handler=CleaningDone", { BedId: bedId }, board);
   await fd.dispose();

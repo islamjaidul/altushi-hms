@@ -13,6 +13,7 @@ usage: python3 eng/verify/ot-thread.py       (from the repo root, app on :5199)
 import http.cookiejar
 import json
 import os
+import pathlib
 import re
 import sys
 import time
@@ -20,9 +21,12 @@ import urllib.parse
 import urllib.request
 from datetime import date, timedelta
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import fixture, on_exit, settle_and_discharge   # noqa: E402
+
 # Overridable so the same thread can be run against a deployed instance
 # (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
-BASE = os.environ.get("BASE_URL", "http://localhost:5199")
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 MONEY_RE = re.compile(r"(?:৳|&#x9F3;)\s*([\d,]+)")
 
@@ -89,14 +93,21 @@ if not hits:
 patient_id = str(hits[0]["value"])
 
 admit = desk.get("/ipd/admit")
-bed = re.search(r'<option value="(\d+)">(GW[MF]|CAB|ICU)', admit)
+bed = fixture(re.search(r'<option value="(\d+)">(GW[MF]|CAB|ICU)', admit),
+              "no free bed anywhere in the hospital",
+              "a thread that admits must discharge; reset the database if a run was killed")
 check(bed is not None, "a free bed is offered")
 url, _ = desk.post("/ipd/admit", {
     "PatientId": patient_id, "Source": "opd", "BedId": bed.group(1),
     "ServiceChargePct": "0", "ReserveOnly": "false"}, admit)
-admission_id = re.search(r"/ipd/folio/(\d+)", url)
+admission_id = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused")
 check(admission_id is not None, "the patient is admitted")
 admission_id = admission_id.group(1)
+
+# Spec 0029 F3: the surgery is the point of this thread, but the bed it borrows to hold the
+# folio is a fixture like any other and has to go back — including when a later step fails.
+on_exit(f"admission {admission_id} discharged and bed returned",
+        lambda: settle_and_discharge(Session, admission_id, [bed.group(1)]))
 before = folio_total(desk.get(f"/ipd/folio/{admission_id}"))
 print(f"     folio before surgery: ৳{before:,}")
 
@@ -119,10 +130,14 @@ if len(theatre_ids) != 2:
 ops = re.search(r'name="OperationServiceId" required>(.*?)</select>', form, re.S)
 op_ids = re.findall(r'<option value="(\d+)">([^<]+)</option>', ops.group(1)) if ops else []
 check(len(op_ids) > 0, f"the operation catalogue is priced ({len(op_ids)} operations)")
+fixture(op_ids, "no priced operation in the catalogue",
+        "add one at /admin/masters, or reset the database")
 operation_id, operation_label = op_ids[0]
 
 people = re.search(r'name="SurgeonId" required>(.*?)</select>', form, re.S)
 person_ids = re.findall(r'<option value="(\d+)">', people.group(1)) if people else []
+fixture(len(person_ids) >= 2, "fewer than two consultants to make a surgical team",
+        "add consultants at /admin/people, or reset the database")
 surgeon, anaesthetist = person_ids[0], person_ids[1]
 
 # A date of this run's own. The theatres are ours, but the *people* are shared with every
@@ -176,8 +191,33 @@ check("Complete &amp; post charges" in case, "and completion once the patient is
 # ---- 4. consumables off real stock ------------------------------------------------
 print("\n4. a consumable comes off pharmacy stock and lands on the folio")
 products = re.search(r'name="ProductId">(.*?)</select>', case, re.S)
-product_ids = re.findall(r'<option value="(\d+)">', products.group(1)) if products else []
-check(len(product_ids) > 0, "the consumable picker offers stock")
+offered = re.findall(r'<option value="(\d+)">([^<]+)</option>',
+                     products.group(1)) if products else []
+check(len(offered) > 0, "the consumable picker offers stock")
+
+# The picker lists every active product, in stock or not, so taking offered[0] was a coin
+# toss that eventually landed on a product at zero and reported "the consumable is not
+# recorded" — a stock fact dressed up as an OT defect (spec 0029 F3). Ask the shelf instead.
+shelf = Session("parvin").get("/pharmacy/stock?Show=all")
+on_hand = {}
+for row in re.findall(r"<tr>(.*?)</tr>", shelf, re.S):
+    cells = [re.sub(r"<[^>]+>", "", c).strip()
+             for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+    if len(cells) < 7:
+        continue
+    state = cells[6].split("\n")[0].strip()
+    if state not in ("in stock", "near expiry"):
+        continue
+    brand = cells[0].split()[0] if cells[0].split() else ""
+    on_hand[brand] = on_hand.get(brand, 0) + int(re.sub(r"\D", "", cells[3]) or 0)
+
+stocked = sorted(((on_hand.get(label.split()[0], 0), pid, label) for pid, label in offered),
+                 reverse=True)
+product = fixture(stocked[0] if stocked and stocked[0][0] >= 2 else None,
+                  "no pharmacy product has two sellable units to consume",
+                  "receive stock through /pharmacy/purchase, or reset the database")
+print(f"     consuming {product[2].strip()} — {product[0]} on hand")
+product_ids = [product[1]]
 if product_ids:
     incharge.post(f"/ot/case/{case_id}?handler=Consumable",
                   {"ProductId": product_ids[0], "Qty": "2"}, case)
