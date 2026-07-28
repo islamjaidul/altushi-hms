@@ -245,8 +245,9 @@ public static class HistoryGenerator
             var id = await tx.RunAsync(async s =>
             {
                 var patient = await registration.RegisterAsync(s.Reg, s.Kernel, new RegisterPatientCommand(
-                    world.BranchId, name, rng.Next(2) == 0 ? 'M' : 'F', null, age, true,
-                    phone, null, Areas[rng.Next(Areas.Length)], null, false, 1, "History Generator"));
+                    world.BranchId, name, rng.Next(2) == 0 ? 'M' : 'F', null, age, null, true,
+                    phone, null, Areas[rng.Next(Areas.Length)], null, null, null,
+                    false, 1, "History Generator"));
                 return patient.Id;
             });
             world.PatientIds.Add(id);
