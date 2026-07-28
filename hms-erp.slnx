@@ -57,5 +57,6 @@
     <Project Path="tests/Hms.Integration.Tests/Hms.Integration.Tests.csproj" />
     <Project Path="tests/Hms.Kernel.Tests/Hms.Kernel.Tests.csproj" />
     <Project Path="tests/Hms.PrintGolden.Tests/Hms.PrintGolden.Tests.csproj" />
+    <Project Path="tests/Hms.Web.Tests/Hms.Web.Tests.csproj" />
   </Folder>
 </Solution>

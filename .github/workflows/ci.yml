@@ -27,6 +27,7 @@ jobs:
       - name: Unit + architecture tests
         run: |
           dotnet test tests/Hms.Kernel.Tests --no-build -c Release
+          dotnet test tests/Hms.Web.Tests --no-build -c Release
           dotnet test tests/Hms.Architecture.Tests --no-build -c Release
       - name: Integration tests (real PostgreSQL via Testcontainers — G7)
         run: dotnet test tests/Hms.Integration.Tests --no-build -c Release
@@ -43,8 +44,14 @@ jobs:
             --project src/Hms.Kernel --startup-project src/Hms.Web --context KernelDbContext -o kernel.sql
           dotnet ef migrations script --idempotent --no-build -c Release \
             --project src/Hms.Kernel --startup-project src/Hms.Web --context AuthDbContext -o auth.sql
+          # reg carries patient identity and its ck_identity constraint (spec 0032, M1-D1); the
+          # gate covered two of the fourteen contexts and neither was the one being widened.
+          dotnet ef migrations script --idempotent --no-build -c Release \
+            --project src/Modules/Registration/Hms.Registration --startup-project src/Hms.Web \
+            --context RegDbContext -o reg.sql
           sh eng/check-additive-migrations.sh kernel.sql
           sh eng/check-additive-migrations.sh auth.sql
+          sh eng/check-additive-migrations.sh reg.sql
       - name: Image build
         run: docker build -f deploy/app.Dockerfile -t hms-app:ci .
 
