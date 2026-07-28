@@ -1,0 +1,11 @@
+{
+  "run": "20260728T101734Z",
+  "base": "https://hms.specshipper.com",
+  "script": "frontdesk-check.py",
+  "finished": "2026-07-28T10:17:36Z",
+  "created": {
+    "admission": [
+      "128"
+    ]
+  }
+}

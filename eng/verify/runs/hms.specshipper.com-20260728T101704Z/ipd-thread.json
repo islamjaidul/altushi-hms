@@ -1,0 +1,17 @@
+{
+  "run": "20260728T101704Z",
+  "base": "https://hms.specshipper.com",
+  "script": "ipd-thread.py",
+  "finished": "2026-07-28T10:17:11Z",
+  "created": {
+    "patient": [
+      "166"
+    ],
+    "admission": [
+      "125"
+    ],
+    "invoice": [
+      "266"
+    ]
+  }
+}

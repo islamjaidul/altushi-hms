@@ -33,7 +33,8 @@ import urllib.parse
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from _harness import (BASE, Session, case, check, fixture, grant_cells, guard,   # noqa: E402
-                      on_exit, open_counter, report, settle_and_discharge, step)
+                      on_exit, open_counter, record, report, settle_and_discharge,
+                      step, tag)
 
 guard("t1")
 
@@ -53,13 +54,19 @@ open_counter(op)
 
 
 def register(prefix):
-    name = f"{prefix} {STAMP}"
+    # Tagged and recorded like every other thread. This script was written before the manifest
+    # existed and never went back for it, so on a shared target it was creating five patients,
+    # admissions, invoices and receipts a run that no manifest listed and no name identified as
+    # QA's — the one script that should be most careful, since it is the one that moves money.
+    name = tag(f"{prefix} {STAMP}")
     desk.post("/registration/new", {
         "FullName": name, "Sex": "M", "AgeOrDob": "44", "Phone": f"0199{STAMP}0",
         "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})
     hits = json.loads(desk.get("/api/typeahead/patients?q=" + urllib.parse.quote(name)))
-    return name, str(fixture(hits[0]["value"] if hits else None,
-                             f"the patient {name} could not be registered"))
+    pid = str(fixture(hits[0]["value"] if hits else None,
+                      f"the patient {name} could not be registered"))
+    record("patient", pid)
+    return name, pid
 
 
 def invoice_total(html):
@@ -103,6 +110,7 @@ url, _ = op.post("/billing/opd?handler=Save", {
     "PatientId": pid, "Items": [svc.group(1)], "PaidNow": "700", "Tender": "cash"}, opd)
 check("/billing/invoice/" in url, "the invoice was raised")
 old_invoice = url.rstrip("/").split("/")[-1]
+record("invoice", old_invoice)
 before = op.get(f"/billing/invoice/{old_invoice}")
 check("700" in before, "the invoice reads 700")
 
@@ -184,6 +192,7 @@ url, _ = op.post("/billing/opd?handler=Save", {
     "PatientId": c_pid, "Items": [any_svc.group(1)], "PaidNow": "0", "Tender": "cash"}, opd)
 check("/billing/invoice/" in url, "an unpaid invoice exists")
 cancel_id = url.rstrip("/").split("/")[-1]
+record("invoice", cancel_id)
 inv_no = re.search(r"(INV-[\w-]+)", op.get(f"/billing/invoice/{cancel_id}"))
 
 step(2, "cancellation is requested, approved, then executed")
@@ -218,6 +227,7 @@ url, _ = desk.post("/ipd/admit", {
     "PatientId": b_pid, "Source": "direct", "BedId": bed.group(1),
     "ServiceChargePct": "0", "ReserveOnly": "false"}, admit)
 b_adm = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused").group(1)
+record("admission", b_adm)
 on_exit(f"block-probe admission {b_adm} discharged and bed returned",
         lambda: settle_and_discharge(Session, b_adm, [bed.group(1)]))
 
@@ -251,6 +261,7 @@ url, _ = desk.post("/ipd/admit", {
     "PatientId": d_pid, "Source": "direct", "BedId": d_bed.group(1),
     "ServiceChargePct": "0", "ReserveOnly": "false"}, admit)
 d_adm = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused").group(1)
+record("admission", d_adm)
 released = {"done": False}
 
 

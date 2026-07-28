@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Hms.Web.Pages.Admin;
 
 public sealed record AuditRow(
-    long Id, DateTimeOffset At, string Actor, string Action, string Entity, long EntityId, string? After);
+    long Id, DateTimeOffset At, string Actor, string Action, string Entity, long EntityId,
+    string? Before, string? After);
 
 /// <summary>
 /// ADR-0011: the audit trail is append-only in the database itself — the app role holds no
@@ -48,7 +49,7 @@ public class AuditModel(HmsTx tx) : HmsPageModel
             var total = await s.Kernel.AuditEvents.CountAsync();
             var rows = await query.OrderByDescending(a => a.Id).Take(150)
                 .Select(a => new AuditRow(a.Id, a.At, a.ActorNameSnapshot, a.Action,
-                    a.Entity, a.EntityId, a.After))
+                    a.Entity, a.EntityId, a.Before, a.After))
                 .ToListAsync();
 
             var actions = await s.Kernel.AuditEvents.AsNoTracking()

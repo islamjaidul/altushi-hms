@@ -1,0 +1,14 @@
+{
+  "run": "20260728T101643Z",
+  "base": "https://hms.specshipper.com",
+  "script": "lifecycle-thread.py",
+  "finished": "2026-07-28T10:16:53Z",
+  "created": {
+    "patient": [
+      "157"
+    ],
+    "admission": [
+      "118"
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "run": "20260728T101716Z",
+  "base": "https://hms.specshipper.com",
+  "script": "ot-thread.py",
+  "finished": "2026-07-28T10:17:20Z",
+  "created": {
+    "admission": [
+      "127"
+    ],
+    "ot_case": [
+      "9"
+    ]
+  }
+}

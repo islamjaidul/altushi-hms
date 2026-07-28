@@ -28,7 +28,7 @@ import urllib.parse
 
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from _harness import BASE, CAST, is_local  # noqa: E402
+from _harness import BASE, CAST, RUN_ID, is_local  # noqa: E402
 
 TIERS = {
     "t0": ["role-journeys.py", "grant-drift.py"],
@@ -110,7 +110,12 @@ def main() -> int:
             if only and script not in only:
                 continue
             print(f"\n>>> [{tier}] {script}")
+            # One run id for the whole invocation. Without this every subprocess falls back
+            # to its own timestamp and a single suite run scatters across ten manifest
+            # directories — which is exactly what shipped, and what the first deployment run
+            # caught: five directories for one run.
             env = dict(os.environ)
+            env.setdefault("HMS_QA_RUN_ID", RUN_ID)
             proc = subprocess.run([sys.executable, script], cwd=HERE, env=env,
                                   capture_output=True, text=True)
             out = proc.stdout + proc.stderr

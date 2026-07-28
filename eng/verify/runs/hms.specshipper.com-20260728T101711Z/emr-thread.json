@@ -1,0 +1,11 @@
+{
+  "run": "20260728T101711Z",
+  "base": "https://hms.specshipper.com",
+  "script": "emr-thread.py",
+  "finished": "2026-07-28T10:17:15Z",
+  "created": {
+    "admission": [
+      "126"
+    ]
+  }
+}

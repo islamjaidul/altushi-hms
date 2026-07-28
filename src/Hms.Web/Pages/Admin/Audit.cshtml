@@ -39,7 +39,17 @@
                     <td><b>@r.Actor</b></td>
                     <td><span class="pill info">@r.Action</span></td>
                     <td class="text-muted">@r.Entity #@r.EntityId</td>
-                    <td class="text-muted" style="font-size:0.71875rem;word-break:break-all">@r.After</td>
+                    @* ADR-0011 tier 1 stores a before AND an after image. Only the after was
+                       ever rendered, so a supervisor asking "what did it change FROM" — the
+                       whole question a settlement withdrawal or a rate change raises — could
+                       not be answered from the screen the audit trail exists to serve. *@
+                    <td class="text-muted" style="font-size:0.71875rem;word-break:break-all">
+                        @if (r.Before is not null)
+                        {
+                            <span>@r.Before</span> <span aria-hidden="true">&#x2192;</span>
+                        }
+                        <span>@r.After</span>
+                    </td>
                 </tr>
             }
             @if (Model.Rows.Count == 0)

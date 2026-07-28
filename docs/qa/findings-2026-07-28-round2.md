@@ -175,3 +175,29 @@ three consecutive runs — is necessary and was **not sufficient**: three runs o
 does not produce the accumulation that breaks these. The bar worth keeping is **three consecutive
 runs on a database that has already been used heavily**, which is what these fixes were verified
 against.
+
+---
+
+## Round 4 — the QA agent audited my own remediation, and found three things (2026-07-28)
+
+The deployment lifecycle run after the P24/R2-3 work came back **GREEN — 10/10 scripts, 12/12
+roles, ward census unchanged**. The agent was asked to verify the *new* behaviour independently
+rather than trust the green, and two of the four claims did not hold.
+
+| # | Finding | Verdict | Fix |
+|---|---|---|---|
+| R4-1 | `money-and-controls.py` creates five patients, admissions, invoices and receipts a run and called **neither `tag()` nor `record()`** — so on production the one script that moves money left records no manifest listed and no name identified as QA's. The agent found three earlier runs' worth of the same untagged pattern already on the host | **Confirmed — my omission.** The script was written before the manifest existed and I never went back for it | Tagged and recorded, like every other thread |
+| R4-2 | `lifecycle-suite.py` never put `HMS_QA_RUN_ID` in the subprocess environment, so each of the ten scripts fell back to its own timestamp: **five manifest directories for one run**, contradicting the commit that shipped it | **Confirmed — my bug.** I wrote the harness to read the variable and never wrote the line that sets it | The runner exports its run id; one invocation is now one directory |
+| R4-3 | The P24 audit row's payload showed only `{"state": "open"}` — "not the before/after image the commit claims" | **Half right, and the useful half.** The row *does* store both, at tier 1: `before {"state": "settlement_draft"} → after {"state": "open"}`. What was wrong is the **audit viewer**, whose `AuditRow` never selected `Before`, so no tier-1 event's before-image had ever been visible on the screen the audit trail exists to serve | `/admin/audit` now renders `before → after` |
+
+R4-3 is the one worth dwelling on. ADR-0011 makes the before-image the defining feature of tier 1,
+and the viewer had been silently dropping it for every tier-1 event in the system since it was
+built — rate changes, invoice cancellations, permission changes, all of them. A supervisor asking
+*"what did this change **from**?"* — the entire question a withdrawn settlement or a repriced item
+raises — could not be answered from the screen. It took an agent reading the payload against the
+claim to notice, because every existing test asserted only that the *action* appeared.
+
+**The pattern across rounds 2, 3 and 4 is one pattern:** a check that confirms the thing it was
+built to confirm, and nothing around it. The suite verified that an audit row exists, not what it
+says; that a teardown ran, not that it worked; that a thread's assertion passed, not that it
+tested the row it thought it did.
