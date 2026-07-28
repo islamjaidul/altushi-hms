@@ -33,6 +33,13 @@ public class RefundModel(
     [BindProperty] public string? Reason { get; set; }
     [BindProperty] public string Action { get; set; } = "refund";
 
+    /// <summary>
+    /// How the money physically goes back. The operator says; the system does not guess from
+    /// what the patient paid weeks ago (spec 0032, M4-F2). It defaults to cash because that is
+    /// what a hospital counter hands over, and cash is the tender the drawer is counted against.
+    /// </summary>
+    [BindProperty] public string Tender { get; set; } = Tenders.Cash;
+
     public OpenSession? Session { get; private set; }
     public IReadOnlyList<RefundCandidate> Candidates { get; private set; } = [];
     public IReadOnlyList<PendingReversal> Pending { get; private set; } = [];
@@ -135,6 +142,9 @@ public class RefundModel(
         if (!isCancel && (Amount <= 0 || Amount > invoice.Paid))
         { Fail($"Enter an amount between ৳1 and {Ui.Money(invoice.Paid)} — that is what was actually paid."); return Page(); }
 
+        if (!isCancel && !Tenders.IsKnown(Tender))
+        { Fail("Choose how the money goes back to the patient."); return Page(); }
+
         var amount = isCancel ? invoice.Net : Amount;
         var raise = await tx.RunAsync(s => approvals.RaiseAsync(
             s.Kernel, BranchId, isCancel ? "cancel" : "refund", "bill.invoice", InvoiceId,
@@ -142,7 +152,7 @@ public class RefundModel(
 
         if (raise.AutoApproved)
         {
-            var done = await ExecuteAsync(InvoiceId, isCancel, amount, Reason!.Trim(), raise.ApprovalId!.Value);
+            var done = await ExecuteAsync(InvoiceId, isCancel, amount, Reason!.Trim(), raise.ApprovalId!.Value, Tender);
             if (done is not null) { Fail(done); return Page(); }
             Toast(isCancel ? $"{invoice.InvoiceNo} cancelled" : $"Refunded {Ui.Money(amount)}", "currency_exchange");
             return Redirect($"/billing/invoice/{InvoiceId}");
@@ -152,15 +162,19 @@ public class RefundModel(
         return Redirect("/billing/refund");
     }
 
-    /// <summary>Carrying out an already-approved reversal, at a counter with a drawer.</summary>
-    public async Task<IActionResult> OnPostExecuteAsync(long requestId)
+    /// <summary>
+    /// Carrying out an already-approved reversal, at a counter with a drawer. The tender is asked
+    /// for HERE and not on the request, because this is the moment the money actually moves and
+    /// this is the operator whose drawer it moves out of.
+    /// </summary>
+    public async Task<IActionResult> OnPostExecuteAsync(long requestId, string? tender)
     {
         await LoadAsync();
         var req = Approved.FirstOrDefault(a => a.RequestId == requestId);
         if (req is null) { Fail("That request is no longer awaiting action — refresh."); return Page(); }
 
         var error = await ExecuteAsync(req.InvoiceId, req.Type == "cancel",
-            req.Amount ?? 0, req.Reason, req.RequestId);
+            req.Amount ?? 0, req.Reason, req.RequestId, tender ?? Tenders.Cash);
         if (error is not null) { Fail(error); return Page(); }
 
         Toast(req.Type == "cancel"
@@ -169,7 +183,8 @@ public class RefundModel(
         return Redirect($"/billing/invoice/{req.InvoiceId}");
     }
 
-    private async Task<string?> ExecuteAsync(long invoiceId, bool isCancel, long amount, string reason, long approvalId)
+    private async Task<string?> ExecuteAsync(
+        long invoiceId, bool isCancel, long amount, string reason, long approvalId, string tender)
     {
         if (!isCancel && Session is null)
             return "Refunds move money, so they need an open counter session. Open your counter first.";
@@ -182,7 +197,7 @@ public class RefundModel(
                         reason, ActorId, ActorName, approvalId);
                 else
                     await billing.RefundAsync(s.Bill, s.Kernel, BranchId, invoiceId, Session!.Id,
-                        amount, reason, ActorId, ActorName, approvalId);
+                        amount, tender, reason, ActorId, ActorName, approvalId);
 
                 // A reversed pharmacy sale is a goods return (§5 M11 [M]): put the stock back
                 // on the exact batches the sale allocated (spec 0016; ADR-0021 #5).

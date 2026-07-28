@@ -431,23 +431,42 @@ public sealed class BillingService(
     /// C5/G11 and hard rule 4: money is never deleted. A refund is a NEGATIVE receipt that
     /// points at what it reverses, so the original receipt stays on the record and the two
     /// together tell the truth. Approval-gated by the caller (§12 refund chain).
+    ///
+    /// <para><paramref name="tender"/> is <b>how the money physically goes back</b>, and the
+    /// caller must say (spec 0032, M4-F2). It used to be inferred by copying the tender of the
+    /// LARGEST positive receipt, so a patient who paid ৳500 cash + ৳1000 card and was handed
+    /// ৳200 back in cash had it booked as card. <see cref="DayCloseService"/> computes
+    /// <c>expectedCash = OpeningFloat + Σ receipts where tender = 'cash'</c>, so the returned
+    /// cash never left expected cash and the operator was handed an unexplainable shortfall.
+    /// Nothing in the drawer can be inferred from what a patient paid days earlier.</para>
+    ///
+    /// <para>The <b>due is deliberately not restored</b> — see <see cref="InvoiceValue"/> for why
+    /// and for the invariant that holds instead.</para>
     /// </summary>
     public async Task<Receipt> RefundAsync(
         BillDbContext bill, KernelDbContext kernel, long branchId, long invoiceId, long sessionId,
-        long amount, string reason, long actorId, string actorName, long approvalId,
+        long amount, string tender, string reason, long actorId, string actorName, long approvalId,
         CancellationToken ct = default)
     {
         if (amount <= 0) throw new BillingException("A refund amount must be positive.");
         if (string.IsNullOrWhiteSpace(reason)) throw new BillingException("A refund needs a reason.");
+
+        // Day-close groups receipts by the tender string exactly, so "Cash" and "cash" are two
+        // different drawers. Normalise once, here, rather than hope every caller agrees.
+        var tenderKey = (tender ?? "").Trim().ToLowerInvariant();
+        if (!Tenders.IsKnown(tenderKey))
+            throw new BillingException(
+                $"'{tender}' is not a way money can be handed back. Use one of: {string.Join(", ", Tenders.All)}.");
 
         // Same row lock as collection: a refund and a collection on one invoice serialize.
         var balances = await bill.Database.SqlQuery<long>($"""
             SELECT balance AS "Value" FROM bill.due WHERE invoice_id = {invoiceId} FOR UPDATE
             """).ToListAsync(ct);
         if (balances.Count == 0) throw new BillingException("No due row for this invoice.");
+        var balance = balances[0];
 
         var receipts = await bill.Receipts.Where(r => r.InvoiceId == invoiceId).ToListAsync(ct);
-        var netPaid = receipts.Sum(r => r.Amount);
+        var netPaid = receipts.Sum(r => r.Amount);       // already net of earlier refunds
         if (netPaid <= 0)
             throw new BillingException("Nothing has been paid on this invoice — cancel it instead of refunding.");
         if (amount > netPaid)
@@ -464,7 +483,14 @@ public sealed class BillingService(
         var (_, receiptNo) = await numbers.IssueAsync(
             kernel, branchId, "receipt", fiscal.FiscalYearOf(today), "RCP-{fy}-{n:D6}", ct);
 
-        var original = receipts.Where(r => r.Amount > 0).OrderByDescending(r => r.Amount).FirstOrDefault();
+        // What this reverses: the biggest receipt taken IN THE SAME TENDER, so a cash refund
+        // points at the cash the patient handed over. Falling back to the biggest receipt of any
+        // tender keeps the link non-null when the money goes back a different way than it came.
+        var positives = receipts.Where(r => r.Amount > 0).ToList();
+        var original =
+            positives.Where(r => r.Tender == tenderKey).OrderByDescending(r => r.Amount).FirstOrDefault()
+            ?? positives.OrderByDescending(r => r.Amount).FirstOrDefault();
+
         var refund = new Receipt
         {
             BranchId = branchId,
@@ -472,7 +498,7 @@ public sealed class BillingService(
             InvoiceId = invoiceId,
             CounterSessionId = sessionId,
             Amount = -amount,                              // negative = money leaving the drawer
-            Tender = original?.Tender ?? "cash",
+            Tender = tenderKey,
             TenderRef = null,
             OperatorId = actorId,
             At = clock.GetUtcNow(),
@@ -481,12 +507,22 @@ public sealed class BillingService(
         };
         bill.Receipts.Add(refund);
 
+        // M4-F1: `Refunded` means the invoice is FINISHED — everything taken has gone back and
+        // nothing is owed. Setting it for any refund whatever marked a ৳1 refund on a ৳1000
+        // invoice as fully reversed, which hid ৳999 of real income from every income figure and
+        // let the screens offer to reverse it a second time.
+        var netPaidAfter = netPaid - amount;
         var invoice = await bill.Invoices.SingleAsync(i => i.Id == invoiceId, ct);
-        invoice.State = InvoiceState.Refunded;
+        invoice.State =
+            netPaidAfter == 0 && balance == 0 ? InvoiceState.Refunded
+            : balance == 0 ? InvoiceState.Paid
+            : netPaidAfter > 0 ? InvoiceState.PartiallyPaid
+            : InvoiceState.Billed;
         await bill.SaveChangesAsync(ct);
 
         audit.Append(kernel, branchId, actorId, actorName, "receipt.refund", "bill.receipt", refund.Id,
-            after: new { receiptNo, invoiceId, amount, reason, approvalId }, tier: 2);
+            after: new { receiptNo, invoiceId, amount, tender = tenderKey, reason, approvalId, invoice.State },
+            tier: 2);
         await kernel.SaveChangesAsync(ct);
         return refund;
     }

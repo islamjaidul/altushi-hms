@@ -1,3 +1,4 @@
+using Hms.Billing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,14 +53,24 @@ public class DashboardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
         {
             var invoices = await s.Bill.Invoices.AsNoTracking()
                 .Where(i => i.CreatedAt >= windowStart)
-                .Select(i => new { i.Id, i.InvoiceNo, i.PatientId, i.Net, i.Discount, i.CreatedAt, i.DiscountApprovalId })
+                .Select(i => new { i.Id, i.InvoiceNo, i.PatientId, i.Net, i.Discount, i.State, i.CreatedAt, i.DiscountApprovalId })
                 .ToListAsync();
 
+            // §9A.1 built this screen for the owner's "is money leaking?" question, so a reversed
+            // invoice must not read as income (spec 0032, M22-D1). `InvoiceValue` is the single
+            // definition — the day-close statement answers to the same one.
+            var refunded = await InvoiceValue.RefundedByInvoiceAsync(
+                s.Bill, invoices.Select(i => i.Id).ToList());
+            InvoiceMoneyRow Row(long id, long patientId, string state, long net, long discount)
+                => new(id, patientId, state, net, discount);
+
             var todays = invoices.Where(i => i.CreatedAt >= dayStart).ToList();
-            IncomeToday = todays.Sum(i => i.Net);
-            DiscountToday = todays.Sum(i => i.Discount);
-            InvoicesToday = todays.Count;
-            PatientsToday = todays.Select(i => i.PatientId).Distinct().Count();
+            var todaysRows = todays.Select(i => Row(i.Id, i.PatientId, i.State, i.Net, i.Discount)).ToList();
+            var totals = InvoiceValue.Totalise(todaysRows, refunded);
+            IncomeToday = totals.Income;
+            DiscountToday = totals.Discount;
+            InvoicesToday = totals.Invoices;
+            PatientsToday = totals.Patients;
 
             CollectedToday = await s.Bill.Receipts.AsNoTracking()
                 .Where(r => r.At >= dayStart).SumAsync(r => (long?)r.Amount) ?? 0;
@@ -70,14 +81,18 @@ public class DashboardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
             // Twelve days, including the empty ones — a gap in a bar chart is information (edge 4).
             var byDay = invoices
                 .GroupBy(i => DateOnly.FromDateTime(Ui.Local(i.CreatedAt).DateTime))
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.Net));
+                .ToDictionary(g => g.Key, g => g.Sum(x =>
+                    InvoiceValue.Realised(Row(x.Id, x.PatientId, x.State, x.Net, x.Discount), refunded)));
             Trend = Enumerable.Range(0, 12)
                 .Select(offset => from.AddDays(offset))
                 .Select(day => new DayBar(day, byDay.GetValueOrDefault(day)))
                 .ToList();
 
-            // Department split: charge lines carry the catalog reference, masters carry the dept.
-            var invoiceIds = todays.Select(i => i.Id).ToList();
+            // Department split and the consultant ranking below both read charge lines, which
+            // carry no reversal of their own — so a reversed invoice is dropped whole rather
+            // than netted line by line. A partial refund is not attributable to a department.
+            var invoiceIds = todays.Where(i => !InvoiceValue.IsReversed(i.State))
+                .Select(i => i.Id).ToList();
             var lines = await s.Bill.ChargeLines.AsNoTracking()
                 .Where(c => c.InvoiceId != null && invoiceIds.Contains(c.InvoiceId!.Value))
                 .Select(c => new { c.CatalogKind, c.CatalogId, c.Amount })
@@ -157,12 +172,14 @@ public class DashboardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
             // §5 M22 [M] end-of-day digest: yesterday in one line, for the morning tea read.
             var yStart = Ui.DhakaMidnightUtc(Today.AddDays(-1));
             var yEnd = dayStart;
-            YesterdayNet = invoices.Where(i => i.CreatedAt >= yStart && i.CreatedAt < yEnd).Sum(i => i.Net);
+            YesterdayNet = invoices.Where(i => i.CreatedAt >= yStart && i.CreatedAt < yEnd)
+                .Sum(i => InvoiceValue.Realised(Row(i.Id, i.PatientId, i.State, i.Net, i.Discount), refunded));
             YesterdayCollected = await s.Bill.Receipts.AsNoTracking()
                 .Where(r => r.At >= yStart && r.At < yEnd).SumAsync(r => (long?)r.Amount) ?? 0;
 
             // Who discounted what, attributed by name — F2 again.
-            var discounted = todays.Where(i => i.Discount > 0).Take(10).ToList();
+            var discounted = todays
+                .Where(i => i.Discount > 0 && !InvoiceValue.IsReversed(i.State)).Take(10).ToList();
             var approvalIds = discounted.Where(i => i.DiscountApprovalId is not null)
                 .Select(i => i.DiscountApprovalId!.Value).ToList();
             var approvals = await s.Kernel.ApprovalRequests.AsNoTracking()

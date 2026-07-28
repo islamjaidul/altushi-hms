@@ -49,8 +49,16 @@ public sealed class DayCloseService(
         var expectedCash = session.OpeningFloat + cashTotal;
         var variance = countedCash - expectedCash;                    // recorded, not blocked (edge 18)
 
-        var invoices = await bill.Invoices.Where(i => i.CounterSessionId == sessionId).ToListAsync(ct);
-        var invoiceIds = invoices.Select(i => i.Id).ToList();
+        // Spec 0032 (M4-D4): a reversed invoice is not billing. Before this filter a cancelled
+        // invoice contributed its full Net to a PRINTED financial document with nothing to
+        // offset it — cancellation writes no receipt, so the money simply appeared. The three
+        // figures below print as a visible subtraction ("Gross billed / Less: discount given /
+        // Net billed"), which is why the reversed invoice is dropped whole rather than netted:
+        // money handed back has its own line (`refunds`, below) and must not be counted twice.
+        // `InvoiceValue` is the same definition the MD dashboard reads.
+        var allInvoices = await bill.Invoices.Where(i => i.CounterSessionId == sessionId).ToListAsync(ct);
+        var invoices = allInvoices.Where(i => !InvoiceValue.IsReversed(i.State)).ToList();
+        var invoiceIds = allInvoices.Select(i => i.Id).ToList();
         var dueOutstanding = await bill.Dues
             .Where(d => invoiceIds.Contains(d.InvoiceId)).SumAsync(d => d.Balance, ct);
         var refunds = receipts.Where(r => r.Amount < 0 && r.InvoiceId != null).Sum(r => -r.Amount);

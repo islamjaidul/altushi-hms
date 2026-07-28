@@ -78,6 +78,24 @@ public class ChargeLine
     public long CreatedBy { get; set; }
 }
 
+/// <summary>
+/// The ways money moves at a counter. Day-close groups receipts by this string exactly
+/// (<c>tenderTotals.GetValueOrDefault("cash")</c>), so a stray "Cash" is a different drawer and a
+/// silent cash variance — which is why the set is named once here rather than in each dropdown.
+/// </summary>
+public static class Tenders
+{
+    public const string Cash = "cash";
+    public const string Card = "card";
+    public const string Bkash = "bkash";
+    public const string Nagad = "nagad";
+    public const string Corporate = "corporate";
+
+    public static readonly string[] All = [Cash, Card, Bkash, Nagad, Corporate];
+
+    public static bool IsKnown(string? tender) => Array.IndexOf(All, tender) >= 0;
+}
+
 public static class InvoiceState
 {
     public const string Draft = "draft";
