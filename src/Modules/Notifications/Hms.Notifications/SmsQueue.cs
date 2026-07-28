@@ -19,12 +19,49 @@ public sealed class SmsQueue(TimeProvider clock, SmsOptions options)
 {
     private bool Simulated => options.Simulated;
 
-    /// <summary>160 GSM-7 characters per segment; anything non-Latin bills as UCS-2 at 70.</summary>
+    /// <summary>GSM 03.38 default alphabet — one septet each. ESC (0x1B) is deliberately absent:
+    /// it is the extension prefix, never a character in its own right.</summary>
+    private const string Gsm7Basic =
+        "@£$¥èéùìòÇ\nØø\rÅå"
+        + "Δ_ΦΓΛΩΠΨΣΘΞ"
+        + "ÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?"
+        + "¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§"
+        + "¿abcdefghijklmnopqrstuvwxyzäöñüà";
+
+    /// <summary>The GSM 03.38 escape table — each costs TWO septets (ESC + the character),
+    /// so a body of 80 braces is 160 septets, not 80.</summary>
+    private const string Gsm7Extended = "\f^{}\\[~]|€";
+
+    /// <summary>
+    /// How many messages the operator is billed for. 160 (GSM-7) and 70 (UCS-2) are the
+    /// <em>single-message</em> limits; the moment a body needs more than one part, every part
+    /// spends 6 bytes of its payload on the UDH concatenation header, leaving <b>153</b> and
+    /// <b>67</b>. Dividing the whole body by the single-message limit is the classic under-count
+    /// — 320 Latin characters are three segments in the world and were two here, and a 210
+    /// character Bangla message is four and was three. The tray prints this as "N billable
+    /// segment(s)", so under-counting is the hospital under-reading its own spend.
+    ///
+    /// Encoding is decided by the GSM-7 alphabet, not by <c>c &gt; 127</c>: é and Ü are one
+    /// septet despite being above 127, while a Bangla or emoji code point forces UCS-2 for the
+    /// whole message. Two nuances are knowingly not modelled, both of which can only cost one
+    /// extra segment on a pathological body: an escaped GSM-7 pair is never split across a
+    /// segment boundary, and a UTF-16 surrogate pair is never split either.
+    /// </summary>
     public static int SegmentsFor(string body)
     {
-        var unicode = body.Any(c => c > 127);
-        var perSegment = unicode ? 70 : 160;
-        return Math.Max(1, (int)Math.Ceiling(body.Length / (double)perSegment));
+        if (string.IsNullOrEmpty(body)) return 1;
+
+        var septets = 0;
+        var gsm7 = true;
+        foreach (var c in body)
+        {
+            if (Gsm7Basic.Contains(c)) septets += 1;
+            else if (Gsm7Extended.Contains(c)) septets += 2;
+            else { gsm7 = false; break; }
+        }
+
+        var (units, single, concatenated) = gsm7 ? (septets, 160, 153) : (body.Length, 70, 67);
+        return units <= single ? 1 : (int)Math.Ceiling(units / (double)concatenated);
     }
 
     /// <summary>Edge 24: a patient with no phone is not a failure — it is a recorded skip.</summary>
