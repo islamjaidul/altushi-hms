@@ -55,6 +55,18 @@ def doc_cases() -> dict[str, str]:
     return out
 
 
+def free_beds() -> int | None:
+    """How many beds the ward board reports free right now, or None if it cannot be read."""
+    try:
+        from _harness import Session
+        board = Session("jashim").get("/ipd/board")
+        # The status pill on each bed card, not every occurrence of the word — the occupancy
+        # summary below the board has a "Free" column header that would inflate the count.
+        return len(re.findall(r'<span class="pill good">\s*Free\s*</span>', board))
+    except Exception:                       # noqa: BLE001 — a census that fails is not a verdict
+        return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", default="t0", choices=["t0", "t1", "t2", "all"])
@@ -85,6 +97,13 @@ def main() -> int:
 
     only = {s.strip() for s in args.only.split(",") if s.strip()}
     results, users_seen = [], set()
+
+    # The ward census, before and after. Spec 0029 made the threads hand their beds back;
+    # nothing made them *prove* it, and `_drain_teardowns` deliberately swallows a failing
+    # teardown so a broken cleanup cannot turn a green run red. Those two together mean a
+    # PASS used to say the assertions held, not that the fixtures came back — and the first
+    # run against the deployment found six beds held by earlier runs while reporting green.
+    beds_before = free_beds() if "t1" in tiers else None
 
     for tier in tiers:
         for script in TIERS[tier]:
@@ -132,6 +151,19 @@ def main() -> int:
         else:
             print(f"roles exercised: {len(users_seen)}/{len(CAST)}")
 
+    leaked = False
+    if beds_before is not None:
+        beds_after = free_beds()
+        if beds_after is None:
+            print("ward census: could not be read after the run")
+        elif beds_after < beds_before:
+            leaked = True
+            print(f"LEAKED: the ward had {beds_before} free bed(s) before this run and "
+                  f"{beds_after} after — a thread did not return what it took")
+        else:
+            print(f"ward census: {beds_after} free bed(s), unchanged or better "
+                  f"(was {beds_before})")
+
     for r in bad:
         print(f"\n  {r['script']} (tier {r['tier']}):")
         for f in r["failures"][:10]:
@@ -142,7 +174,7 @@ def main() -> int:
             {"base": BASE, "tiers": tiers, "results": results,
              "users": sorted(users_seen), "gaps": gaps}, indent=2))
     print("=" * 78)
-    return 1 if bad or (("t1" in tiers or args.tier == "all") and missing) else 0
+    return 1 if bad or leaked or (("t1" in tiers or args.tier == "all") and missing) else 0
 
 
 if __name__ == "__main__":

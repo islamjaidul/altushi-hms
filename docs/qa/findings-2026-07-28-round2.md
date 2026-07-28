@@ -1,0 +1,121 @@
+# QA findings — 2026-07-28, round 2 (post-remediation)
+
+Second pass after specs **0029**, **0030** and **0031**. This document exists to answer one
+question per finding from `findings-2026-07-28.md`: **is it actually closed, and what proves it?**
+
+**Environments.** Local: native `Hms.Web` (Debug) on `localhost:5199` against `hms-dev-db`/`hms`,
+reset fresh. Deployment: `https://hms.specshipper.com`, redeployed from commit `6b34e36` at
+15:30 Asia/Dhaka, then exercised with a **mutating tier-1 run** — the first t1 ever to reach a
+deployment, and only after explicit human agreement (`HMS_QA_ENV=prod`, `HMS_QA_CONFIRM`).
+
+**Verdict.** All seven findings are closed. The one High-severity lifecycle gap that remains
+(`LC-XCUT-11`) is open **by decision**, recorded as ADR-0024. Round 2 found three new items, one
+of them a real defect in the remediation itself, all fixed here.
+
+---
+
+## Cross-match against round 1
+
+| # | Finding | Status | What proves it |
+|---|---|---|---|
+| **F1** | Production role grants have drifted | **Closed** | `grant-drift.py` reproduced all nineteen extra grants read-only, then revoked them through `/admin/users` with a tier-2 `role.revoke` audit event each. Re-read: no extra grant remains. `role-journeys.py` against the deployment: 768 assertions, 0 failures — where it previously reported `/admin/approvals` reachable by `rasel` and 30 routes by `admin`. Detection is now permanent, in tier t0. ADR-0023 records why the seed still does not reconcile. |
+| **F2** | `appointments.create` enforced nowhere | **Closed** | Both handlers carry `if (!CanIssue) return Forbid();`. `HandlerPermissionTests` (3 tests) proves it and fails against the previous code. `money-and-controls.py` proves it end to end on a live app: the grant is revoked, `jashim`'s POST to Issue **and** Advance are refused, the queue stays readable, the grant is restored. `KNOWN_UNENFORCED` is empty and the traceability guard now fails on any recurrence. |
+| **F3** | t1 exhausts its fixtures, cannot be re-run | **Closed** | `--tier t1` green **three consecutive times on one database**, 12/12 roles, ward census 13/13 free before and after. Every admitting thread returns its bed through `_harness.on_exit`, so a thread that dies at step 7 still hands back what it took at step 2. On the deployment: 13 admissions created, **all 13 in a terminal state**, nothing left open. |
+| **F4** | `pharmacy-thread.py` crashes instead of failing | **Closed** | `fixture()` replaces every picker `.group(1)` across six threads; an exhausted fixture now prints `FIXTURE EXHAUSTED — <what>` and the remedy. `lifecycle-suite.py` attaches a crashed script's output tail, so a traceback no longer reports as `FAIL (0 failed check(s))` — which is how two of the six baseline failures had been invisible. |
+| **F5** | 11 of 64 protected routes never loaded by a UI test | **Closed** | All eleven are in `ROUTES`; Playwright is 245/245 green including every one of them. Permission and title were read from each page's `@page` directive and `[Authorize]` attribute, never derived from the file path. |
+| **F6** | `nav-smoke.sh` cannot fail | **Closed** | `nav-smoke.sh md 'Demo#1234' /registration /billing/opd` → **exit 1**, both routes reported `DENIED`. The same script on routes the user holds → exit 0. The upgrade gate's `awk` filter, which treated every 302 as a pass in exactly the same way, is gone. |
+| **F7** | 13 High-severity gaps | **12 of 13 closed** | Coverage 130/39/13-High → **143/26/1-High**. LC-BIL-11, LC-DX-03, LC-BIL-10, LC-BLK-03, LC-DIS-04, LC-DIS-07, LC-LAB-08, LC-ROLE-14, LC-QUE-08 by `money-and-controls.py`; LC-XCUT-09 and LC-XCUT-10 by `ConcurrencyTests` on real Postgres; LC-XCUT-13 by the Playwright routes. **LC-XCUT-11 stays open** — see below. |
+
+### Also verified, since round 1 could not
+
+The round-1 pass had no `dotnet`, so every `xunit` coverage marker was cited rather than observed.
+All of it now runs: `dotnet build -c Release` — **0 warnings, 0 errors** (warnings are errors) —
+and **154 tests pass** across the four projects (Kernel 22, Integration 105, Architecture 26,
+PrintGolden 1). The markers are observed, not cited.
+
+---
+
+## New in round 2
+
+### R2-1 — a teardown could not release a **blocked** admission · High · fixed
+
+Found by clearing the deployment. `_harness.settle_and_discharge` walked summary → clearance →
+draft → invoice → discharge, and did none of it when the admission was under an R4 hold: a
+blocked admission cannot be discharged, so every step was refused and the helper **returned
+normally**. `GWF-04` on the deployment had been held that way since 27 Jul 22:32.
+
+This is the round-1 lesson recurring one level up. F3 was cleanup that never ran; this was cleanup
+that ran, was refused, and said nothing. The helper now takes the hold off first through the
+proper approval path — raise release, supervisor approves, apply — before discharging.
+
+### R2-2 — a green run did not prove the fixtures came back · High · fixed
+
+Raised by the QA agent on the deployment run, and correct. `_drain_teardowns` deliberately
+swallows a failing teardown so a broken cleanup cannot turn a green run red — which means a
+`PASS` proved the assertions held, **not** that the ward was whole. The deployment demonstrated
+exactly that: the run reported GREEN with six of thirteen beds held by earlier runs.
+
+`lifecycle-suite.py` now takes a ward census before and after any t1 run and **fails the run** if
+the ward has fewer free beds at the end than at the start. Verified in both directions: an
+admission taken mid-run drops the count from 13 to 12 and would report `LEAKED`; the teardown
+restores it to 13.
+
+Six pre-remediation admissions on the deployment (four from 27 Jul 22:32, two from 28 Jul 01:42 —
+all hours before this deploy) were closed through the product's own discharge and release paths.
+The ward is 13/13 free.
+
+### R2-3 — the run manifest promised by `docs/qa/README.md` is never written · Medium · documented
+
+`docs/qa/README.md` says a mutating run against a shared target leaves a manifest in
+`eng/verify/runs/<host>-<runid>.json` listing every id created, and that records are named
+`QA-<runid> …`. The plumbing exists in `_harness.py` (`record()`, `tag()`, `write_manifest()`),
+but **no thread calls `record()` or `tag()`** — the nine legacy threads pre-date the harness and
+name their records themselves (`Lifecycle 51816`, `Edge Death 07211`, `OT Test 08033`). So
+`MANIFEST` is always empty, `write_manifest()` returns `None`, and `eng/verify/runs/` does not
+exist after a deployment run.
+
+Not fixed here, deliberately: wiring `record()`/`tag()` through nine threads is the plumbing
+retrofit spec 0028's notes deferred until after the fixture fixes, and doing it in this pass
+would repeat the mistake that deferral exists to avoid. The README is corrected to describe what
+a run **actually** leaves — records identifiable by name and by their timestamp window — and the
+retrofit is the outstanding follow-up.
+
+Consequence to be honest about: **reversing a production run today means finding its records by
+name**, not by reading a manifest.
+
+---
+
+## The one High gap left, and why
+
+**LC-XCUT-11 — no load or concurrency test.** `eng/verify/load-probe.py` ships as a first cut
+(stdlib threading, N concurrent sessions, p50/p95 per route against §8 N1) and is wired into **no
+tier**. It measures concurrent read latency and nothing else.
+
+What forty operators means, what mix of work they do, what "passing" is, and where the generator
+runs given it cannot honestly share a 2 vCPU / 3 GB box are architecture questions — raised as
+**ADR-0024 (Proposed)**. Marking the case covered off a read-only probe would put "proven" in the
+register next to the one thing nobody has measured, which is worse than leaving it red.
+
+---
+
+## What the deployment run left behind
+
+A tier-1 run against a real deployment is designed to be identifiable and reversible, never
+erasable (Rule 4). This one created 13 admissions, all closed, plus registrations, invoices,
+receipts and lab orders under the usual thread names.
+
+**Cannot be undone, by design:** `kernel.audit_event` rows, `ipd.bed_day` rows,
+`pharm.stock_move` ledger entries, consumed number-series values (UHIDs `ALT-…`, admissions
+`ADM-2026-27-…`), and any SMS the gateway actually dispatched. The dashboard carries the day's
+activity until it is reversed or the day rolls.
+
+A pre-deploy dump was taken first: `/root/hms-predeploy-20260728-0831.dump` on the VM.
+
+## What is still not verified
+
+- **The deployment under load.** The probe ran on a development laptop. Nothing has measured the
+  2 vCPU / 3 GB box under concurrency — that is LC-XCUT-11, above.
+- **The go-live switch (RUNBOOK §9).** Rehearsed, never executed. The demo cast is still live
+  with `Demo#1234`, which is what makes a t1 run against this deployment possible at all; once it
+  is executed, t1 against production stops working, by design.
+- **The manifest path**, until R2-3's retrofit lands.

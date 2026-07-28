@@ -347,6 +347,30 @@ def settle_and_discharge(make, admission_id, bed_ids=()) -> None:
     """
     fd = make("jashim")                     # ipd.manage — summary, clearance, discharge
     op = make("rasel")                      # ipd.settle — draft, invoice, discharge
+
+    # An R4 hold has to come off first: a blocked admission cannot be discharged, and the
+    # release is approval-gated both ways by design. Found on the deployment, where a thread
+    # that raised a block left GWF-04 held indefinitely — the teardown ran, reported success,
+    # and had silently done nothing.
+    if "Blocked for dues" in fd.get(f"/ipd/folio/{admission_id}"):
+        blocked = fd.get("/ipd/admissions?Tab=blocked")
+        fd.post("/ipd/admissions?handler=RaiseRelease",
+                {"AdmissionId": admission_id,
+                 "Reason": "QA teardown — releasing the hold to return the bed"}, blocked)
+        sup = make("shahid")                # admin.approvals.decide
+        inbox = sup.get("/admin/approvals")
+        pending = re.search(r'Patient-release.*?name="id" value="(\d+)"', inbox, re.S)
+        if pending:
+            sup.post("/admin/approvals?handler=Decide",
+                     {"id": pending.group(1), "approve": "true", "note": "QA teardown"}, inbox)
+        blocked = fd.get("/ipd/admissions?Tab=blocked")
+        approved = re.search(
+            r'name="AdmissionId" value="' + str(admission_id) +
+            r'"\s*/>\s*<input type="hidden" name="ApprovalId" value="(\d+)"', blocked)
+        if approved:
+            fd.post("/ipd/admissions?handler=ApplyRelease",
+                    {"AdmissionId": admission_id, "ApprovalId": approved.group(1)}, blocked)
+
     page = fd.get(f"/ipd/discharge/{admission_id}")
 
     if "Gate pass" not in page:

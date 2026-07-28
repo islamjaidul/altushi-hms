@@ -9,8 +9,8 @@ them is the classic false red.
 
 | Tier | Contains | Writes? | Assumes |
 |---|---|---|---|
-| **t0** | `role-journeys.py` — 12 roles × 64 protected routes, public surfaces, handler refusals | no | nothing |
-| **t1** | `lifecycle-thread`, `edge-cases`, `ipd`, `emr`, `ot`, `radiology`, `pharmacy`, `pharmacy-full`, `frontdesk-check` | yes, its own records | a dirty database is fine |
+| **t0** | `role-journeys.py` — 12 roles × 64 protected routes, public surfaces, handler refusals · `grant-drift.py` — the deployment's §12 matrix vs the code's | no | nothing |
+| **t1** | `lifecycle-thread`, `edge-cases`, `ipd`, `emr`, `ot`, `radiology`, `pharmacy`, `pharmacy-full`, `frontdesk-check`, `money-and-controls` | yes, its own records | a dirty database is fine |
 | **t2** | `golden-thread`, `discount-and-dues` | yes | **a freshly seeded database** |
 
 t2 asserts absolute money totals — `golden-thread.py:206` requires the dashboard to read exactly
@@ -59,9 +59,19 @@ t2 against `prod` is refused unconditionally.
 Rule 4 forbids financial hard deletes, so a production run is designed to be **identifiable and
 reversible, never erasable**.
 
-- Records are named `QA-<runid> …`, findable in `/registration` and the type-ahead.
-- A manifest lands in `eng/verify/runs/<host>-<runid>.json` listing every id created.
+- Records are named by the thread that created them plus a millisecond stamp — `Lifecycle 51816`,
+  `Edge Death 07211`, `OT Test 08033`, `Reprice Probe 80243` — findable in `/registration` and
+  the type-ahead. They are also bounded by the run's timestamp window.
 - Invoices and receipts can be reversed so day-close nets out.
+- The ward census is asserted: a run that ends with fewer free beds than it started with **fails**,
+  so a leaked admission cannot hide behind a green result.
+
+**Not yet true, and worth knowing before you rely on it (round-2 finding R2-3):** the harness has
+`tag()`, `record()` and `write_manifest()`, and *no thread calls them*. The nine legacy threads
+pre-date the shared harness and name their own records. So there is **no** `QA-<runid>` prefix
+and **no** manifest in `eng/verify/runs/` — reversing a production run today means finding its
+records by name and time, not by reading a file. Fixing that is the `_harness` retrofit deferred
+by spec 0028's notes and still outstanding.
 
 **Cannot be undone, by design:** `kernel.audit_event` rows, `ipd.bed_day` rows,
 `pharm.stock_move` ledger entries, consumed number-series values, and any SMS actually sent. A

@@ -67,3 +67,21 @@ you cannot trust**. `_harness.on_exit` prints `!!` and the exception for exactly
 operation on it — only `ot-thread.py` creates one. `eng/verify/ui/README.md`'s prerequisite list
 now names it alongside `golden-thread.py` and `discount-and-dues.py`. A seeded demo operation
 would be the better answer, and belongs to whoever next touches the seed.
+
+## Round 2 — what the deployment run added (2026-07-28, later the same day)
+
+Two defects in this spec's own work, found only by running t1 against a real deployment for the
+first time. Both are the F3 lesson recurring one level up, and both are recorded in
+`docs/qa/findings-2026-07-28-round2.md`:
+
+- **A teardown could not release a blocked admission.** `settle_and_discharge` walked the
+  discharge and did none of it when the folio was under an R4 hold — every step refused, and the
+  helper returned normally. F3 was cleanup that never ran; this was cleanup that ran, was
+  refused, and said nothing. It now takes the hold off through the proper approval path first.
+- **A green run did not prove the fixtures came back.** `_drain_teardowns` swallows a failing
+  teardown by design, so `PASS` meant the assertions held, not that the ward was whole. The
+  deployment reported GREEN with six of thirteen beds held. `lifecycle-suite.py` now takes a ward
+  census before and after a t1 run and **fails** if the ward ends with fewer free beds than it
+  started with — verified in both directions.
+
+The general form is worth keeping: **cleanup you do not assert is cleanup you do not have.**
