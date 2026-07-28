@@ -84,17 +84,23 @@ async function releaseAdmission(admissionId: string, bedId: string) {
 test.describe("Finding a patient by phone (gap 1, §7 U5)", () => {
   test("the type-ahead accepts a phone typed as plain digits", async ({ browser }) => {
     const page = await (await browser.newContext({ storageState: authFile("jashim") })).newPage();
-    const anyPatient = await (await page.request.get("/api/typeahead/patients?q=01")).json();
-    expect(anyPatient.length, "a patient with a phone must exist to probe").toBeGreaterThan(0);
+    const candidates: { value: number; label: string }[] =
+      await (await page.request.get("/api/typeahead/patients?q=01")).json();
+    expect(candidates.length, "a patient with a phone must exist to probe").toBeGreaterThan(0);
 
-    // The label carries the stored, dashed form — strip it to what an operator would type.
-    const label: string = anyPatient[0].label;
-    const dashed = /(\d[\d-]{6,})/.exec(label)?.[1];
-    expect(dashed, "stored phone should render dashed (§7 U13)").toContain("-");
-    const digits = dashed!.replace(/\D/g, "");
+    // Take the first candidate whose stored phone is DASHED, rather than simply the first
+    // candidate (spec 0032). This test asserts that a dashed stored form is findable by its
+    // plain digits; picking row 0 blind conflates that with "every patient in the corpus has a
+    // well-formed phone", which is a fact about test data, not about the product. It failed
+    // exactly that way once t1's patients became the newest.
+    const dashedOf = (label: string) => /(\d[\d-]{6,})/.exec(label)?.[1];
+    const probe = candidates.find((c) => dashedOf(c.label)?.includes("-"));
+    expect(probe, `no patient with a dashed phone among ${candidates.length} hits — ` +
+      `every stored 11-digit number should render dashed (§7 U13)`).toBeDefined();
 
+    const digits = dashedOf(probe!.label)!.replace(/\D/g, "");
     const byDigits = await (await page.request.get(`/api/typeahead/patients?q=${digits}`)).json();
-    expect(byDigits.some((h: { value: number }) => h.value === anyPatient[0].value)).toBe(true);
+    expect(byDigits.some((h: { value: number }) => h.value === probe!.value)).toBe(true);
   });
 
   test("the directory search accepts the same digits", async ({ browser }) => {

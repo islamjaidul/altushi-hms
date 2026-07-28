@@ -12,6 +12,10 @@ Tiers exist because the scripts differ in what they assume, not in what they cov
 Mixing t2 into a normal regression run is the classic false red: the assertion is about the
 database, not the build. Keeping it a separate tier is the whole point.
 
+`--tier all` therefore runs them in the order **t0 → t2 → t1**, not t0 → t1 → t2: t2 needs the
+fresh ledger, so it must go before the twelve mutating t1 scripts spend it, and t0 is read-only
+so it changes nothing either way. An explicit single-tier run is unaffected (spec 0032, QA-H1).
+
   python3 lifecycle-suite.py --tier t0
   python3 lifecycle-suite.py --tier t1
   BASE_URL=https://hms.example.com HMS_QA_ENV=prod HMS_QA_CONFIRM=hms.example.com \
@@ -38,6 +42,13 @@ TIERS = {
     "t2": ["golden-thread.py", "discount-and-dues.py"],
 }
 # golden-thread registers the patient discount-and-dues then bills — order is load-bearing.
+
+# The order `--tier all` executes, which is NOT the order the tiers are numbered in. t2 asserts
+# absolute money totals against a fresh ledger; t1's twelve mutating scripts spend that ledger.
+# Running t1 first made `--tier all` red by construction on a database that met every documented
+# precondition — the runner destroyed the precondition itself (spec 0032, QA-H1). t0 is
+# read-only, so it is free to stay first, where a broken login fails the run in seconds.
+ALL_ORDER = ["t0", "t2", "t1"]
 
 DOC = HERE.parent.parent / "docs" / "qa" / "patient-lifecycle.md"
 
@@ -77,7 +88,7 @@ def main() -> int:
 
     if args.env:
         os.environ["HMS_QA_ENV"] = args.env
-    tiers = ["t0", "t1", "t2"] if args.tier == "all" else [args.tier]
+    tiers = list(ALL_ORDER) if args.tier == "all" else [args.tier]
 
     host = urllib.parse.urlparse(BASE).hostname or "?"
     print("=" * 78)

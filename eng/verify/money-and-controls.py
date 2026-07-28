@@ -60,7 +60,14 @@ def register(prefix):
     # QA's — the one script that should be most careful, since it is the one that moves money.
     name = tag(f"{prefix} {STAMP}")
     desk.post("/registration/new", {
-        "FullName": name, "Sex": "M", "AgeOrDob": "44", "Phone": f"0199{STAMP}0",
+        # A real Bangladeshi mobile is ELEVEN digits (01X-XXXXXXXX). This was ten, which
+        # `NewModel.NormalizePhone` correctly declines to reformat — it only dashes an 11-digit
+        # number — so these patients were stored with an undashed phone. Harmless to this script,
+        # but it seeded the corpus with a number no operator could ever type, and spec 0020's
+        # Playwright probe (which picks the newest `01…` patient and asserts the stored form is
+        # dashed, §7 U13) failed on it as soon as spec 0032's tier reordering made t1's patients
+        # the newest ones. Test data has to look like the real thing.
+        "FullName": name, "Sex": "M", "AgeOrDob": "44", "Phone": f"0199{STAMP}00",
         "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})
     hits = json.loads(desk.get("/api/typeahead/patients?q=" + urllib.parse.quote(name)))
     pid = str(fixture(hits[0]["value"] if hits else None,

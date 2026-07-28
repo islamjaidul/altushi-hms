@@ -17,13 +17,19 @@ t2 asserts absolute money totals — `golden-thread.py:206` requires the dashboa
 ৳550 — so it is true only on an empty ledger. It fails on any database that has been used, and
 that failure says nothing about the build.
 
+**`--tier all` therefore runs t0 → t2 → t1, not t0 → t1 → t2.** t2 has to meet the fresh ledger
+before the twelve mutating t1 scripts spend it; t0 is read-only and stays first, where a broken
+login fails the run in seconds. Until spec 0032 the runner executed the tiers in numeric order,
+which made the documented `--tier all` run red by construction — the runner destroyed the one
+precondition this page tells you to provide. An explicit `--tier t0|t1|t2` is unchanged.
+
 ## Running
 
 ```sh
 # the app must be up; local default is http://localhost:5199
 python3 eng/verify/lifecycle-suite.py --tier t0      # read-only, safe anywhere
 python3 eng/verify/lifecycle-suite.py --tier t1      # the full lifecycle
-python3 eng/verify/lifecycle-suite.py --tier all     # adds t2; needs a fresh DB
+python3 eng/verify/lifecycle-suite.py --tier all     # t0 → t2 → t1; needs a fresh DB
 ```
 
 A t1 run that never logs in as all twelve demo users fails as **incomplete**. That is
