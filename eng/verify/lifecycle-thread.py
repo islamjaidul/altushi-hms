@@ -3,11 +3,13 @@
 found the gaps this spec fixes. Unlike the per-module threads, this one exists to catch the
 SEAMS: what one module writes, another must see. Dirty-database tolerant (its patient is its
 own, asserted by id), so the upgrade gate runs it too."""
-import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
+import html as htmllib
+import http.cookiejar, json, os, pathlib, re, sys, time, urllib.error, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import (fixture, on_exit, record, release_bed,   # noqa: E402
+from _harness import (case, fixture, on_exit, record, release_bed,   # noqa: E402
                        settle_and_discharge, tag)
+from _harness import check as case_check, failures as case_failures  # noqa: E402
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -82,12 +84,100 @@ hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(name)
 check(len(hits) > 0, "found by name")
 pid = str(hits[0]["value"])
 record("patient", pid)
-by_digits = json.loads(fd.get(f"/api/typeahead/patients?q={phone_digits}"))
-check(any(str(h["value"]) == pid for h in by_digits),
-      "found by the phone typed as plain digits (spec 0020 gap 1)")
-by_tail = json.loads(fd.get(f"/api/typeahead/patients?q={phone_digits[-6:]}"))
-check(any(str(h["value"]) == pid for h in by_tail), "found by the tail of the number")
+
+# LC-REG-03/04/05 — one number, every way it is written down. A receptionist copies what is on
+# the slip in front of them: the hospital's own readable form, the operator's dashes, the
+# country code off a saved contact, spaces from a printed card. `phone_digits` (a generated
+# column, spec 0020) plus `PatientSearch.PhoneDigitsOf` are what make all of them one number;
+# before this, only the plain digits and the 6-digit tail were asserted anywhere.
+d = phone_digits
+case("LC-REG-05", "One number, however it is written down, finds one patient", "jashim")
+for typed, how in [
+    (d,                                       "plain digits, as typed off the slip (0020 gap 1)"),
+    (f"{d[:5]}-{d[5:]}",                      "the readable form the hospital itself stores"),
+    (f"+880{d[1:]}",                          "with the +880 country code"),
+    (f"880{d[1:]}",                           "with the country code and no plus"),
+    (f"{d[:5]} {d[5:8]} {d[8:]}",             "with spaces"),
+    (f"{d[:4]}-{d[4:7]}-{d[7:]}",             "with dashes in the wrong places"),
+    (d[-6:],                                  "by the tail of the number alone"),
+]:
+    hit = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(typed, safe="")))
+    case_check(any(str(h["value"]) == pid for h in hit), f"found by phone {how} — {typed}")
 check(name in fd.get(f"/registration?Q={phone_digits}"), "directory search accepts digits too")
+
+# LC-REG-19/20 — the two registrations that are NOT the happy path, over HTTP.
+#
+# `RegistrationTests` asserts both rules at the service, and spec 0032 handoff 1 flipped
+# LC-REG-09/10 on that basis before challenging its own flip: every LC-REG row names a
+# performer (`jashim`), so the row is a claim about the RECEPTIONIST'S path, and a service-level
+# fact does not discharge it. These two ids exist to close the ≤ 60-second screen (§9A.4) half
+# without reopening a closed row. The screen is what can regress — a required-field attribute, a
+# model-binding change, a validation guard — none of which the service test would ever see.
+#
+# Success is read off the REDIRECT: `OnPostAsync` only redirects to `/registration?q=<UHID>`
+# after the transaction commits, and every refusal re-renders `/registration/new` instead.
+UHID_IN_URL = re.compile(r"q=([A-Z]+-\d+)")
+
+
+def register_over_http(fields):
+    """POST the real form and return `(uhid, url, html)`; the UHID is None if it did not save.
+
+    A 5xx is returned as a readable result rather than raised. An unhandled `HTTPError` here
+    aborts the whole thread at step 1, so every later case silently never runs and the run
+    reports a traceback instead of a failed check — which is how a screen that 500s looks like
+    a broken script rather than a broken screen.
+    """
+    try:
+        url, html = fd.post("/registration/new", dict(fields, action="save"))
+    except urllib.error.HTTPError as e:
+        return None, f"HTTP {e.code} from /registration/new", e.read().decode(errors="replace")
+    m = UHID_IN_URL.search(url)
+    return (m.group(1) if m else None), url, html
+
+
+case("LC-REG-19", "A receptionist completes a no-phone registration on the screen", "jashim")
+nophone_name = tag(f"Nophone {stamp}")
+uhid, url, html = register_over_http({
+    "FullName": nophone_name, "Sex": "F", "AgeOrDob": "33", "Phone": "",
+    "PatientType": "general", "DuplicatesAcknowledged": "true"})
+case_check(uhid is not None, f"the form saved and issued a UHID (landed on {url})")
+case_check("Patient name is required" not in html and "Enter an age" not in html,
+           "no validation error was shown — a blank phone is not a refusal (edge 24)")
+if uhid:
+    directory = fd.get(f"/registration?q={uhid}")
+    case_check(nophone_name in directory, f"{uhid} is in the directory under the typed name")
+    # The phone is the third cell after the name. Razor encodes the em-dash placeholder as
+    # `&#x2014;`, so assert on what the cell does NOT contain — any digit at all — rather than
+    # on one spelling of a dash.
+    cell = re.search(r'<td><b>' + re.escape(nophone_name) + r'</b></td>\s*'
+                     r'<td>[^<]*</td>\s*<td>([^<]*)</td>', directory)
+    shown = htmllib.unescape(cell.group(1)).strip() if cell else None
+    case_check(shown is not None and not any(c.isdigit() for c in shown),
+               f"the directory shows no phone for them, not a blank guess (cell = {shown!r})")
+
+case("LC-REG-20", "A receptionist completes an unknown-identity registration on the screen",
+     "jashim")
+# The ER path: an unconscious patient with no name and no age. Ticking the box is the ONLY
+# thing that makes both blanks acceptable, so this also proves the box is still wired.
+uhid, url, html = register_over_http({
+    "FullName": "", "Sex": "M", "AgeOrDob": "", "Phone": "",
+    "PatientType": "general", "UnknownIdentity": "true"})
+case_check(uhid is not None,
+           f"a nameless, ageless emergency registration completes (landed on {url})")
+case_check("Patient name is required" not in html,
+           "the name guard stands down when identity is unknown")
+if uhid:
+    directory = fd.get(f"/registration?q={uhid}")
+    # 02 §2.2 / edge 25: the record must still be findable, so the UHID becomes the name.
+    case_check(f"UNKNOWN ({uhid})" in directory,
+               f"the patient is identified by their UHID — UNKNOWN ({uhid})")
+
+# The box is what unlocks it: the same post without it must be refused, or the guard is dead.
+_, refused_url, refused_html = register_over_http({
+    "FullName": "", "Sex": "M", "AgeOrDob": "", "Phone": "",
+    "PatientType": "general", "DuplicatesAcknowledged": "true"})
+case_check("/registration/new" in refused_url and "Patient name is required" in refused_html,
+           "without the box ticked the same blank form is refused on the screen")
 
 # 2 — OPD visit ------------------------------------------------------------
 step(2, "OPD consultation: bill, pay, and the money spine records it")
@@ -296,6 +386,10 @@ fd.post("/ipd/board?handler=CleaningDone", {"BedId": bed.group(1)}, board)
 check("Free" in fd.get("/ipd/board"), "bed free again for the next patient")
 
 print()
+# This script predates the harness and keeps its own `fail` list; the LC-REG-05 case above is
+# recorded through `_harness.case`, so its failures are folded back in here rather than being
+# reported by a summary this script never prints.
+fail += case_failures()
 if fail:
     print(f"FAILED {len(fail)} check(s):")
     for f in fail:

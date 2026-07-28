@@ -66,6 +66,18 @@ public class NewModel(
 
     public async Task<IActionResult> OnPostAsync(string? action)
     {
+        // Spec 0032 LC-REG-20. Model binding converts an EMPTY form field to null, not to "" —
+        // `ConvertEmptyStringToNull` is on by default — so the initialisers on these three
+        // properties do not survive a post that leaves them blank. Every ordinary registration
+        // fills the name in, which is why this stood for so long; the unconscious-emergency path
+        // (edge 25) is the one case that legitimately posts a blank name, and `FullName.Trim()`
+        // threw NullReferenceException on it. The ER could not register a patient at all, and the
+        // screen that must never fail returned a 500. The service was never wrong — its own test
+        // passes a real "" — so nothing below the screen could have caught this.
+        FullName = (FullName ?? "").Trim();
+        Sex = string.IsNullOrWhiteSpace(Sex) ? "M" : Sex;
+        PatientType = string.IsNullOrWhiteSpace(PatientType) ? "general" : PatientType;
+
         var phone = NormalizePhone(Phone);
         var (dob, years, months, estimated) = ParseAge(AgeOrDob);
 
@@ -95,16 +107,9 @@ public class NewModel(
             var patient = await tx.RunAsync(async s =>
             {
                 var p = await registration.RegisterAsync(s.Reg, s.Kernel, new RegisterPatientCommand(
-                    BranchId, FullName.Trim(), Sex.FirstOrDefault('M'), dob, years, estimated,
-                    phone, Guardian, Area, Address, UnknownIdentity, ActorId, ActorName));
-
-                if (months is not null) { p.AgeMonths = months; await s.Reg.SaveChangesAsync(); }
-                if (!string.IsNullOrWhiteSpace(BloodGroup) || PatientType != "general")
-                {
-                    p.BloodGroup = string.IsNullOrWhiteSpace(BloodGroup) ? null : BloodGroup;
-                    p.PatientType = PatientType;
-                    await s.Reg.SaveChangesAsync();
-                }
+                    BranchId, FullName, Sex.FirstOrDefault('M'), dob, years, months, estimated,
+                    phone, Guardian, Area, Address, BloodGroup, PatientType,
+                    UnknownIdentity, ActorId, ActorName));
 
                 // The welcome SMS commits with the patient, or not at all (§9A.2 module 8).
                 await SmsSender.SendAsync(s, sms, BranchId, Hms.Notifications.Data.SmsEvent.Registration,

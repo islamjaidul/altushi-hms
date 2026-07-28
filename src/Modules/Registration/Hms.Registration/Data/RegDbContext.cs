@@ -61,8 +61,10 @@ public class RegDbContext(DbContextOptions<RegDbContext> options) : DbContext(op
         b.HasDefaultSchema("reg");
         b.Entity<Patient>(e =>
         {
+            // Widened for a months-only age (spec 0032, M1-D1): an infant under one year has no
+            // whole year to give, and rounding to "1" or inventing a DOB corrupts the record.
             e.ToTable("patient", t => t.HasCheckConstraint("ck_identity",
-                "dob is not null or age_years is not null or unknown_identity"));
+                "dob is not null or age_years is not null or age_months is not null or unknown_identity"));
             e.HasIndex(x => x.Uhid).IsUnique();
             e.HasIndex(x => x.Phone);
             e.Property(x => x.PhoneDigits)

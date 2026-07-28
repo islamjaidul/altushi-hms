@@ -9,8 +9,9 @@ namespace Hms.Registration;
 public sealed record DuplicateCandidate(long Id, string Uhid, string FullName, string? Phone, short? AgeYears);
 
 public sealed record RegisterPatientCommand(
-    long BranchId, string FullName, char Sex, DateOnly? Dob, short? AgeYears, bool AgeEstimated,
-    string? Phone, string? Guardian, string? Area, string? Address,
+    long BranchId, string FullName, char Sex, DateOnly? Dob, short? AgeYears, short? AgeMonths,
+    bool AgeEstimated, string? Phone, string? Guardian, string? Area, string? Address,
+    string? BloodGroup, string? PatientType,
     bool UnknownIdentity, long ActorId, string ActorName);
 
 /// <summary>
@@ -47,8 +48,11 @@ public sealed class RegistrationService(NumberSeriesService numbers, AuditWriter
     public async Task<Patient> RegisterAsync(
         RegDbContext reg, KernelDbContext kernel, RegisterPatientCommand cmd, CancellationToken ct = default)
     {
-        if (cmd.Dob is null && cmd.AgeYears is null && !cmd.UnknownIdentity)
-            throw new ArgumentException("Either DOB or age is required unless unknown-identity (edge 25/26).");
+        // §7 U13 lets an operator type "8 months", and an infant has no whole year to give, so a
+        // months-only age is a complete identity — the same claim `ck_identity` now makes in SQL.
+        if (cmd.Dob is null && cmd.AgeYears is null && cmd.AgeMonths is null && !cmd.UnknownIdentity)
+            throw new ArgumentException(
+                "Either DOB or age is required unless unknown-identity (edge 25/26).");
 
         var (_, uhid) = await numbers.IssueAsync(kernel, cmd.BranchId, UhidSeries, UhidScope, UhidFormat, ct);
 
@@ -60,14 +64,21 @@ public sealed class RegistrationService(NumberSeriesService numbers, AuditWriter
                 ? $"UNKNOWN ({uhid})" : cmd.FullName,
             Sex = cmd.Sex,
             Dob = cmd.Dob,
-            AgeYears = cmd.Dob is null ? cmd.AgeYears : null,   // DOB wins; age derived at display (02 §2.2)
+            // DOB wins over BOTH age columns; age is derived at display (02 §2.2). Years and
+            // months are components of one age ("1 y 6 m"), not rivals, so months never clears
+            // years — only a DOB clears either.
+            AgeYears = cmd.Dob is null ? cmd.AgeYears : null,
+            AgeMonths = cmd.Dob is null ? cmd.AgeMonths : null,
             AgeEstimated = cmd.AgeEstimated || cmd.UnknownIdentity,
-            AgeAsOf = cmd.Dob is null && cmd.AgeYears is not null
+            // An age is only meaningful with the day it was taken on — true of months as of years.
+            AgeAsOf = cmd.Dob is null && (cmd.AgeYears is not null || cmd.AgeMonths is not null)
                 ? DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime) : null,
             Phone = string.IsNullOrWhiteSpace(cmd.Phone) ? null : cmd.Phone.Trim(),
             Guardian = cmd.Guardian,
             Area = cmd.Area,
             Address = cmd.Address,
+            BloodGroup = string.IsNullOrWhiteSpace(cmd.BloodGroup) ? null : cmd.BloodGroup.Trim(),
+            PatientType = string.IsNullOrWhiteSpace(cmd.PatientType) ? "general" : cmd.PatientType.Trim(),
             UnknownIdentity = cmd.UnknownIdentity,
             CreatedAt = clock.GetUtcNow(),
             CreatedBy = cmd.ActorId,
