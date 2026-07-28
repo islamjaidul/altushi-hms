@@ -85,8 +85,23 @@ public class IndexModel(
         });
     }
 
+    /// <summary>
+    /// §12 splits reading the queue from writing to it: `appointments.read` is what puts the
+    /// board on a screen, `appointments.create` is what lets a serial be issued against it.
+    /// The page policy can only carry the coarser of the two, because a role may legitimately
+    /// watch the queue without running it — so the mutating handlers carry the finer one, the
+    /// same way `Lis/Board.cshtml.cs` splits the bench from the signatory.
+    ///
+    /// Until spec 0030 this permission was declared in Perm.cs, granted to the Receptionist in
+    /// DevSeed.cs, and enforced nowhere: `appointments.read` alone could issue and advance
+    /// serials. No seeded role could reach it — the Receptionist holds both — but §12 is
+    /// editable data at /admin/users, so a view-only grant silently conferred write.
+    /// </summary>
+    private bool CanIssue => Can("appointments.create");
+
     public async Task<IActionResult> OnPostIssueAsync()
     {
+        if (!CanIssue) return Forbid();
         if (PatientId is null or 0) { await LoadAsync(); Fail("Select a patient first."); return Page(); }
         if (DoctorId == 0) { await LoadAsync(); Fail("Select a doctor."); return Page(); }
 
@@ -127,6 +142,9 @@ public class IndexModel(
     /// <summary>Advance is a state-guarded UPDATE — a second click on a stale page loses safely.</summary>
     public async Task<IActionResult> OnPostAdvanceAsync(long id, string from, string to)
     {
+        // Advancing to Done, Cancelled or NoShow consumes the serial and frees it for reissue.
+        // That is a write to the queue whatever it is called, so it needs the same grant.
+        if (!CanIssue) return Forbid();
         try
         {
             await tx.RunAsync(s => appointments.AdvanceAsync(s.Appt, id, from, to));
