@@ -1,0 +1,389 @@
+#!/usr/bin/env python3
+"""Shared plumbing for every verification script in this directory.
+
+Before this module each script carried its own copy of the same `Session` class, its own
+`check`/`step` helpers, and — in nine of thirteen cases — a hardcoded `http://localhost:5199`
+that made the deployment untestable. All of that lives here now.
+
+Three things this adds beyond deduplication:
+
+  * `guard(tier)` — the environment interlock. Anything that is not localhost is treated as a
+    real deployment and refuses to be written to without an explicit `--env` and a typed
+    confirmation. Rule 4 (no financial hard deletes) means a mutating run against production
+    leaves rows that can never be removed, only reversed, so the default must be refusal.
+  * `case(id, ...)` — lifecycle case IDs (`LC-<STAGE>-<nn>`) that tie a running assertion back
+    to a row in `docs/qa/patient-lifecycle.md`. `eng/check-lifecycle-traceability.sh` joins the
+    two and fails the build when they drift.
+  * role tracking — every `Session` records the user it logged in as, so a run can assert it
+    actually exercised all twelve roles instead of reusing one convenient privileged session.
+
+Stdlib only, on purpose: no new dependency for a 2 vCPU / 3 GB box (G15).
+"""
+import atexit
+import http.cookiejar
+import json
+import os
+import pathlib
+import re
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
+TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
+DEV_PASSWORD = "Demo#1234"          # DevSeed.DevPassword — the demo card password (07 §1)
+
+RUN_ID = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+RUNS_DIR = pathlib.Path(__file__).resolve().parent / "runs"
+
+# ---------------------------------------------------------------------------
+# The cast. Mirrors DevSeed.cs `Cast` — the traceability guard asserts it still matches.
+# ---------------------------------------------------------------------------
+CAST = {
+    "jashim":    "Receptionist",
+    "rasel":     "Billing Operator",
+    "ripon":     "Lab Technologist",
+    "farhana":   "Pathologist",
+    "shahid":    "Billing Supervisor",
+    "admin":     "Admin",
+    "md":        "MD",
+    "parvin":    "Pharmacist",
+    "nasrin":    "Nurse",
+    "chowdhury": "OPD Consultant",
+    "shaheen":   "OT In-charge",
+    "moinul":    "Radiology Technician",
+}
+
+USERS_SEEN: set[str] = set()        # every username a run logged in as
+MANIFEST: dict[str, list] = {}      # entity kind -> ids created, for reversal on a real target
+
+
+# ---------------------------------------------------------------------------
+# Environment interlock
+# ---------------------------------------------------------------------------
+def is_local(url: str = BASE) -> bool:
+    host = urllib.parse.urlparse(url).hostname or ""
+    return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+
+
+def guard(tier: str = "t1", env: str | None = None) -> None:
+    """Refuse to mutate a target that is not demonstrably local without explicit consent.
+
+    tier: "t0" (read-only) may run anywhere unattended. "t1" (mutating, own data) and "t2"
+    (mutating, needs a fresh database) may not.
+    """
+    env = env or os.environ.get("HMS_QA_ENV", "")
+    confirmed = os.environ.get("HMS_QA_CONFIRM", "")
+
+    if tier == "t0" or is_local():
+        if tier == "t2" and not is_local():
+            sys.exit("REFUSED: tier t2 rewrites absolute totals and is fresh-database only. "
+                     f"Target {BASE} is not local.")
+        return
+
+    # Non-local target, mutating tier.
+    if env not in ("vm", "prod"):
+        sys.exit(f"REFUSED: {BASE} is not localhost. A mutating run against a real deployment "
+                 "needs an explicit environment: HMS_QA_ENV=vm or HMS_QA_ENV=prod.")
+    if env == "prod" and tier == "t2":
+        sys.exit("REFUSED: tier t2 is never permitted against production — it asserts absolute "
+                 "money totals and assumes a fresh database.")
+    if confirmed != urllib.parse.urlparse(BASE).hostname:
+        sys.exit(f"REFUSED: writing to {env} target {BASE} requires confirmation. Set "
+                 f"HMS_QA_CONFIRM={urllib.parse.urlparse(BASE).hostname} once you have read "
+                 "docs/qa/README.md on what a mutating run leaves behind.")
+    print(f"  ! mutating run against {env} target {BASE} — records tagged QA-{RUN_ID}")
+
+
+def tag(name: str) -> str:
+    """Name a created record so it is findable later on a shared target."""
+    return f"QA-{RUN_ID} {name}" if not is_local() else name
+
+
+def record(kind: str, value) -> None:
+    MANIFEST.setdefault(kind, []).append(value)
+
+
+def write_manifest() -> pathlib.Path | None:
+    if is_local() or not MANIFEST:
+        return None
+    RUNS_DIR.mkdir(exist_ok=True)
+    path = RUNS_DIR / f"{urllib.parse.urlparse(BASE).hostname}-{RUN_ID}.json"
+    path.write_text(json.dumps(
+        {"run": RUN_ID, "base": BASE, "created": MANIFEST}, indent=2))
+    return path
+
+
+# ---------------------------------------------------------------------------
+# HTTP session
+# ---------------------------------------------------------------------------
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        return None
+
+
+class Session:
+    """One operator's browser: cookie jar, antiforgery token, form posts."""
+
+    def __init__(self, user: str, password: str = DEV_PASSWORD):
+        self.user = user
+        self.role = CAST.get(user, "?")
+        jar = http.cookiejar.CookieJar()
+        self.op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+        self.plain = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(jar), _NoRedirect)
+        self.post("/login", {"Username": user, "Password": password}, self.get("/login"))
+        USERS_SEEN.add(user)
+
+    def get(self, path: str) -> str:
+        with self.op.open(BASE + path) as r:
+            return r.read().decode()
+
+    def status(self, path: str) -> tuple[int, str]:
+        """Status and Location without following redirects — how denial is observed."""
+        try:
+            with self.plain.open(BASE + path) as r:
+                return r.getcode(), r.headers.get("Location", "")
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get("Location", "")
+
+    def denied(self, path: str) -> bool:
+        """True when the server refuses this route for this user.
+
+        Deny-by-default sends 302 to /denied rather than 403, so a bare status check cannot
+        tell a refusal from an ordinary redirect — which is why `nav-smoke.sh` treating 302 as
+        success hides exactly the failures an authorization test exists to catch.
+        """
+        code, location = self.status(path)
+        if code in (401, 403):
+            return True
+        return code in (301, 302) and "/denied" in location
+
+    def post(self, path: str, fields: dict, page_html: str | None = None) -> tuple[str, str]:
+        html = page_html if page_html is not None else self.get(path)
+        m = TOKEN_RE.search(html)
+        data = dict(fields)
+        if m:
+            data["__RequestVerificationToken"] = m.group(1)
+        req = urllib.request.Request(
+            BASE + path, data=urllib.parse.urlencode(data, doseq=True).encode())
+        with self.op.open(req) as r:
+            return r.geturl(), r.read().decode()
+
+    def post_denied(self, path: str, fields: dict) -> bool:
+        """Whether a state-changing POST is refused — the handler-level bypass check.
+
+        Hiding a button is never the control (G10); the handler itself must refuse.
+        """
+        try:
+            url, _ = self.post(path, fields)
+            return "/denied" in url or "/login" in url
+        except urllib.error.HTTPError as e:
+            return e.code in (400, 401, 403)
+
+
+# ---------------------------------------------------------------------------
+# Reporting — case ids tie back to docs/qa/patient-lifecycle.md
+# ---------------------------------------------------------------------------
+RESULTS: list[dict] = []
+_current: dict | None = None
+
+
+def case(lc_id: str, title: str, actor: str | Session | None = None):
+    """Open a lifecycle case. `actor` is the demo user performing it."""
+    global _current
+    who = actor.user if isinstance(actor, Session) else (actor or "")
+    _current = {"id": lc_id, "title": title, "actor": who, "checks": [], "failed": []}
+    RESULTS.append(_current)
+    label = f"[{who}/{CAST.get(who, '?')}]" if who else ""
+    print(f"\n{lc_id}  {title} {label}")
+    return _current
+
+
+def step(n, text: str) -> None:
+    print(f"  {n:2}. {text}")
+
+
+def check(cond, msg: str) -> bool:
+    ok = bool(cond)
+    print(f"      {'PASS' if ok else 'FAIL'}  {msg}")
+    if _current is not None:
+        _current["checks"].append(msg)
+        if not ok:
+            _current["failed"].append(msg)
+    else:
+        _LOOSE.append((ok, msg))
+    return ok
+
+
+_LOOSE: list[tuple[bool, str]] = []
+
+
+def failures() -> list[str]:
+    out = [m for _, r in enumerate(RESULTS) for m in r["failed"]]
+    out += [m for ok, m in _LOOSE if not ok]
+    return out
+
+
+def roles_missing() -> list[str]:
+    return sorted(set(CAST) - USERS_SEEN)
+
+
+def report(title: str, require_all_roles: bool = False) -> int:
+    """Print the run summary and return the process exit code."""
+    bad = failures()
+    print("\n" + "=" * 78)
+    print(f"{title}: {len(RESULTS)} cases, {len(bad)} failed check(s)")
+    if USERS_SEEN:
+        print(f"roles exercised: {len(USERS_SEEN)}/{len(CAST)} — "
+              f"{', '.join(sorted(USERS_SEEN))}")
+    missing = roles_missing()
+    if require_all_roles and missing:
+        print(f"INCOMPLETE: never logged in as {', '.join(missing)}")
+        bad = bad + [f"role never exercised: {u}" for u in missing]
+    for m in bad:
+        print(f"  FAIL  {m}")
+    path = write_manifest()
+    if path:
+        print(f"manifest: {path}")
+    if os.environ.get("HMS_QA_JSON"):
+        pathlib.Path(os.environ["HMS_QA_JSON"]).write_text(json.dumps(
+            {"title": title, "base": BASE, "cases": RESULTS,
+             "users": sorted(USERS_SEEN), "failed": bad}, indent=2))
+    print("=" * 78)
+    return 1 if bad else 0
+
+
+# ---------------------------------------------------------------------------
+# Domain helpers used by more than one script
+# ---------------------------------------------------------------------------
+def grant_cells(html: str) -> list[tuple[str, str, str, bool]]:
+    """`(role, permission, role_id, held)` for every cell of `/admin/users`' §12 matrix.
+
+    The matrix is the only place a deployment's grants can be read without a new endpoint, and
+    the four values of a cell sit in four separate tags. Matching them one at a time across a
+    character window picks up the *neighbouring* role's id — the cells are adjacent — so the
+    whole tuple is matched in one pass or not at all.
+    """
+    out = []
+    for m in re.finditer(
+            r'name="roleId" value="(\d+)"\s*/>\s*'
+            r'<input type="hidden" name="permission" value="([a-z][a-z.]+)"\s*/>\s*'
+            r'<input type="hidden" name="grant" value="(?:true|false)"\s*/>[\s\S]{0,200}?'
+            r'title="(Revoke|Grant) [a-z.]+ for ([^"]+)"', html):
+        role_id, perm, verb, role = m.groups()
+        out.append((role, perm, role_id, verb == "Revoke"))
+    return out
+
+
+def fixture(match, what: str, hint: str = "reset the database — see docs/qa/README.md"):
+    """Return `match`, or stop the run naming the fixture that ran out.
+
+    Spec 0029 F4. Every thread picks its fixtures out of the rendered page with a regex —
+    a free bed, a sellable batch, a priced operation. When the fixture is gone the match is
+    `None`, and `.group(1)` on it raises `AttributeError: 'NoneType' object has no attribute
+    'group'`, which tells the operator nothing about what broke or what to do. This says both.
+
+    The leading marker is what `lifecycle-suite.py` scrapes for, so an exhausted fixture shows
+    up in the suite summary as a named failure rather than an empty one.
+    """
+    if match:
+        return match
+    print(f"      ✗ FIXTURE EXHAUSTED — {what}")
+    print(f"        {hint}")
+    sys.exit(2)
+
+
+# ---------------------------------------------------------------------------
+# Teardown — a thread returns what it takes (spec 0029 F3)
+# ---------------------------------------------------------------------------
+_TEARDOWNS: list[tuple[str, object]] = []
+
+
+def on_exit(what: str, fn) -> None:
+    """Register cleanup that must happen even when the thread dies at the next step.
+
+    The bed ratchet that made the suite un-rerunnable came from cleanup written as the last
+    step of the happy path: a thread that failed at step 7 never reached the step that handed
+    its bed back, so every failed run cost the ward a bed permanently.
+    """
+    _TEARDOWNS.append((what, fn))
+
+
+@atexit.register
+def _drain_teardowns() -> None:
+    if not _TEARDOWNS:
+        return
+    print("\n  teardown — returning the fixtures this run took")
+    while _TEARDOWNS:
+        what, fn = _TEARDOWNS.pop()
+        try:
+            fn()
+            print(f"      ok  {what}")
+        except Exception as e:                      # noqa: BLE001 — teardown never re-raises
+            # A broken cleanup must not turn a green run red, nor mask the real failure.
+            print(f"      !!  {what} — {type(e).__name__}: {e}")
+
+
+def release_bed(sess, bed_id) -> None:
+    """Hand a bed in Cleaning back to the ward (§11 — real housekeeping does this)."""
+    board = sess.get("/ipd/board")
+    sess.post("/ipd/board?handler=CleaningDone", {"BedId": str(bed_id)}, board)
+
+
+def settle_and_discharge(make, admission_id, bed_ids=()) -> None:
+    """Walk an open admission to `discharged` and give its bed(s) back.
+
+    `make(username)` returns a logged-in session — each legacy thread still owns its own
+    `Session` class, so the helper is handed a factory rather than constructing one.
+
+    The walk is the same one `ipd-thread.py` performs on its happy path: summary → clinical
+    clearance → settlement draft → invoice → discharge. `OutstandingReason` is always supplied
+    because teardown must not be blocked by a residual due; that reason lands in the tier-2
+    audit trail exactly as §3.2 requires, which is the correct outcome — a bed released by QA
+    should be as attributable as one released by a person.
+    """
+    fd = make("jashim")                     # ipd.manage — summary, clearance, discharge
+    op = make("rasel")                      # ipd.settle — draft, invoice, discharge
+    page = fd.get(f"/ipd/discharge/{admission_id}")
+
+    if "Gate pass" not in page:
+        if "Clinical summary" in page or "Start discharge" in page:
+            fd.post(f"/ipd/discharge/{admission_id}?handler=Initiate",
+                    {"AdmissionId": admission_id,
+                     "ClinicalSummary": "QA teardown — returning the bed to the ward."}, page)
+        page = fd.get(f"/ipd/discharge/{admission_id}")
+        fd.post(f"/ipd/discharge/{admission_id}?handler=Clear",
+                {"AdmissionId": admission_id}, page)
+
+        open_counter(op)
+        page = op.get(f"/ipd/discharge/{admission_id}")
+        op.post(f"/ipd/discharge/{admission_id}?handler=Prepare",
+                {"AdmissionId": admission_id}, page)
+        page = op.get(f"/ipd/discharge/{admission_id}")
+        op.post(f"/ipd/discharge/{admission_id}?handler=Confirm",
+                {"AdmissionId": admission_id, "DiscountFlat": "0"}, page)
+
+        page = op.get(f"/ipd/discharge/{admission_id}")
+        op.post(f"/ipd/discharge/{admission_id}?handler=Discharge",
+                {"AdmissionId": admission_id,
+                 "OutstandingReason": "QA teardown — bed returned to the ward"}, page)
+
+    for bed_id in {str(b) for b in bed_ids if b}:
+        release_bed(fd, bed_id)
+
+
+def open_counter(sess: Session, kind: str = "Front Desk", float_amt: str = "2000") -> None:
+    page = sess.get("/billing/session")
+    if "Your counter is open" in page:
+        return
+    m = re.search(r'value="(\d+)"[^>]*>[^<]*' + kind, page)
+    sess.post("/billing/session",
+              {"CounterId": m.group(1) if m else "1", "OpeningFloat": float_amt}, page)
+
+
+def find_patient(sess: Session, term: str) -> str | None:
+    hits = json.loads(sess.get("/api/typeahead/patients?q=" + urllib.parse.quote(term)))
+    return str(hits[0]["value"]) if hits else None
