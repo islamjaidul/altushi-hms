@@ -38,4 +38,47 @@ public sealed class RateResolver
 
         return new ResolvedRate(winner.Price, winner.Id);
     }
+
+    /// <summary>
+    /// Prices a run of business days for one catalog item, <b>naming</b> the days it could not
+    /// price instead of dropping them.
+    ///
+    /// Spec 0032 M2-D1. A catch around a single <see cref="ResolveAsync"/> means one thing when
+    /// it filters a *picker* — an unpriced item is simply not sellable (edge 11) — and something
+    /// else entirely when it sits inside a <b>sum</b>. There, a swallowed exception makes the day
+    /// contribute zero and the total silently understates itself, which on the help desk means a
+    /// family is quoted a number that is too low with nothing on screen saying so. A total that
+    /// cannot be complete must be able to say which days are missing, so the caller can present a
+    /// lower bound honestly rather than a wrong figure confidently.
+    /// </summary>
+    public async Task<DayTotal> TotalOverDaysAsync(
+        AdmDbContext adm, string catalogKind, long catalogId, IEnumerable<DateOnly> days,
+        string? corporateScope = null, string? packageScope = null, CancellationToken ct = default)
+    {
+        long total = 0;
+        var unpriced = new List<DateOnly>();
+        foreach (var day in days)
+        {
+            try
+            {
+                total += (await ResolveAsync(
+                    adm, catalogKind, catalogId, day, corporateScope, packageScope, ct)).Price;
+            }
+            catch (RateResolutionException)
+            {
+                unpriced.Add(day);
+            }
+        }
+        return new DayTotal(total, unpriced);
+    }
+}
+
+/// <summary>
+/// The sum of a set of business days, plus the days that had no effective rate. When
+/// <see cref="Unpriced"/> is non-empty, <see cref="Total"/> is a <b>lower bound</b> and every
+/// caller that shows it to a person must say so.
+/// </summary>
+public sealed record DayTotal(long Total, IReadOnlyList<DateOnly> Unpriced)
+{
+    public bool IsComplete => Unpriced.Count == 0;
 }

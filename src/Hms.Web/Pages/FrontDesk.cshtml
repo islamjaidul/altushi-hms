@@ -41,17 +41,46 @@
                             <table class="data">
                                 <tbody>
                                     <tr><td>Charges posted so far</td><td class="tabular">@Ui.Money(adm.Posted)</td></tr>
-                                    <tr><td>Bed days accrued (not yet posted)</td><td class="tabular">@Ui.Money(adm.Accrued)</td></tr>
+                                    <tr>
+                                        <td>
+                                            Bed days accrued (not yet posted)
+                                            @if (Model.EstimateIncomplete)
+                                            {
+                                                <span class="pill bad">@Model.UnpricedBedDays.Count day(s) unpriced</span>
+                                            }
+                                        </td>
+                                        <td class="tabular">@Ui.Money(adm.Accrued)</td>
+                                    </tr>
                                     <tr><td>Advance paid</td><td class="tabular">− @Ui.Money(adm.Advance)</td></tr>
                                     @if (adm.SettledDue > 0)
                                     {
                                         <tr><td>Due on settlement invoice</td><td class="tabular">@Ui.Money(adm.SettledDue)</td></tr>
                                     }
-                                    <tr><td><b>Net payable now (estimate)</b></td>
-                                        <td class="tabular"><b>@Ui.Money(Model.EstimateTotal)</b></td></tr>
+                                    <tr>
+                                        <td><b>@(Model.EstimateIncomplete ? "Net payable now (AT LEAST)" : "Net payable now (estimate)")</b></td>
+                                        <td class="tabular"><b>@Ui.Money(Model.EstimateTotal)</b></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
+                        @if (Model.EstimateIncomplete)
+                        {
+                            @* M2-D1: an unpriced bed-day used to contribute zero in silence, so the
+                               desk quoted a family a number that was too low and looked complete.
+                               A quote that cannot be finished must say so on the screen that gives it. *@
+                            <div class="alert bad">
+                                <span class="icon icon-sm" aria-hidden="true">warning</span>
+                                <span>
+                                    <b>This estimate is incomplete — the real figure is higher.</b>
+                                    @Model.UnpricedBedDays.Count of this patient's bed days have no
+                                    price set for the date they fall on
+                                    (@string.Join(", ", Model.UnpricedBedDays.Take(5).Select(d => d.ToString("dd MMM")))@(Model.UnpricedBedDays.Count > 5 ? ", …" : "")),
+                                    so they are counted as zero above. Quote this as a minimum and
+                                    ask billing to set the bed-day rate for this ward before
+                                    committing to a figure.
+                                </span>
+                            </div>
+                        }
                         <div class="card-hint">
                             US2.2: this figure equals the folio balance including today — it is an
                             estimate for the patient party; billing happens at discharge.

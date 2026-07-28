@@ -34,6 +34,16 @@ public class FrontDeskModel(
     public IReadOnlyList<DoctorToday> Doctors { get; private set; } = [];
     public IReadOnlyList<ClassRow> BedSummary { get; private set; } = [];
 
+    /// <summary>
+    /// Bed-days the patient has occupied for which no rate is effective (spec 0032 M2-D1).
+    /// Reachable whenever a ward's tariff is provisional at go-live (edge 11), a rate plan has a
+    /// gap, or a ward is priced from a date after a sitting patient was admitted. Non-empty means
+    /// <see cref="EstimateTotal"/> is a floor, not a quote.
+    /// </summary>
+    public IReadOnlyList<DateOnly> UnpricedBedDays { get; private set; } = [];
+
+    public bool EstimateIncomplete => UnpricedBedDays.Count > 0;
+
     public long EstimateTotal => Admission is null ? 0
         : Admission.Posted + Admission.Accrued - Admission.Advance + Admission.SettledDue;
 
@@ -113,18 +123,16 @@ public class FrontDeskModel(
                             .Where(d => d.InvoiceId == inv).Select(d => d.Balance).FirstOrDefaultAsync();
 
                     // Accrued-but-unposted bed days: COMPUTED at today's rates, never posted.
+                    // A day with no effective rate is NOT dropped silently (spec 0032 M2-D1) —
+                    // it is counted, so the screen can say the quote is a floor rather than
+                    // present a short number as if it were the answer.
                     if (folio.State == FolioState.Open)
                     {
                         var unposted = await folios.ComputeUnpostedBedDaysAsync(s.Ipd, admission.Id);
-                        foreach (var date in unposted.Dates)
-                        {
-                            try
-                            {
-                                accrued += (await rates.ResolveAsync(
-                                    s.Adm, "service", unposted.TariffServiceId, date)).Price;
-                            }
-                            catch (RateResolutionException) { }
-                        }
+                        var priced = await rates.TotalOverDaysAsync(
+                            s.Adm, "service", unposted.TariffServiceId, unposted.Dates);
+                        accrued = priced.Total;
+                        UnpricedBedDays = priced.Unpriced;
                     }
                 }
                 Admission = new EnquiryAdmission(admission.AdmissionNo, admission.State,
