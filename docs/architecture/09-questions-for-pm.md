@@ -37,3 +37,22 @@
 | P23 | **Surgical team fees** (M7): are surgeon/assistant/anaesthetist fees per *role* (one rate for the operation) or per *person*? | Spec 0025 prices per role from the catalogue and records who filled it; per-person rates would be a rate-plan scope question for M17 | Per role as built, with the named person recorded on the case. Per-person rates become a rate-plan row if the PM wants them |
 
 **Explicit disagreements/flags (ground rule 6):** none yet with PRD substance. One caution: §14's 150-operator design ceiling coexists with the 3 GB mandate only via the scale-up path in `06-deployment.md` §5 — sales material must not promise design-ceiling load on MVP hardware.
+
+---
+
+## P24 — Should reopening a **confirmed** settlement be approval-gated? (2026-07-28, spec 0031)
+
+`docs/qa/patient-lifecycle.md` carries LC-DIS-07 as "settlement reopened, **approval-gated**".
+The product does not gate it: `Ipd/Discharge.OnPostReopenAsync` checks `ipd.settle` and
+`FolioService.ReopenDraftAsync` moves `settlement_draft → open` with no approval involved. The
+Billing Supervisor cannot do it at all, because he lacks `ipd.settle`.
+
+Reopening a *draft* to add a late charge is ordinary counter work and gating it would slow every
+discharge. Reopening after the settlement invoice exists is a different act — it touches an
+issued number. **Which of the two did §12 mean?** Until it is answered the case asserts what the
+product does, and the discrepancy is recorded in spec 0031's notes rather than resolved by an
+engineer.
+
+Related: **P20** (whether discharge-with-a-due should become approval-gated rather than
+reason-gated) is still open. LC-DIS-04 now proves the reason-gated behaviour end to end,
+including its tier-2 audit entry, so P20 is a change of policy rather than a defect.

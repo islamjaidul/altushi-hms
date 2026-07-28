@@ -206,6 +206,26 @@ export const ROUTES: RouteSpec[] = [
 
   // spec 0018 — M2 Front Desk.
   { path: "/frontdesk", permission: "ipd.read", user: "jashim", title: "Help Desk" },
+
+  // spec 0031 (QA finding F5 / LC-XCUT-13) — the eleven protected routes no UI test loaded.
+  // They are disproportionately the consequential screens: the folio, the discharge gate, the
+  // prescription, the signed report, the amend path. Permission and title are taken from each
+  // page's own `@page` directive and `[Authorize]` attribute, never derived from the file path
+  // — deriving a route from its path is what produced fifty false permission leaks in 0028.
+  // Detail screens take a route parameter; id 1 exists on any seeded database, the same
+  // assumption /billing/invoice/1 and /lis/report/1 have always made here.
+  // Folio and discharge title themselves after the patient, so their title is not fixed.
+  { path: "/ipd/folio/1", permission: "ipd.read", user: "jashim", title: null },
+  { path: "/ipd/discharge/1", permission: "ipd.read", user: "jashim", title: null },
+  { path: "/emr/consult/1", permission: "emr.note.write", user: "chowdhury", title: "Consultation" },
+  { path: "/emr/prescription/1", permission: "emr.read", user: "chowdhury", title: "Prescription" },
+  { path: "/radiology/report/1", permission: "radiology.report.write", user: "farhana", title: "Radiology Report" },
+  { path: "/radiology/print/1", permission: "radiology.worklist.read", user: "moinul", title: "Radiology Report" },
+  { path: "/ot/case/1", permission: "ot.record", user: "shaheen", title: "Operation" },
+  { path: "/lis/amend", permission: "lis.result.verify", user: "farhana", title: "Amend a Released Report" },
+  { path: "/diagnostics/order/1", permission: "diagnostics.order.create", user: "rasel", title: "Test Order & Labels" },
+  { path: "/admin/sms", permission: "admin.masters.manage", user: "admin", title: "SMS Templates" },
+  { path: "/admin/templates", permission: "admin.masters.manage", user: "admin", title: "Report Templates" },
 ];
 
 /** Document (`.sheet`) pages — 05 §6 / U10, and the print-CSS check. */

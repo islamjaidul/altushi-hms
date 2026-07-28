@@ -32,6 +32,8 @@ Status values: `Proposed` · `Accepted` · `Superseded by NNNN`. Superseded ADRs
 | [0020](0020-shared-input-layer.md) | Shared input layer: one date/search/type-ahead contract | Accepted | review §1, 05 §3, §7 U5/U9/U13 | 2026-07-27 |
 | [0021](0021-stock-ledger-kernel.md) | Stock ledger kernel: append-only moves, FEFO issue, bill-spine sales | Accepted | §5 M11/M12, §11, 11-build-plan §4 | 2026-07-27 |
 | [0022](0022-upgrade-path-testing.md) | Upgrade-path testing: boot against previous release's data in CI | Accepted | review debt #1 | 2026-07-27 |
+| [0023](0023-grant-drift-report-not-reconcile.md) | Grant drift is reported, not silently reconciled | Accepted | QA F1, LC-XCUT-14 | 2026-07-28 |
+| [0024](0024-concurrency-load-target.md) | What "forty operators at once" must mean on 2 vCPU / 3 GB | **Proposed** | LC-XCUT-11, §8 N1 | 2026-07-28 |
 
 ## Required coverage
 

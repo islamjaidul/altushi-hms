@@ -78,5 +78,9 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0025-operation-theatre](0025-operation-theatre/spec.md) | M7 Operation Theatre — scheduling, team, completion billing (Wave 3) | Done | §5 M7, §11, §12 | 2026-07-28 |
 | [0026-radiology](0026-radiology/spec.md) | M10 Radiology — modality worklist, templated reports, e-signed delivery (Wave 3) | Done | §5 M10, §5A-10, §11, §12 | 2026-07-28 |
 | [0027-day-close-business-day](0027-day-close-business-day/spec.md) | Day-close compared a Dhaka business day against a UTC date (night-shift defect) | Done | §5 M4, P2, edge 16/17 | 2026-07-28 |
+| [0028-qa-lifecycle-suite](0028-qa-lifecycle-suite/spec.md) | QA patient-lifecycle suite: canonical doc, role-driven runner, QA agent | Done | §5, §7, §12, §11, §14 | 2026-07-28 |
+| [0029-lifecycle-suite-rerunnable](0029-lifecycle-suite-rerunnable/spec.md) | The lifecycle suite must survive being run twice (fixture return, crash-to-failure, nav-smoke) | Done | §8, §14 | 2026-07-28 |
+| [0030-grant-drift-and-appointments-authz](0030-grant-drift-and-appointments-authz/spec.md) | Grant drift on the deployment, and a permission enforced nowhere | Done | §12, §3.2, §5 M3 | 2026-07-28 |
+| [0031-lifecycle-coverage-high-gaps](0031-lifecycle-coverage-high-gaps/spec.md) | Close the High-severity lifecycle gaps (money invariants, control gates, concurrency) | Done | §5 M4/M6/M8/M9, §8, §11, §12 | 2026-07-28 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->
