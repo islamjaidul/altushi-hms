@@ -79,3 +79,25 @@ attribution is wrong and is recorded here rather than quietly left.
 - Playwright 245 tests pass, including all eleven previously unloaded routes.
 - `--tier t1` green three consecutive times with the new thread in it, 12/12 roles.
 - `check-lifecycle-traceability.sh --stats`: 169 cases, 143 covered, 26 gaps.
+
+## Correction to "LC-DIS-07 is not what the document said" (same day, after probing)
+
+The note above is **wrong and is superseded by this paragraph.** It said the product does not gate
+reopening a settlement. Probed against a running app, the actual behaviour is:
+
+- `settlement_draft` → `Reopen` → `open`: allowed for `ipd.settle`, no approval. Correct: a draft
+  is a bill assembled but not issued, and gating it would put a supervisor in the path of every
+  corrected discharge.
+- `locked` (confirmed, invoice issued) → `Reopen`: **refused** — *"The folio is not in settlement
+  draft."* A confirmed settlement cannot be reopened at all.
+- A late charge on a locked folio: **refused at the handler** — *"Post-lock entries need a Billing
+  Supervisor approval"* (`folio-late-post`).
+
+So the control exists and sits at the money rather than at the scratch pad. What is wrong is the
+lifecycle document's LC-DIS-07 wording, not the product. P24 in `09-questions-for-pm.md` is
+rewritten accordingly, and the only live question left there is whether the unaudited
+`settlement_draft → open` transition should write a tier-2 event.
+
+The lesson for me: **the test passed either way.** `money-and-controls.py` reopens a *draft*, which
+is what the product allows, so a green check sat underneath a wrong sentence in the notes for
+several hours. Reading a handler is not the same as running it.

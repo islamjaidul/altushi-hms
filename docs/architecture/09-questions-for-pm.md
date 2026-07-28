@@ -40,19 +40,33 @@
 
 ---
 
-## P24 — Should reopening a **confirmed** settlement be approval-gated? (2026-07-28, spec 0031)
+## P24 — Reopening a settlement: what the code actually does (2026-07-28, spec 0031)
 
-`docs/qa/patient-lifecycle.md` carries LC-DIS-07 as "settlement reopened, **approval-gated**".
-The product does not gate it: `Ipd/Discharge.OnPostReopenAsync` checks `ipd.settle` and
-`FolioService.ReopenDraftAsync` moves `settlement_draft → open` with no approval involved. The
-Billing Supervisor cannot do it at all, because he lacks `ipd.settle`.
+**This entry was first raised on a wrong reading and is corrected here.** The original claim —
+that reopening a confirmed settlement is ungated — is false. Probed against a running app:
 
-Reopening a *draft* to add a late charge is ordinary counter work and gating it would slow every
-discharge. Reopening after the settlement invoice exists is a different act — it touches an
-issued number. **Which of the two did §12 mean?** Until it is answered the case asserts what the
-product does, and the discrepancy is recorded in spec 0031's notes rather than resolved by an
-engineer.
+| Folio state | Reopen | A late charge |
+|---|---|---|
+| `settlement_draft` (Prepared, no invoice yet) | **allowed** for `ipd.settle`, no approval | n/a |
+| `locked` (Confirmed, invoice issued) | **impossible** — *"The folio is not in settlement draft."* | **refused at the handler** — *"This folio is locked (settled). Post-lock entries need a Billing Supervisor approval."* |
 
-Related: **P20** (whether discharge-with-a-due should become approval-gated rather than
-reason-gated) is still open. LC-DIS-04 now proves the reason-gated behaviour end to end,
-including its tier-2 audit entry, so P20 is a change of policy rather than a defect.
+So a confirmed settlement cannot be reopened at all, and money after the lock is
+approval-gated (`folio-late-post`). The control is at the money, which is where it belongs.
+Reopening a **draft** — a bill assembled but not yet issued — is deliberately ungated, and
+gating it would put a supervisor in the path of every corrected discharge.
+
+**No product change is proposed.** What is wrong is `docs/qa/patient-lifecycle.md`'s LC-DIS-07,
+which reads *"Settlement reopened, approval-gated"* and describes something the product does not
+permit in the first place. The document has been corrected to describe the two states above.
+
+### The one residual worth a decision — and it is small
+
+`FolioService.ReopenDraftAsync` takes no `KernelDbContext` and writes **no audit event**, so
+`settlement_draft → open` leaves no trace that a bill was assembled and then rescinded. The money
+stays traceable either way: every charge line carries the identity of whoever posted it, and the
+invoice is audited on confirm. What is not recoverable is *"this discharge bill was prepared,
+withdrawn, and prepared again"* — the shape of a discount dispute at a busy counter.
+
+Engineering's recommendation: **audit it** (`ipd.settlement.reopen`, tier 2, actor + folio), which
+is a one-line change matching `LockAtSettlementAsync` alongside it. Raised rather than done
+because it adds an audit row to a hot path, and §3.2's tiering is the PM's call, not mine.

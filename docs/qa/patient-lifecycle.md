@@ -305,7 +305,7 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-DIS-04 | Discharge **with** a due needs a typed reason | reason lands in tier-2 audit (§3.2) | `rasel` | `auto` money-and-controls 5 |
 | LC-DIS-05 | Certificate issued with a sequential number | number allocated | `rasel` | `auto` ipd-thread 12 |
 | LC-DIS-06 | Certificate reprint is counted and audited | reprint recorded | `rasel` | `auto` ipd-thread 12 |
-| LC-DIS-07 | Settlement reopened, approval-gated | draft reopens | `rasel` → `shahid` | `auto` money-and-controls 6 |
+| LC-DIS-07 | A settlement **draft** reopens for a late charge; a **confirmed** one never does | draft → open for `ipd.settle`; locked folio refuses reopen, and a post-lock charge needs a supervisor approval | `rasel` → `shahid` | `auto` money-and-controls 6 |
 | LC-DIS-08 | **Supervisor cannot settle** | `shahid` lacks `ipd.settle` | `shahid` | `auto` role-journeys LC-ROLE-05 |
 | LC-DIS-09 | Post-discharge: certificate, history, return visit all work | records intact | `jashim` | `auto` lifecycle-thread 9 |
 
