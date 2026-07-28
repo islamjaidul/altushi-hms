@@ -151,7 +151,7 @@
                     <option value="0">— Select doctor —</option>
                     @foreach (var d in Model.Doctors)
                     {
-                        <option value="@d.DoctorId">@d.Name — next serial @(d.TodayCount + 1)</option>
+                        <option value="@d.DoctorId">@d.Name — next serial @d.NextSerial</option>
                     }
                 </select>
             </label>

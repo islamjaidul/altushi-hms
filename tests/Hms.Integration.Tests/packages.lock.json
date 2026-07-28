@@ -443,6 +443,17 @@
       "hms.admin.contracts": {
         "type": "Project"
       },
+      "hms.appointments": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Appointments.Contracts": "[1.0.0, )",
+          "Hms.Billing.Contracts": "[1.0.0, )",
+          "Hms.Kernel": "[1.0.0, )"
+        }
+      },
+      "hms.appointments.contracts": {
+        "type": "Project"
+      },
       "hms.billing": {
         "type": "Project",
         "dependencies": {
@@ -506,6 +517,16 @@
         }
       },
       "hms.lis.contracts": {
+        "type": "Project"
+      },
+      "hms.notifications": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Kernel": "[1.0.0, )",
+          "Hms.Notifications.Contracts": "[1.0.0, )"
+        }
+      },
+      "hms.notifications.contracts": {
         "type": "Project"
       },
       "hms.ot": {

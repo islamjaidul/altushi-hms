@@ -7,7 +7,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hms.Web.Pages.Appointments;
 
-public sealed record DoctorCard(long DoctorId, string Name, string? Room, int TodayCount, int MaxSerials);
+/// <summary>
+/// <paramref name="TodayCount"/> and <paramref name="NextSerial"/> are two different questions
+/// and were one field until spec 0032 (M3-D2).
+/// <list type="bullet">
+/// <item><description><b>TodayCount</b> — patients on this doctor's queue today. A cancelled
+/// appointment is not a patient seen, so it is excluded. This is what reads next to
+/// "Capacity 40".</description></item>
+/// <item><description><b>NextSerial</b> — the number the next patient will actually be given.
+/// A consumed serial is never reissued, so cancelled rows very much count. This comes from
+/// <see cref="AppointmentsService.NextSerialFor"/>, the same arithmetic the allocator uses.</description></item>
+/// </list>
+/// Serving both from one count made the dropdown offer a number the allocator would not issue
+/// the moment anything was cancelled — and the receptionist reads that number aloud.
+/// </summary>
+public sealed record DoctorCard(
+    long DoctorId, string Name, string? Room, int TodayCount, int NextSerial, int MaxSerials);
 
 public sealed record QueueRow(
     long Id, int SerialNo, string PatientName, string Uhid, string? Phone,
@@ -59,6 +74,7 @@ public class IndexModel(
                 .Select(g => new DoctorCard(
                     g.Key, g.First().DoctorName, g.First().Room,
                     appts.Count(a => a.DoctorId == g.Key && a.State != AppointmentState.Cancelled),
+                    AppointmentsService.NextSerialFor(appts.Where(a => a.DoctorId == g.Key)),
                     g.First().MaxSerials))
                 .OrderBy(d => d.Name)
                 .ToList();
@@ -142,8 +158,10 @@ public class IndexModel(
     /// <summary>Advance is a state-guarded UPDATE — a second click on a stale page loses safely.</summary>
     public async Task<IActionResult> OnPostAdvanceAsync(long id, string from, string to)
     {
-        // Advancing to Done, Cancelled or NoShow consumes the serial and frees it for reissue.
-        // That is a write to the queue whatever it is called, so it needs the same grant.
+        // Advancing to Done, Cancelled or NoShow ends the appointment. It does NOT free the
+        // number: a serial is consumed at issue, because the patient was told it by SMS the
+        // moment it was allocated (spec 0032, M3-D1). Ending it is still a write to the queue,
+        // so it needs the same grant as issuing.
         if (!CanIssue) return Forbid();
         try
         {
@@ -153,7 +171,7 @@ public class IndexModel(
                 AppointmentState.InChamber => "Called in — patient is with the doctor",
                 AppointmentState.Done => "Consultation finished",
                 AppointmentState.Cancelled => "Serial cancelled",
-                AppointmentState.NoShow => "Marked as a no-show — the serial is freed",
+                AppointmentState.NoShow => "Marked as a no-show — the next patient keeps their own serial",
                 _ => "Queue updated",
             }, "arrow_forward");
         }
