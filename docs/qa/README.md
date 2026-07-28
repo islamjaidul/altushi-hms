@@ -66,12 +66,11 @@ reversible, never erasable**.
 - The ward census is asserted: a run that ends with fewer free beds than it started with **fails**,
   so a leaked admission cannot hide behind a green result.
 
-**Not yet true, and worth knowing before you rely on it (round-2 finding R2-3):** the harness has
-`tag()`, `record()` and `write_manifest()`, and *no thread calls them*. The nine legacy threads
-pre-date the shared harness and name their own records. So there is **no** `QA-<runid>` prefix
-and **no** manifest in `eng/verify/runs/` — reversing a production run today means finding its
-records by name and time, not by reading a file. Fixing that is the `_harness` retrofit deferred
-by spec 0028's notes and still outstanding.
+On a **non-local** target the records a run creates are named `QA-<runid> …` and every script
+files a manifest under `eng/verify/runs/<host>-<runid>/<script>.json` listing the ids it created
+(patients, admissions, invoices, OT cases). One run id covers the whole suite, so one directory
+is one run. Locally neither happens: the prefix would only clutter a database you are about to
+throw away.
 
 **Cannot be undone, by design:** `kernel.audit_event` rows, `ipd.bed_day` rows,
 `pharm.stock_move` ledger entries, consumed number-series values, and any SMS actually sent. A

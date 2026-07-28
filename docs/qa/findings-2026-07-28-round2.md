@@ -145,3 +145,33 @@ A pre-deploy dump was taken first: `/root/hms-predeploy-20260728-0831.dump` on t
   with `Demo#1234`, which is what makes a t1 run against this deployment possible at all; once it
   is executed, t1 against production stops working, by design.
 - **The manifest path**, until R2-3's retrofit lands.
+
+---
+
+## Round 3 — what a *well-used* database exposed (2026-07-28, later still)
+
+The three-consecutive-runs bar in spec 0029 was met on a **freshly reset** database. Running the
+same bar again on a database that had by then absorbed roughly twenty suite runs found five more
+defects, every one of them the same shape as R2-4: **an assertion that takes the first row of a
+list that now has history.** None was a product defect. All are fixed.
+
+| # | Where | What it did | Fix |
+|---|---|---|---|
+| R3-1 | `ot-thread` consumable picker | Summed stock by the **first word** of the product name. The pharmacy probe creates products called `Probecillin <stamp>`, so a dozen distinct products pooled into one "Probecillin" total of 438 units, and the thread then consumed a product whose own batches were all disposed | Key on the whole product label, and scope the shelf to the **main** outlet, which is the only one an OT case draws from |
+| R3-2 | `pharmacy-thread` step 7 | Quarantined and returned *whatever expired batch was lying about* — on a used database, a stranger's batch, in another outlet, sometimes already returned — then checked **this run's** supplier ledger for the credit | Quarantine and return the batch **this run received at step 2**, from the supplier **this run bought from** |
+| R3-3 | `pharmacy-thread` GRN | Every run received a batch called `THREAD-1`, so "find our batch" found the oldest and emptiest one | A per-run batch number, `THREAD-<stamp>` |
+| R3-4 | `pharmacy-thread` FEFO | Asserted **which** batch FEFO picked. Once two batches share an expiry — which happens the second time the thread runs — that is an arbitrary tie-break the product never promised | Assert the promise: the batch on the receipt expires on the earliest date on the shelf |
+| R3-5 | `pharmacy-full` / `pharmacy-thread` | Both used the quarantine reason *"damaged in transit"*, so each script's assertion could pass on the **other's** row while its own quarantine had silently failed | A reason unique to the run; and both quarantine/return posts now carry `OutletId`, without which the credit landed in an outlet the check could not see |
+
+Two smaller ones alongside: `ot-thread` spread its run dates over 200 days, so two runs collided
+on a shared surgeon often enough to matter (now ~3000, and it *searches* for a free slot rather
+than assuming the first is free — finding one is setup, not the assertion); and `emr-thread` had
+a local variable named `record` that shadowed the harness helper.
+
+**The lesson, and it is the same one three times over.** A test written against a database only
+that test has ever touched encodes "the first row is mine". It stays green for as long as that is
+accidentally true. The deployment made it false, and so does any hospital. Spec 0029's bar —
+three consecutive runs — is necessary and was **not sufficient**: three runs on a clean database
+does not produce the accumulation that breaks these. The bar worth keeping is **three consecutive
+runs on a database that has already been used heavily**, which is what these fixes were verified
+against.

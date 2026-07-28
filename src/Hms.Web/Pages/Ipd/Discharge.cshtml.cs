@@ -176,7 +176,7 @@ public class DischargeModel(
             await tx.RunAsync(async s =>
             {
                 var folio = await s.Ipd.Folios.AsNoTracking().SingleAsync(f => f.AdmissionId == AdmissionId);
-                await folios.ReopenDraftAsync(s.Ipd, folio.Id);
+                await folios.ReopenDraftAsync(s.Ipd, s.Kernel, folio.Id, ActorId, ActorName);
             });
         }
         catch (IpdException e) { return await Reshow(e.Message); }

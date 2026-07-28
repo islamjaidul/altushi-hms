@@ -5,7 +5,7 @@ bed afterwards); numbers rely only on seeded constant rates (bed 1200, admission
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import fixture, on_exit, release_bed   # noqa: E402
+from _harness import fixture, on_exit, record, release_bed, tag   # noqa: E402
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -46,13 +46,13 @@ fd = Session("jashim", "Demo#1234")
 op = Session("rasel", "Demo#1234")
 
 stamp = f"{int(time.time() * 1000) % 100000:05d}"   # ms: two runs in one second differ
-tag = f"Desk Check {stamp}"
+NAME = tag(f"Desk Check {stamp}")
 # Unique phone per run, and acknowledge the duplicate guard the way an operator does —
 # a previous run of this very script is a legitimate near-duplicate (edge 23).
 fd.post("/registration/new", {
-    "FullName": tag, "Sex": "M", "AgeOrDob": "50", "Phone": f"017{stamp}{stamp[:3]}",
+    "FullName": NAME, "Sex": "M", "AgeOrDob": "50", "Phone": f"017{stamp}{stamp[:3]}",
     "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})
-hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(tag)))
+hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(NAME)))
 check(len(hits) >= 1, "check patient registered")   # newest first; repeats are fine
 pid = str(hits[0]["value"])
 
@@ -65,6 +65,7 @@ url, _ = fd.post("/ipd/admit", {
     "PatientId": pid, "Source": "direct", "BedId": bed.group(1),
     "ServiceChargePct": "0", "ReserveOnly": "false"}, admit)
 adm = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused").group(1)
+record("admission", adm)
 
 # The absconded exit and the housekeeping below are the last two statements of the happy
 # path; a failure on any assertion between here and there used to keep the bed (spec 0029 F3).

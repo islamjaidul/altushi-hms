@@ -7,7 +7,8 @@ script is dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import fixture, on_exit, release_bed, settle_and_discharge   # noqa: E402
+from _harness import (fixture, on_exit, record, release_bed,   # noqa: E402
+                       settle_and_discharge, tag)
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -71,7 +72,7 @@ step(1, "Front desk registers the IPD patient")
 # admission behind, and every later run is refused ("already has an open admission"). The
 # duplicate guard is acknowledged the way the operator's "continue below" does (edge 23).
 stamp = f"{int(time.time() * 1000) % 100000:05d}"   # ms: two runs in one second differ
-NAME = f"Ipd Thread {stamp}"
+NAME = tag(f"Ipd Thread {stamp}")
 fd.post("/registration/new", {
     "FullName": NAME, "Sex": "F", "AgeOrDob": "32",
     "Phone": f"017555{stamp}", "PatientType": "general",
@@ -79,6 +80,7 @@ fd.post("/registration/new", {
 hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(NAME)))
 check(len(hits) > 0, "patient registered and findable")
 pid = str(hits[-1]["value"])
+record("patient", pid)
 
 # 2 — admission ------------------------------------------------------------
 step(2, "Admission into a free general bed (§5 M6)")
@@ -94,6 +96,7 @@ m = fixture(re.search(r"/ipd/folio/(\d+)", url), "admission was refused",
             "the ward may be full, or the patient may already have an open admission")
 check(m is not None, "admitted — folio opened")
 adm = m.group(1)
+record("admission", adm)
 
 # The bed is now this run's to return. Registered here rather than at the end, because a
 # failure at any later step used to cost the ward a bed permanently (spec 0029 F3): every
@@ -248,6 +251,7 @@ url, html = op.post(f"/ipd/discharge/{adm}?handler=Confirm",
                     {"AdmissionId": adm, "DiscountFlat": "0"}, dis)
 check("/billing/invoice/" in url, "settlement invoice created")
 inv_id = url.rstrip("/").split("/")[-1]
+record("invoice", inv_id)
 invoice = op.get(f"/billing/invoice/{inv_id}")
 check("INV-" in invoice, "invoice printable")
 dues = op.get("/billing/dues?Q=" + urllib.parse.quote(NAME))

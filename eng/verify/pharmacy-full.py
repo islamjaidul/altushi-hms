@@ -9,7 +9,10 @@ payments and replacements, the sales/purchase statements, outlet creation, the d
 write-off with its approval, and the staff-sale variant.
 
 Dirty-database tolerant and repeat-run safe: everything it needs, it creates."""
-import http.cookiejar, json, os, re, sys, time, urllib.parse, urllib.request
+import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import record, tag   # noqa: E402
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -86,7 +89,7 @@ def approve(label):
 # ---- row 1: company & product registration -------------------------------
 feature("1", "Company & product registration (/pharmacy/products)")
 page = ph.get("/pharmacy/products")
-company_name = f"Probe Pharma {stamp}"
+company_name = tag(f"Probe Pharma {stamp}")
 ph.post("/pharmacy/products?handler=Company", {"CompanyName": company_name}, page)
 page = ph.get("/pharmacy/products")
 check(company_name in page, "a new company appears in the master")
@@ -208,7 +211,7 @@ check("pharmacy.sale.staff" in audit_page,
 # ---- rows 8/16: supplier ledger, payment, replacement --------------------
 feature("8", "Supplier ledger & payment (/pharmacy/suppliers)")
 suppliers = ph.get("/pharmacy/suppliers")
-supplier_name = f"Probe Supplies {stamp}"
+supplier_name = tag(f"Probe Supplies {stamp}")
 ph.post("/pharmacy/suppliers?handler=Create",
         {"Name": supplier_name, "Phone": "01700000000"}, suppliers)
 suppliers = ph.get("/pharmacy/suppliers")
@@ -228,13 +231,18 @@ feature("16", "Supplier replacement (5A-11) — return for replacement, not for 
 stock_page = ph.get("/pharmacy/stock?Show=all&Q=" + urllib.parse.quote(brand))
 batch_ctl = re.search(r'name="BatchId" value="(\d+)"', stock_page)
 check(batch_ctl is not None, "the batch offers stock actions")
+# The stock screen is scoped to one outlet and both handlers redirect back to it, so the
+# outlet has to travel with the post — omitting it sent the return to whichever outlet the
+# page defaulted to and the credit landed nowhere this check could see it.
+outlet_ctl = re.search(r'name="OutletId" value="(\d+)"', stock_page)
+outlet_id = outlet_ctl.group(1) if outlet_ctl else "1"
 ph.post("/pharmacy/stock?handler=Quarantine", {
     "BatchId": batch_ctl.group(1), "Reason": "damaged in transit",
-    "Show": "all", "Q": brand}, stock_page)
+    "OutletId": outlet_id, "Show": "all", "Q": brand}, stock_page)
 quarantined = ph.get("/pharmacy/stock?Show=quarantined")
 check("damaged in transit" in quarantined, "damage quarantine records the reason (row 14)")
 ph.post("/pharmacy/stock?handler=Return", {
-    "BatchId": batch_ctl.group(1), "SupplierId": ledger_supplier,
+    "BatchId": batch_ctl.group(1), "SupplierId": ledger_supplier, "OutletId": outlet_id,
     "Replacement": "true", "Show": "quarantined"}, quarantined)
 ledger = ph.get(f"/pharmacy/suppliers?Ledger={ledger_supplier}")
 check("eplacement" in ledger, "the return is recorded as awaiting replacement, not as credit")
@@ -284,7 +292,7 @@ check("Disposed" in disposed, "the approved write-off disposes the batch, logged
 # ---- rows 12/13: outlets master + transfer ledger ------------------------
 feature("13", "Outlets master + outlet transfer ledger (5A-11)")
 transfers = ph.get("/pharmacy/transfers")
-outlet_name = f"Probe Outlet {stamp}"
+outlet_name = tag(f"Probe Outlet {stamp}")
 ph.post("/pharmacy/transfers?handler=Outlet",
         {"OutletName": outlet_name, "OutletKind": "sub"}, transfers)
 transfers = ph.get("/pharmacy/transfers")

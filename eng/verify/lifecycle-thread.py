@@ -6,7 +6,8 @@ own, asserted by id), so the upgrade gate runs it too."""
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import fixture, on_exit, release_bed, settle_and_discharge   # noqa: E402
+from _harness import (fixture, on_exit, record, release_bed,   # noqa: E402
+                       settle_and_discharge, tag)
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -66,7 +67,7 @@ sup = Session("shahid", "Demo#1234")    # supervisor
 md = Session("md", "Demo#1234")         # MD
 
 stamp = int(time.time() * 1000) % 100000   # ms: two runs in one second differ
-name = f"Lifecycle {stamp}"
+name = tag(f"Lifecycle {stamp}")
 phone_digits = f"0171{stamp:05d}00"[:11]
 phone_typed = phone_digits                      # exactly what an operator types
 
@@ -80,6 +81,7 @@ fd.post("/registration/new", {
 hits = json.loads(fd.get("/api/typeahead/patients?q=" + urllib.parse.quote(name)))
 check(len(hits) > 0, "found by name")
 pid = str(hits[0]["value"])
+record("patient", pid)
 by_digits = json.loads(fd.get(f"/api/typeahead/patients?q={phone_digits}"))
 check(any(str(h["value"]) == pid for h in by_digits),
       "found by the phone typed as plain digits (spec 0020 gap 1)")
@@ -140,6 +142,7 @@ url, _ = fd.post("/ipd/admit", {
 mm = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused")
 check(mm is not None, "admitted, folio open")
 adm = mm.group(1)
+record("admission", adm)
 # Spec 0029 F3. This thread discharges on its happy path but never handed the bed back from
 # Cleaning, and a failure anywhere in steps 5-8 skipped the discharge entirely.
 on_exit(f"admission {adm} discharged and bed returned",

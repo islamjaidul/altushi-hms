@@ -35,7 +35,10 @@ BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
 DEV_PASSWORD = "Demo#1234"          # DevSeed.DevPassword — the demo card password (07 §1)
 
-RUN_ID = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+# One id for a whole suite run, not one per script: the runner exports HMS_QA_RUN_ID so all
+# ten threads file their manifests under the same directory. A per-process id would scatter a
+# single run across ten timestamps and make it unreversible in practice.
+RUN_ID = os.environ.get("HMS_QA_RUN_ID") or time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
 RUNS_DIR = pathlib.Path(__file__).resolve().parent / "runs"
 
 # ---------------------------------------------------------------------------
@@ -107,12 +110,21 @@ def record(kind: str, value) -> None:
 
 
 def write_manifest() -> pathlib.Path | None:
+    """One file per script, all under one run directory — the trail back to what a run created.
+
+    Local runs write nothing: the manifest exists so a run against a *shared* target can be
+    found and reversed, and on a laptop the database is disposable.
+    """
     if is_local() or not MANIFEST:
         return None
-    RUNS_DIR.mkdir(exist_ok=True)
-    path = RUNS_DIR / f"{urllib.parse.urlparse(BASE).hostname}-{RUN_ID}.json"
+    host = urllib.parse.urlparse(BASE).hostname
+    run_dir = RUNS_DIR / f"{host}-{RUN_ID}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    path = run_dir / f"{pathlib.Path(sys.argv[0]).stem or 'run'}.json"
     path.write_text(json.dumps(
-        {"run": RUN_ID, "base": BASE, "created": MANIFEST}, indent=2))
+        {"run": RUN_ID, "base": BASE, "script": pathlib.Path(sys.argv[0]).name,
+         "finished": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+         "created": MANIFEST}, indent=2))
     return path
 
 
@@ -310,6 +322,22 @@ def on_exit(what: str, fn) -> None:
     its bed back, so every failed run cost the ward a bed permanently.
     """
     _TEARDOWNS.append((what, fn))
+
+
+@atexit.register
+def _file_manifest() -> None:
+    """Every script files its manifest, including the nine that never call `report()`.
+
+    The legacy threads print their own summary and `sys.exit` — they never reach the harness's
+    reporting path, which is why `write_manifest()` had a caller in theory and none in practice
+    (round-2 finding R2-3). Filing it at exit needs no cooperation from the script.
+    """
+    try:
+        path = write_manifest()
+        if path:
+            print(f"  manifest: {path}")
+    except Exception as e:                          # noqa: BLE001 — never mask the real result
+        print(f"  !! manifest not written — {type(e).__name__}: {e}")
 
 
 @atexit.register

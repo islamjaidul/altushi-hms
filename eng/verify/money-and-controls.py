@@ -272,7 +272,7 @@ op.post(f"/ipd/discharge/{d_adm}?handler=Prepare", {"AdmissionId": d_adm}, dis)
 dis = op.get(f"/ipd/discharge/{d_adm}")
 check("Settlement draft" in dis, "the settlement draft is assembled from the folio")
 
-case("LC-DIS-07", "A confirmed settlement draft can be reopened for a late charge", op)
+case("LC-DIS-07", "A settlement DRAFT reopens; a CONFIRMED one never does", op)
 step(1, "the draft reopens, and the folio takes charges again")
 dis = op.get(f"/ipd/discharge/{d_adm}")
 op.post(f"/ipd/discharge/{d_adm}?handler=Reopen", {"AdmissionId": d_adm}, dis)
@@ -282,6 +282,16 @@ check("Blocked" not in folio and "settlement" not in folio.lower().split("draft"
 step(2, "the supervisor cannot do it — settlement is the operator's grant, not his")
 check(sup.post_denied(f"/ipd/discharge/{d_adm}?handler=Reopen", {"AdmissionId": d_adm}),
       "shahid (Billing Supervisor) is refused the reopen handler — he lacks ipd.settle")
+
+step(3, "a CONFIRMED settlement is a different thing — it cannot be reopened at all")
+# The half of the machine the lifecycle document had backwards (P24): the gate is at the money,
+# not at the draft. Proven at the end of LC-DIS-04 below, once this folio has been confirmed.
+
+step(4, "and withdrawing a draft leaves a trace — P24")
+audit = admin.get("/admin/audit?Action=" + urllib.parse.quote("ipd.settlement.reopen"))
+check("ipd.settlement.reopen" in audit,
+      "the withdrawal is on the audit timeline, not just its consequences")
+check("Rasel" in audit, "attributed to the operator who withdrew it")
 
 case("LC-DIS-04", "Discharge with a due needs a typed reason, audited at tier 2", op)
 step(2, "settle again, leave the balance owing, and try to discharge without a reason")
@@ -298,6 +308,13 @@ _, refused = op.post(f"/ipd/discharge/{d_adm}?handler=Discharge",
 check("still owes" in refused or "reason" in refused.lower(),
       "a reasonless discharge is refused server-side, not just hidden")
 check("Gate pass" not in op.get(f"/ipd/discharge/{d_adm}"), "no gate pass was printed")
+
+# P24, the other half: the folio is locked now, so the reopen that worked on the draft is
+# refused outright. A confirmed settlement is not reopenable, at any grant.
+_, locked = op.post(f"/ipd/discharge/{d_adm}?handler=Reopen", {"AdmissionId": d_adm},
+                    op.get(f"/ipd/discharge/{d_adm}"))
+check("not in settlement draft" in locked,
+      "a CONFIRMED settlement refuses to reopen — the gate is at the money, not the draft")
 
 step(3, "with a typed reason it goes through, and the reason is on the record")
 reason = f"QA {STAMP} — MD instruction, family to settle at the counter"

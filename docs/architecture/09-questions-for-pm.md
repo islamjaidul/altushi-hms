@@ -67,6 +67,30 @@ stays traceable either way: every charge line carries the identity of whoever po
 invoice is audited on confirm. What is not recoverable is *"this discharge bill was prepared,
 withdrawn, and prepared again"* — the shape of a discount dispute at a busy counter.
 
-Engineering's recommendation: **audit it** (`ipd.settlement.reopen`, tier 2, actor + folio), which
-is a one-line change matching `LockAtSettlementAsync` alongside it. Raised rather than done
-because it adds an audit row to a hot path, and §3.2's tiering is the PM's call, not mine.
+**Done** (2026-07-28): `ipd.settlement.reopen` is written on every `settlement_draft → open`
+transition, with the actor, the folio, and a before/after image — **tier 1**, matching
+`ipd.folio.lock` immediately beside it. ADR-0011 puts money on tier 1, and a pair of transitions
+that undo each other belongs in one tier or the timeline reads as if only half of it happened.
+Proven by `SettlementReopenAuditTests` (2 tests, real Postgres) and end to end in
+`money-and-controls.py` LC-DIS-07, which also proves the refused case writes nothing — a refused
+action that logs looks exactly like one that happened.
+
+### A tiering inconsistency this exposed, for the PM/architect
+
+ADR-0011 §Decision assigns **tier 1 to money and clinical documents** and tier 2 to *masters and
+config*. Parts of the code read it the other way round, as though tier 2 meant "more serious":
+
+| Event | Tier in code | ADR-0011 would say |
+|---|---|---|
+| `ipd.folio.lock` (settlement issues an invoice) | 1 | 1 ✓ |
+| `ipd.settlement.reopen` (new) | 1 | 1 ✓ |
+| `ipd.discharge` **with an outstanding due** | 2 | 1 — it is money |
+| `ipd.discharge` without a due | 1 | 1 ✓ |
+| `role.grant` / `role.revoke`, `user.password.reset` | 2 | 1 — ADR-0011 names permission changes in the tier-1 list |
+| `ipd.block` / `ipd.release` / `ipd.death` | 2 | arguably 1 (clinical) |
+
+Nothing is *lost* — every one of these is written and queryable — but the tier is what decides
+retention, partition compression and what an auditor filters on, so a wrong tier is a real cost
+later. **Not changed here:** re-tiering existing events rewrites the meaning of history already
+recorded, and the tier list is a living document in `03-data-model.md` that §3.2 makes the PM's
+call. Worth one decision rather than six ad-hoc ones.

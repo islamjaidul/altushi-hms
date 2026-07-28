@@ -22,7 +22,7 @@ import urllib.request
 from datetime import date, timedelta
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import fixture, on_exit, settle_and_discharge   # noqa: E402
+from _harness import fixture, on_exit, record, settle_and_discharge, tag   # noqa: E402
 
 # Overridable so the same thread can be run against a deployed instance
 # (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
@@ -82,7 +82,7 @@ incharge = Session("shaheen")
 
 # ---- 1. a patient in a bed --------------------------------------------------------
 print("\n1. an admitted patient with a folio")
-name = f"OT Test {stamp}"
+name = tag(f"OT Test {stamp}")
 desk.post("/registration/new", {
     "FullName": name, "Sex": "F", "AgeOrDob": "32", "Phone": f"01766{stamp}0",
     "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})
@@ -103,6 +103,7 @@ url, _ = desk.post("/ipd/admit", {
 admission_id = fixture(re.search(r"/ipd/folio/(\d+)", url), "the admission was refused")
 check(admission_id is not None, "the patient is admitted")
 admission_id = admission_id.group(1)
+record("admission", admission_id)
 
 # Spec 0029 F3: the surgery is the point of this thread, but the bed it borrows to hold the
 # folio is a fixture like any other and has to go back — including when a later step fails.
@@ -142,7 +143,10 @@ surgeon, anaesthetist = person_ids[0], person_ids[1]
 
 # A date of this run's own. The theatres are ours, but the *people* are shared with every
 # other run, so a surgeon-clash assertion is only meaningful on a day nobody else booked.
-run_date = date.today() + timedelta(days=1 + int(stamp) % 200)
+# Spread over years, not 200 days: the theatres are this run's own but the SURGEONS are
+# shared, so two runs landing on the same date make the "a free slot books fine" check fail
+# on a genuine clash with a stranger's booking. 200 possible dates collide quickly.
+run_date = date.today() + timedelta(days=1 + int(stamp) % 3000)
 run_date_text = run_date.strftime("%d %b %Y")
 
 
@@ -160,6 +164,7 @@ if not case_id:
     print(re.findall(r'class="alert bad">.*?<span>(.*?)</span>', html, re.S)[:1])
     sys.exit(1)
 case_id = case_id.group(1)
+record("ot_case", case_id)
 
 _, clash = schedule(theatre_ids[0], "09:30", surgeon)
 check("already booked" in clash, "an overlapping booking in the same theatre is refused")
@@ -168,7 +173,18 @@ check("OT-" in clash, "and the refusal names the clashing case")
 _, surgeon_clash = schedule(theatre_ids[1], "09:30", surgeon)
 check("already in" in surgeon_clash, "the same surgeon in another theatre is refused too")
 
-free_url, free = schedule(theatre_ids[1], "13:00", person_ids[2] if len(person_ids) > 2 else surgeon)
+# The theatres are this run's own, but the SURGEONS are shared with every other run and with
+# whatever a hospital already had booked. Finding a slot that genuinely clashes with nothing
+# is part of setting this case up, not part of what it asserts — so try a few rather than
+# assume the first is free and report a stranger's booking as a scheduling defect.
+free_url, free = "", ""
+for who in (person_ids[2:] or [surgeon]):
+    for when in ("13:00", "15:00", "17:00"):
+        free_url, free = schedule(theatre_ids[1], when, who)
+        if "/ot/case/" in free_url:
+            break
+    if "/ot/case/" in free_url:
+        break
 if "/ot/case/" not in free_url:
     print("     scheduling said:",
           (re.findall(r'class="alert bad">.*?<span>(.*?)</span>', free, re.S) or ["no message"])[0].strip()[:160])
@@ -198,7 +214,15 @@ check(len(offered) > 0, "the consumable picker offers stock")
 # The picker lists every active product, in stock or not, so taking offered[0] was a coin
 # toss that eventually landed on a product at zero and reported "the consumable is not
 # recorded" — a stock fact dressed up as an OT defect (spec 0029 F3). Ask the shelf instead.
-shelf = Session("parvin").get("/pharmacy/stock?Show=all")
+# Scoped to the MAIN outlet, because that is the only one an OT case draws from
+# (`Case.cshtml.cs` resolves `Kind == "main"`). Summing a brand across every outlet picked a
+# probe product with 439 units sitting in a probe outlet and none where the theatre could
+# reach it — stock that exists but not where it is needed reads exactly like an OT defect.
+pharmacist = Session("parvin")
+main_outlet = re.search(r'<option value="(\d+)"[^>]*>\s*Main Pharmacy',
+                        pharmacist.get("/pharmacy/stock"))
+shelf = pharmacist.get("/pharmacy/stock?Show=all"
+                       + (f"&OutletId={main_outlet.group(1)}" if main_outlet else ""))
 on_hand = {}
 for row in re.findall(r"<tr>(.*?)</tr>", shelf, re.S):
     cells = [re.sub(r"<[^>]+>", "", c).strip()
@@ -208,10 +232,14 @@ for row in re.findall(r"<tr>(.*?)</tr>", shelf, re.S):
     state = cells[6].split("\n")[0].strip()
     if state not in ("in stock", "near expiry"):
         continue
-    brand = cells[0].split()[0] if cells[0].split() else ""
-    on_hand[brand] = on_hand.get(brand, 0) + int(re.sub(r"\D", "", cells[3]) or 0)
+    # Keyed on the WHOLE product label, not its first word. The pharmacy probe creates
+    # products named "Probecillin <stamp>", so grouping by first token pooled a dozen
+    # distinct products into one "Probecillin" total of 438 units — and then attributed it
+    # to whichever one the picker happened to list, whose own batches were all disposed.
+    on_hand[cells[0]] = on_hand.get(cells[0], 0) + int(re.sub(r"\D", "", cells[3]) or 0)
 
-stocked = sorted(((on_hand.get(label.split()[0], 0), pid, label) for pid, label in offered),
+# The picker's label is "{Brand} {Strength} {Form}" — the same string the shelf prints.
+stocked = sorted(((on_hand.get(label.strip(), 0), pid, label) for pid, label in offered),
                  reverse=True)
 product = fixture(stocked[0] if stocked and stocked[0][0] >= 2 else None,
                   "no pharmacy product has two sellable units to consume",

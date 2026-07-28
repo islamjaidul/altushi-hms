@@ -8,7 +8,7 @@ dirty-database tolerant and safe to run repeatedly (including in the upgrade gat
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import fixture   # noqa: E402
+from _harness import fixture, record, tag   # noqa: E402
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -75,7 +75,7 @@ def open_counter(sess, kind="Front Desk", amount="5000"):
 
 def new_patient(prefix, age="50"):
     stamp = f"{int(time.time() * 1000) % 100000:05d}"
-    name = f"{prefix} {stamp}"
+    name = tag(f"{prefix} {stamp}")
     fd.post("/registration/new", {
         "FullName": name, "Sex": "M", "AgeOrDob": age, "Phone": f"012{stamp}{stamp[:3]}",
         "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})

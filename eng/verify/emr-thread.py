@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import fixture, on_exit, settle_and_discharge   # noqa: E402
+from _harness import fixture, on_exit, record, settle_and_discharge, tag   # noqa: E402
 
 # Overridable so the same thread can be run against a deployed instance
 # (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
@@ -76,7 +76,7 @@ doctor = Session("chowdhury")
 
 # ---- 1. a patient and a paid visit ------------------------------------------------
 print("\n1. the counter opens a visit")
-name = f"EMR Test {stamp}"
+name = tag(f"EMR Test {stamp}")
 desk.post("/registration/new", {
     "FullName": name, "Sex": "M", "AgeOrDob": "41", "Phone": f"01755{stamp}0",
     "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save",
@@ -184,9 +184,9 @@ check("Investigations raised on this visit" in consult_after and "Ordered" in co
 
 # ---- 5. the record ----------------------------------------------------------------
 print("\n5. the longitudinal record")
-record = doctor.get(f"/emr/history/{patient_id}")
-check("Acute pharyngitis" in record, "the visit is in the patient's record")
-check("Napa 500 mg" in record, "so are the medicines")
+history = doctor.get(f"/emr/history/{patient_id}")
+check("Acute pharyngitis" in history, "the visit is in the patient's record")
+check("Napa 500 mg" in history, "so are the medicines")
 
 # ---- 6. immutability and correction (§10) ------------------------------------------
 print("\n6. a signed prescription is corrected, never edited")
@@ -220,6 +220,7 @@ if bed:
 
     if admission_id:
         admission_id = admission_id.group(1)
+        record("admission", admission_id)
         # Spec 0029 F3: this thread used to admit and walk away. Four of the thirteen seeded
         # beds were held by EMR-thread patients admitted on previous days.
         on_exit(f"admission {admission_id} discharged and bed returned",

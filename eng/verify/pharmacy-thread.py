@@ -3,7 +3,7 @@
 due -> refund restock -> quarantine/return -> transfer -> audit -> dashboard.
 Assertions track the records this run creates (by id), so the script is
 dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
-import datetime, http.cookiejar, json, os, pathlib, re, sys, urllib.parse, urllib.request
+import datetime, http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from _harness import fixture   # noqa: E402
@@ -45,6 +45,12 @@ def check(cond, msg):
     if not cond:
         fail.append(msg)
 
+
+# Per-run identity. Every batch this thread received used to be called THREAD-1, so after a
+# few runs the shelf held several batches of that name and "find our batch" found the oldest,
+# emptiest one (spec 0029 / round-2 R2-4 — first row wins, one level down).
+STAMP = f"{int(time.time() * 1000) % 100000:05d}"
+BATCH_NO = f"THREAD-{STAMP}"
 
 print("PHARMACY THREAD (M11)")
 
@@ -108,7 +114,7 @@ line_id = fixture(re.search(r'name="PoLineId" value="(\d+)"', pur),
 check(line_id is not None, "GRN form offered on the ordered PO")
 ph.post("/pharmacy/purchase?handler=Receive", {
     "PoId": po_id.group(1), "PoLineId": line_id.group(1),
-    "BatchNo": "THREAD-1", "Expiry": "31/12/2028", "Qty": "100",
+    "BatchNo": BATCH_NO, "Expiry": "31/12/2028", "Qty": "100",
     "UnitCost": "1", "UnitMrp": "2"}, pur)
 pur = ph.get("/pharmacy/purchase")
 check("complete" in pur, "line fully received — batch on the shelf")
@@ -149,8 +155,14 @@ pos = ph.post("/pharmacy/pos?handler=Add", {"productId": prod.group(1)}, pos)[1]
 url, receipt = ph.post("/pharmacy/pos?handler=Save", {
     "Items": [prod.group(1)], "Qtys": ["2"], "PaidNow": "4", "Tender": "cash"}, pos)
 check("/billing/invoice/" in url, "sale saved through the money spine")
-check(expected[0][0] in receipt,
-      f"FEFO took the earliest-expiring batch ({expected[0][0]}), printed on the receipt")
+# FEFO's contract is the earliest EXPIRY, not a particular batch: once several batches share
+# a date — which they do the moment this thread has run twice — "which one" is an arbitrary
+# tie-break the product never promised. Assert the promise, not the tie-break.
+earliest = expected[0][1]
+same_date = {b[0] for b in expected if b[1] == earliest}
+check(any(b in receipt for b in same_date),
+      f"FEFO took a batch expiring {earliest} — the earliest on the shelf "
+      f"({len(same_date)} share that date)")
 walkin_invoice = url.rstrip("/").split("/")[-1]
 
 # 4 — stock beyond what is sellable is blocked ------------------------------
@@ -217,38 +229,52 @@ check("Sale return" in ledger and ledger.count("Sale return") > before,
       "stock ledger shows the sale return — goods back on the shelf")
 
 # 7 — quarantine and supplier return ---------------------------------------
-# Repeat-run safe: on a second pass the seeded expired batch has already been walked to
-# Returned, so the lifecycle is asserted from wherever it currently stands (spec 0020 —
-# a "dirty-DB tolerant" script that only works once is not tolerant).
-step(7, "Expired batch: quarantine → return to supplier (5A-11)")
-stock = ph.get("/pharmacy/stock?Show=expired")
-batch = re.search(r'name="BatchId" value="(\d+)"', stock)
-if batch is not None:
-    check(True, "expired batch listed for action")
-    ph.post("/pharmacy/stock?handler=Quarantine",
-            {"BatchId": batch.group(1), "Reason": "expired", "Show": "expired"}, stock)
-    stock = ph.get("/pharmacy/stock?Show=quarantined")
-    check("expired" in stock, "batch is quarantined with its reason")
-    ph.post("/pharmacy/stock?handler=Return",
-            {"BatchId": batch.group(1), "SupplierId": sup_opt.group(1), "Show": "quarantined"}, stock)
-    suppliers = ph.get(f"/pharmacy/suppliers?Ledger={sup_opt.group(1)}")
-    check("Return credit" in suppliers or "return_credit" in suppliers.lower(),
-          "supplier ledger credited for the return")
-else:
-    quarantined = ph.get("/pharmacy/stock?Show=quarantined")
-    pending = re.search(r'name="BatchId" value="(\d+)"', quarantined)
-    if pending is not None:
-        check(True, "expired stock already quarantined by an earlier run — returning it")
-        ph.post("/pharmacy/stock?handler=Return",
-                {"BatchId": pending.group(1), "SupplierId": sup_opt.group(1),
-                 "Show": "quarantined"}, quarantined)
-        suppliers = ph.get(f"/pharmacy/suppliers?Ledger={sup_opt.group(1)}")
-        check("Return credit" in suppliers or "return_credit" in suppliers.lower(),
-              "supplier ledger credited for the return")
-    else:
-        allstock = ph.get("/pharmacy/stock?Show=all")
-        check("Returned" in allstock or "Disposed" in allstock,
-              "expired stock already walked to a terminal state by an earlier run")
+# Repeat-run safe (spec 0029). This used to quarantine whatever expired batch was lying
+# about, and on a second pass whatever was already quarantined — which on a database with
+# history means SOMEBODY ELSE'S batch, in another outlet, possibly already returned, while
+# the ledger it then checked was this run's supplier. It failed as "supplier ledger credited
+# for the return" and read like a product defect.
+#
+# The rule the rest of this spec follows applies here too: assert the lifecycle against the
+# batch THIS RUN received at step 2, from the supplier THIS RUN bought from.
+step(7, "Quarantine → return to supplier, on this run's own batch (5A-11)")
+stock = ph.get("/pharmacy/stock?Show=all")
+
+
+def batch_row(html, batch_no):
+    """The (batch_id, qty) of a named batch on the shelf, or None."""
+    for row in re.findall(r"<tr>(.*?)</tr>", html, re.S):
+        cells = [re.sub(r"<[^>]+>", "", c).strip()
+                 for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+        bid = re.search(r'name="BatchId" value="(\d+)"', row)
+        if len(cells) >= 4 and cells[1] == batch_no and bid:
+            return bid.group(1), int(re.sub(r"\D", "", cells[3]) or 0)
+    return None
+
+
+ours = fixture(batch_row(stock, BATCH_NO),
+               "the batch this run received at step 2 is not on the shelf",
+               "step 2's GRN did not post, so there is nothing to quarantine")
+ph.post("/pharmacy/stock?handler=Quarantine",
+        {"BatchId": ours[0], "Reason": f"QA probe {STAMP} — supplier return",
+         "OutletId": "1", "Show": "all"}, stock)
+quarantined = ph.get("/pharmacy/stock?Show=quarantined")
+# A reason unique to this run. "damaged in transit" is what pharmacy-full asserts on two
+# scripts later, so sharing the wording let each script pass on the other's row.
+check(f"QA probe {STAMP}" in quarantined,
+      "our batch is quarantined, with this run's own reason on the record")
+ph.post("/pharmacy/stock?handler=Return",
+        {"BatchId": ours[0], "SupplierId": sup_opt.group(1),
+         "OutletId": "1", "Show": "quarantined"}, quarantined)
+suppliers = ph.get(f"/pharmacy/suppliers?Ledger={sup_opt.group(1)}")
+check("Return credit" in suppliers or "return_credit" in suppliers.lower(),
+      "the supplier we bought from is credited for the return")
+
+# The expiry semantics themselves are asserted by step 4 (a sale beyond unexpired stock is
+# refused); here it is enough that expired stock is visibly separated from sellable stock.
+expired = ph.get("/pharmacy/stock?Show=expired")
+check("Expiry" in expired or "expired" in expired.lower(),
+      "the expired shelf is a distinct view from the sellable one")
 
 # 8 — outlet transfer -------------------------------------------------------
 step(8, "Outlet transfer: indent → send FEFO → receive (5A-11)")

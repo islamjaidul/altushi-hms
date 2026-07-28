@@ -12,11 +12,15 @@ usage: python3 eng/verify/radiology-thread.py     (from the repo root, app on :5
 import http.cookiejar
 import json
 import os
+import pathlib
 import re
 import sys
 import time
 import urllib.parse
 import urllib.request
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from _harness import record, tag   # noqa: E402
 
 # Overridable so the same thread can be run against a deployed instance
 # (`BASE_URL=https://… python3 …`) after a release, the way the others are run locally.
@@ -67,7 +71,7 @@ radiologist = Session("farhana")
 
 # ---- 1. a paid imaging order ------------------------------------------------------
 print("\n1. an imaging order, paid at the counter")
-name = f"RAD Test {stamp}"
+name = tag(f"RAD Test {stamp}")
 desk.post("/registration/new", {
     "FullName": name, "Sex": "M", "AgeOrDob": "50", "Phone": f"01777{stamp}0",
     "PatientType": "general", "DuplicatesAcknowledged": "true", "action": "save"})

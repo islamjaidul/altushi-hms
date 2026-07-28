@@ -114,12 +114,36 @@ public sealed class FolioService(AuditWriter audit, BusinessDayCalendar business
     }
 
     /// <summary>Back out of a draft (e.g. late charges must still land) — draft → open.</summary>
-    public async Task ReopenDraftAsync(IpdDbContext ipd, long folioId, CancellationToken ct = default)
+    /// <summary>
+    /// A settlement draft back to open, so a late charge can still land before the bill issues.
+    ///
+    /// Audited at tier 2 (P24). The money is traceable without this — every charge line carries
+    /// whoever posted it, and the invoice is audited when the folio locks — but "this discharge
+    /// bill was assembled, withdrawn, and assembled again" was not recoverable from anywhere,
+    /// and that is the shape of a discount dispute at a counter. A confirmed settlement is not
+    /// reachable from here at all: once locked, the guard below refuses, and a post-lock charge
+    /// needs a Billing Supervisor's approval (see <see cref="EnsurePostableAsync"/>).
+    ///
+    /// Tier 1 with a before/after image, not tier 2: ADR-0011 puts money on tier 1, and this is
+    /// the exact inverse of <see cref="LockAtSettlementAsync"/> beside it. A pair of transitions
+    /// that undo each other belongs in one tier, or the timeline reads as if only half of it
+    /// happened.
+    /// </summary>
+    public async Task ReopenDraftAsync(
+        IpdDbContext ipd, KernelDbContext kernel, long folioId, long actorId, string actorName,
+        CancellationToken ct = default)
     {
         var affected = await ipd.Database.ExecuteSqlAsync($"""
             UPDATE ipd.folio SET state = 'open' WHERE id = {folioId} AND state = 'settlement_draft'
             """, ct);
         if (affected == 0) throw new IpdException("The folio is not in settlement draft.");
+
+        var folio = await GetAsync(ipd, folioId, ct);
+        audit.Append(kernel, folio.BranchId, actorId, actorName,
+            "ipd.settlement.reopen", "ipd.folio", folioId,
+            before: new { state = FolioState.SettlementDraft },
+            after: new { state = FolioState.Open });
+        await kernel.SaveChangesAsync(ct);
     }
 
     public async Task LockAtSettlementAsync(
