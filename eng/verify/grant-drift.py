@@ -101,14 +101,22 @@ def main() -> int:
         if missing:
             missing_total[role] = missing
 
-    check(not extra_total,
-          "no role holds a permission the code does not grant" +
-          ("" if not extra_total else " — DRIFT: " + "; ".join(
-              f"{r} has {', '.join(p)}" for r, p in extra_total.items())))
+    extra_text = "; ".join(f"{r} has {', '.join(p)}" for r, p in extra_total.items())
+    missing_text = "; ".join(f"{r} lacks {', '.join(p)}" for r, p in missing_total.items())
+
+    if args.fix and extra_total:
+        # Under --fix the pre-fix diff is the input to the repair, not a verdict on it: the
+        # only check that means anything is the re-read afterwards. Recording both would make
+        # every successful repair exit non-zero, which is how a working fix gets ignored.
+        print(f"      drift found — {extra_text}")
+    else:
+        check(not extra_total,
+              "no role holds a permission the code does not grant" +
+              ("" if not extra_total else " — DRIFT: " + extra_text))
+
     check(not missing_total,
           "every permission the code grants is present on the deployment" +
-          ("" if not missing_total else " — MISSING: " + "; ".join(
-              f"{r} lacks {', '.join(p)}" for r, p in missing_total.items())))
+          ("" if not missing_total else " — MISSING: " + missing_text))
 
     if extra_total and args.fix:
         print("\n  revoking the grants the code does not carry")
