@@ -13,15 +13,15 @@
 # This is a demonstration deployment. A real HRM-only customer gets compose.hrm.yml unmodified:
 # its own server, its own Postgres, its own backups. Deploy with:
 #
-#   docker compose -f compose.hrm.yml -f compose.hrm.vm.yml up -d app
+#   docker compose -f compose.hrm.yml -f compose.hrm.vm.yml up -d --no-deps app
 #
-# Only `app` — naming a service is what stops compose from starting the db it no longer needs.
+# **--no-deps is load-bearing.** Naming `app` is not enough: the base file's `depends_on` still
+# drags in its Postgres, and overriding `depends_on: []` here does not clear it (compose merges
+# the long-form mapping rather than replacing it). Without the flag you get a second, redundant
+# database container on a box that has no memory for one.
 
 services:
   app:
-    # Cleared so `up -d app` does not drag in the base file's Postgres. The ERP's db is already
-    # running and healthy; nothing here should try to manage its lifecycle.
-    depends_on: []
     mem_limit: 500m
     networks:
       - hms_default

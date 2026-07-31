@@ -71,7 +71,7 @@ ERP's Postgres server in a separate `hrm` database, behind the host-level Caddy 
 git -C /opt/altushi-hms pull --ff-only
 docker compose -f /opt/altushi-hms/deploy/compose.hrm.yml \
                -f /opt/altushi-hms/deploy/compose.hrm.vm.yml build app
-docker compose -f … -f … up -d app          # `app` only — see the overlay's comment
+docker compose -f … -f … up -d --no-deps app     # --no-deps is load-bearing, see the overlay
 ```
 
 One-time, before the first boot — the database and its extensions (roles are cluster-wide and
