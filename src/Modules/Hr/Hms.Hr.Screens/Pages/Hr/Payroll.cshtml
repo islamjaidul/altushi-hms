@@ -1,0 +1,130 @@
+@page "/hr/payroll"
+@model Hms.Hr.Ui.Pages.Hr.PayrollModel
+@{
+    ViewData["Title"] = "Payroll";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">Generate a payroll month</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="Generate" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:220px">
+                <span class="field-label">Payroll month</span>
+                <input class="input" name="Period" hms-date value="@Model.Period"
+                       placeholder="e.g. 01/03/2026" />
+            </label>
+            <button type="submit" class="btn btn-primary">
+                <span class="icon icon-sm" aria-hidden="true">payments</span> Generate
+            </button>
+        </form>
+        <p class="card-hint">
+            A run reads attendance for the month and resolves the pay structures and policies that
+            were effective then. Re-running a past month reproduces its original figures.
+        </p>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head"><h2>Runs</h2></div>
+    @if (Model.Runs.Count == 0)
+    {
+        <div class="empty-state">
+            No payroll has been run yet. Configure a payroll policy under
+            <a href="/hr/policies">Policies</a> first — a run refuses without one.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Month</th>
+                    <th>Kind</th>
+                    <th class="num">Staff</th>
+                    @if (Model.CanSeeMoney)
+                    {
+                        <th class="num">Net payable</th>
+                    }
+                    <th class="num">Exceptions</th>
+                    <th>State</th>
+                    <th>Next step</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Runs)
+                {
+                    var status = Ui.Status(r.State);
+                    <tr>
+                        <td class="tabular">@r.RunNo</td>
+                        <td class="tabular">@r.Period.ToString("MMMM yyyy")</td>
+                        <td>
+                            @r.Kind
+                            @if (r.ReversalOf is not null)
+                            {
+                                <span class="card-hint">reverses #@r.ReversalOf</span>
+                            }
+                        </td>
+                        <td class="num tabular">@r.EmployeeCount</td>
+                        @if (Model.CanSeeMoney)
+                        {
+                            <td class="num tabular">@Ui.Money(r.TotalNet)</td>
+                        }
+                        <td class="num tabular">@(r.ExceptionCount == 0 ? "—" : r.ExceptionCount.ToString())</td>
+                        <td><span class="pill @status.Css">@status.Word</span></td>
+                        <td>
+                            @if (r.State == PayrollRunState.Generated)
+                            {
+                                <form method="post" asp-page-handler="Review" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint">Mark reviewed</button>
+                                </form>
+                            }
+                            else if (r.State == PayrollRunState.ExceptionsReviewed)
+                            {
+                                <form method="post" asp-page-handler="RequestApproval" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint">Send for approval</button>
+                                </form>
+                            }
+                            else if (r.State == PayrollRunState.Approved)
+                            {
+                                <form method="post" asp-page-handler="Lock" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint">Lock</button>
+                                </form>
+                            }
+                            else if (r.State == PayrollRunState.Locked)
+                            {
+                                <form method="post" asp-page-handler="Post" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint">Post to accounts</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="card-hint">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

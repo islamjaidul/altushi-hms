@@ -1,0 +1,95 @@
+@page "/hr"
+@model Hms.Hr.Ui.Pages.Hr.IndexModel
+@{
+    ViewData["Title"] = "HR Dashboard";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+<div class="tile-row">
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">On the payroll</span>
+            <span class="icon" aria-hidden="true">groups</span>
+        </div>
+        <div class="tile-value">@Model.Headcount</div>
+        <div class="tile-sub">active employees</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">On leave today</span>
+            <span class="icon" aria-hidden="true">event_busy</span>
+        </div>
+        <div class="tile-value">@Model.OnLeaveToday</div>
+        <div class="tile-sub">approved leave in effect</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Absent today</span>
+            <span class="icon" aria-hidden="true">person_off</span>
+        </div>
+        <div class="tile-value text-warning">@Model.AbsentToday</div>
+        <div class="tile-sub">no punch, no leave</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Attendance to fix</span>
+            <span class="icon" aria-hidden="true">fact_check</span>
+        </div>
+        <div class="tile-value text-danger">@Model.UnresolvedExceptions</div>
+        <div class="tile-sub">this month — payroll waits on these</div>
+    </div>
+    <div class="tile">
+        <div class="tile-head">
+            <span class="tile-label">Leave awaiting a decision</span>
+            <span class="icon" aria-hidden="true">pending_actions</span>
+        </div>
+        <div class="tile-value">@Model.PendingLeave</div>
+        <div class="tile-sub">applied or recommended</div>
+    </div>
+</div>
+
+@if (Model.OpenPayrollPeriod is not null)
+{
+    <div class="alert info">
+        <span class="icon" aria-hidden="true">payments</span>
+        <span>
+            Payroll for <b>@Model.OpenPayrollPeriod</b> is <b>@Model.OpenPayrollState</b>.
+            <a href="/hr/payroll">Open it</a>
+        </span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        <h2>Headcount by unit</h2>
+    </div>
+    @if (Model.ByUnit.Count == 0)
+    {
+        <div class="empty-state">
+            No employees are assigned to a unit yet. Add employees under
+            <a href="/hr/employees">Employees</a>.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Unit</th>
+                    <th class="num">Headcount</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var row in Model.ByUnit)
+                {
+                    <tr>
+                        <td>@row.OrgUnit</td>
+                        <td class="num tabular">@row.Headcount</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

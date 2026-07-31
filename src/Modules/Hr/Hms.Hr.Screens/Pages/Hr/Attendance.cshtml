@@ -1,0 +1,102 @@
+@page "/hr/attendance"
+@model Hms.Hr.Ui.Pages.Hr.AttendanceModel
+@{
+    ViewData["Title"] = "Attendance";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        <h2>
+            @Ui.DateLong(Model.Date)
+            <span class="card-hint">@Model.ExceptionCount need a decision</span>
+        </h2>
+    </div>
+
+    <form method="get" class="filter-row">
+        <label class="field" style="width:200px">
+            <span class="field-label">Date</span>
+            <input class="input" name="OnDate" hms-date value="@Model.Date.ToString("dd MMM yyyy")" />
+        </label>
+        <label class="check">
+            <input type="checkbox" name="ShowAll" value="true" checked="@Model.ShowAll" />
+            <span>Show everyone, not just exceptions</span>
+        </label>
+        <button type="submit" class="btn">Show</button>
+    </form>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty-state">
+            @(Model.ShowAll
+                ? "No attendance has been derived for this date yet — import the day's punches first."
+                : "Nothing needs a decision on this date. Every punch paired cleanly.")
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>In</th>
+                    <th>Out</th>
+                    <th class="num">Worked</th>
+                    <th class="num">Late</th>
+                    <th class="num">OT</th>
+                    <th>Correct to</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var status = Ui.Status(r.Status);
+                    <tr>
+                        <td class="tabular">@r.Code</td>
+                        <td>@r.Name</td>
+                        <td>
+                            <span class="pill @status.Css">@status.Word</span>
+                            @if (r.Corrected)
+                            {
+                                <span class="card-hint">corrected</span>
+                            }
+                        </td>
+                        <td class="tabular">@(r.FirstIn is null ? "—" : Ui.Time(r.FirstIn.Value))</td>
+                        <td class="tabular">@(r.LastOut is null ? "—" : Ui.Time(r.LastOut.Value))</td>
+                        <td class="num tabular">@(r.WorkedMinutes / 60)h @(r.WorkedMinutes % 60)m</td>
+                        <td class="num tabular">@(r.LateMinutes == 0 ? "—" : r.LateMinutes + "m")</td>
+                        <td class="num tabular">@(r.OvertimeMinutes == 0 ? "—" : r.OvertimeMinutes + "m")</td>
+                        <td>
+                            <form method="post" asp-page-handler="Correct" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="attendanceDayId" value="@r.Id" />
+                                <select class="input input-sm" name="toStatus" aria-label="New status">
+                                    <option value="@AttendanceStatus.Present">Present</option>
+                                    <option value="@AttendanceStatus.Absent">Absent</option>
+                                    <option value="@AttendanceStatus.OnLeave">On leave</option>
+                                    <option value="@AttendanceStatus.WeeklyOff">Weekly off</option>
+                                    <option value="@AttendanceStatus.Errand">Official errand</option>
+                                </select>
+                                <input class="input input-sm" name="reason" required
+                                       placeholder="Reason (required)" autocomplete="off" />
+                                <button type="submit" class="btn-tint">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

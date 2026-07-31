@@ -1,0 +1,80 @@
+@page "/hr/employees/new"
+@model Hms.Hr.Ui.Pages.Hr.EmployeeNewModel
+@{
+    ViewData["Title"] = "Add employee";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.MastersMissing)
+{
+    <div class="alert info">
+        <span class="icon icon-sm" aria-hidden="true">rule</span>
+        <span>
+            Set up units, designations and grades under <a href="/hr/policies">Policies</a> first —
+            an employee cannot be placed without them.
+        </span>
+    </div>
+}
+
+<form method="post" class="stack">
+    @Html.AntiForgeryToken()
+    <div class="card">
+        <div class="card-head">Who they are</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Full name</span>
+                <input class="input" name="FullName" value="@Model.FullName"
+                       autocomplete="off" autofocus />
+            </label>
+            <label class="field">
+                <span class="field-label">Phone</span>
+                <input class="input" name="Phone" value="@Model.Phone" autocomplete="off" />
+            </label>
+            <label class="field">
+                <span class="field-label">National ID</span>
+                <input class="input" name="NationalId" value="@Model.NationalId" autocomplete="off" />
+            </label>
+            <label class="field">
+                <span class="field-label">Date of birth</span>
+                <input class="input" name="DateOfBirth" hms-date value="@Model.DateOfBirth" />
+            </label>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">Where they sit</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Joining date</span>
+                <input class="input" name="JoinedOn" hms-date value="@Model.JoinedOn" />
+            </label>
+            <label class="field">
+                <span class="field-label">Unit</span>
+                <select class="input" name="OrgUnitId" asp-items="Model.Units"></select>
+            </label>
+            <label class="field">
+                <span class="field-label">Designation</span>
+                <select class="input" name="DesignationId" asp-items="Model.Designations"></select>
+            </label>
+            <label class="field">
+                <span class="field-label">Grade</span>
+                <select class="input" name="GradeId" asp-items="Model.Grades"></select>
+            </label>
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <button type="submit" class="btn btn-primary" disabled="@Model.MastersMissing">
+            <span class="icon icon-sm" aria-hidden="true">person_add</span> Add employee
+        </button>
+        <a class="btn" href="/hr/employees">Cancel</a>
+    </div>
+</form>

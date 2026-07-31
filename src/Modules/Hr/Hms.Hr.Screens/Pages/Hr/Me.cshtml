@@ -1,0 +1,106 @@
+@page "/hr/me"
+@model Hms.Hr.Ui.Pages.Hr.MeModel
+@{
+    ViewData["Title"] = "My leave";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.Me is null)
+{
+    <div class="alert info">
+        <span class="icon icon-sm" aria-hidden="true">person</span>
+        <span>
+            Your login is not linked to an employee record yet, so there is nothing to show.
+            Ask HR to link it — it takes them a moment.
+        </span>
+    </div>
+}
+else
+{
+    <div class="tile-row">
+        @foreach (var b in Model.Balances)
+        {
+            <div class="tile">
+                <div class="tile-head">
+                    <span class="tile-label">@b.Type</span>
+                    <span class="icon" aria-hidden="true">event_available</span>
+                </div>
+                <div class="tile-value">@((b.AvailableBp / 10000m).ToString("0.##"))</div>
+                <div class="tile-sub">day(s) left this year</div>
+            </div>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-head">Apply for leave</div>
+        <div class="card-body">
+            <form method="post" asp-page-handler="Apply" class="filter-row">
+                @Html.AntiForgeryToken()
+                <label class="field" style="width:200px">
+                    <span class="field-label">Type</span>
+                    <select class="input" name="LeaveTypeId" asp-items="Model.LeaveTypes"></select>
+                </label>
+                <label class="field" style="width:180px">
+                    <span class="field-label">From</span>
+                    <input class="input" name="FromDate" hms-date value="@Model.FromDate" />
+                </label>
+                <label class="field" style="width:180px">
+                    <span class="field-label">To</span>
+                    <input class="input" name="ToDate" hms-date value="@Model.ToDate" />
+                </label>
+                <label class="check">
+                    <input type="checkbox" name="HalfDay" value="true" checked="@Model.HalfDay" />
+                    <span>Half day</span>
+                </label>
+                <label class="field" style="flex:1;min-width:220px">
+                    <span class="field-label">Reason</span>
+                    <input class="input" name="Reason" value="@Model.Reason" autocomplete="off" />
+                </label>
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head"><h2>My applications</h2></div>
+        @if (Model.Applications.Count == 0)
+        {
+            <div class="empty-state">You have not applied for any leave yet.</div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>No.</th><th>Type</th><th>From</th><th>To</th>
+                        <th class="num">Days</th><th>State</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var a in Model.Applications)
+                    {
+                        var status = Ui.Status(a.State);
+                        <tr>
+                            <td class="tabular">@a.No</td>
+                            <td>@a.Type</td>
+                            <td class="tabular">@Ui.DateLong(a.From)</td>
+                            <td class="tabular">@Ui.DateLong(a.To)</td>
+                            <td class="num tabular">@((a.DaysBp / 10000m).ToString("0.##"))</td>
+                            <td><span class="pill @status.Css">@status.Word</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}

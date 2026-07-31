@@ -1,0 +1,70 @@
+@page "/hr/employees"
+@model Hms.Hr.Ui.Pages.Hr.EmployeesModel
+@{
+    ViewData["Title"] = "Employees";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        <h2>Employees <span class="card-hint">@Model.Total on record</span></h2>
+        @if (Model.Can(HrPerm.Claim.EmployeeManage))
+        {
+            <a class="btn btn-primary" href="/hr/employees/new">
+                <span class="icon icon-sm" aria-hidden="true">person_add</span> Add employee
+            </a>
+        }
+    </div>
+
+    <form method="get" class="filter-row">
+        <label class="sr-only" for="q">Search</label>
+        <input id="q" class="input" name="Q" value="@Model.Q" autocomplete="off"
+               placeholder="Name, employee code or phone…" />
+        <label class="check">
+            <input type="checkbox" name="IncludeLeavers" value="true"
+                   checked="@Model.IncludeLeavers" />
+            <span>Include people who have left</span>
+        </label>
+        <button type="submit" class="btn">Search</button>
+    </form>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty-state">
+            No employees match. Add the first one to start attendance, leave and payroll.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Unit</th>
+                    <th>Designation</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                    <th>Phone</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var status = Ui.Status(r.Status);
+                    <tr>
+                        <td class="tabular">@r.Code</td>
+                        <td><a href="/hr/employees/@r.Id">@r.Name</a></td>
+                        <td>@(r.Unit ?? "—")</td>
+                        <td>@(r.Designation ?? "—")</td>
+                        <td class="tabular">@Ui.DateLong(r.JoinedOn)</td>
+                        <td><span class="pill @status.Css">@status.Word</span></td>
+                        <td class="tabular">@(r.Phone ?? "—")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

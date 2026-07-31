@@ -1,0 +1,114 @@
+@page "/hr/policies"
+@model Hms.Hr.Ui.Pages.Hr.PoliciesModel
+@{
+    ViewData["Title"] = "Policies";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (!Model.PayrollPossible)
+{
+    <div class="alert info">
+        <span class="icon icon-sm" aria-hidden="true">rule</span>
+        <span>
+            Payroll cannot run yet. Every rate below is <b>yours to set</b> — this product ships no
+            Bangladeshi tax slabs, provident-fund rates or statutory leave entitlements, because it
+            will not assert a regulation it cannot verify. Fill in what applies to your organisation.
+        </span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">Payroll policy</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SavePayrollPolicy" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:260px">
+                <span class="field-label">Prorate a part month over</span>
+                <select class="input" name="DayCount">
+                    <option value="@DayCountConvention.CalendarDays">The month's calendar days</option>
+                    <option value="@DayCountConvention.Fixed30">A fixed 30 days</option>
+                    <option value="@DayCountConvention.WorkingDays">Working days only</option>
+                </select>
+            </label>
+            <label class="field" style="width:200px">
+                <span class="field-label">Minimum net pay (৳)</span>
+                <input class="input num" name="MinimumNetPay" inputmode="numeric"
+                       value="@Model.MinimumNetPay" />
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+        <p class="card-hint">
+            Deductions never push a payslip below the minimum — the shortfall carries on the loan
+            ledger instead of becoming a negative payslip. Saving starts a new effective-dated policy
+            today; the previous one is closed, not overwritten, so past runs still reproduce.
+        </p>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head"><h2>Organisation structure</h2></div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th>Item</th><th class="num">Configured</th><th>What it is for</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var i in Model.Structure)
+            {
+                <tr>
+                    <td>@i.Name</td>
+                    <td class="num tabular">
+                        @if (i.Count == 0)
+                        {
+                            <span class="pill warn">none</span>
+                        }
+                        else
+                        {
+                            <span>@i.Count</span>
+                        }
+                    </td>
+                    <td class="card-hint">@i.Why</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head"><h2>Pay rules</h2></div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr><th>Rule</th><th class="num">Configured</th><th>What it is for</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var i in Model.PayRules)
+            {
+                <tr>
+                    <td>@i.Name</td>
+                    <td class="num tabular">
+                        @if (i.Count == 0)
+                        {
+                            <span class="pill warn">none</span>
+                        }
+                        else
+                        {
+                            <span>@i.Count</span>
+                        }
+                    </td>
+                    <td class="card-hint">@i.Why</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

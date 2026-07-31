@@ -1,0 +1,97 @@
+@page "/hr/leave"
+@model Hms.Hr.Ui.Pages.Hr.LeaveModel
+@{
+    ViewData["Title"] = "Leave";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        <h2>Leave <span class="card-hint">@Model.PendingCount awaiting a decision</span></h2>
+    </div>
+
+    <form method="get" class="filter-row">
+        <label class="check">
+            <input type="checkbox" name="ShowDecided" value="true" checked="@Model.ShowDecided" />
+            <span>Include decided applications</span>
+        </label>
+        <button type="submit" class="btn">Show</button>
+    </form>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty-state">Nothing is waiting. Applications appear here as staff submit them.</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>No.</th>
+                    <th>Employee</th>
+                    <th>Unit</th>
+                    <th>Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th class="num">Days</th>
+                    <th>Reason</th>
+                    <th>State</th>
+                    <th>Decision</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    var status = Ui.Status(r.State);
+                    <tr>
+                        <td class="tabular">@r.ApplicationNo</td>
+                        <td>@r.EmployeeName <span class="card-hint">@r.EmployeeCode</span></td>
+                        <td>@(r.Unit ?? "—")</td>
+                        <td>@r.LeaveType</td>
+                        <td class="tabular">@Ui.DateLong(r.From)</td>
+                        <td class="tabular">@Ui.DateLong(r.To)</td>
+                        <td class="num tabular">@((r.DaysBp / 10000m).ToString("0.##"))</td>
+                        <td>@r.Reason</td>
+                        <td><span class="pill @status.Css">@status.Word</span></td>
+                        <td>
+                            @if (r.State == LeaveApplicationState.Applied && Model.Can(HrPerm.Claim.LeaveRecommend))
+                            {
+                                <form method="post" asp-page-handler="Recommend" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint">Recommend</button>
+                                </form>
+                            }
+                            else if (r.State is LeaveApplicationState.Applied or LeaveApplicationState.Recommended
+                                     && Model.Can(HrPerm.Claim.LeaveApprove))
+                            {
+                                <form method="post" asp-page-handler="Decide" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input class="input input-sm" name="note" placeholder="Note"
+                                           autocomplete="off" />
+                                    <button type="submit" class="btn-tint" name="approve" value="true">Approve</button>
+                                    <button type="submit" class="btn-tint" name="approve" value="false">Reject</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="card-hint">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

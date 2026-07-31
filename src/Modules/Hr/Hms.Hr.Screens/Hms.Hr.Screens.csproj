@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Hms.Kernel\Hms.Kernel.csproj" />
+    <ProjectReference Include="..\..\..\Hms.Shell\Hms.Shell.csproj" />
+    <ProjectReference Include="..\Hms.Hr\Hms.Hr.csproj" />
+    <ProjectReference Include="..\Hms.Hr.Contracts\Hms.Hr.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>
