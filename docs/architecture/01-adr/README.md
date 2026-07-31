@@ -34,6 +34,9 @@ Status values: `Proposed` · `Accepted` · `Superseded by NNNN`. Superseded ADRs
 | [0022](0022-upgrade-path-testing.md) | Upgrade-path testing: boot against previous release's data in CI | Accepted | review debt #1 | 2026-07-27 |
 | [0023](0023-grant-drift-report-not-reconcile.md) | Grant drift is reported, not silently reconciled | Accepted | QA F1, LC-XCUT-14 | 2026-07-28 |
 | [0024](0024-concurrency-load-target.md) | What "forty operators at once" must mean on 2 vCPU / 3 GB | **Proposed** | LC-XCUT-11, §8 N1 | 2026-07-28 |
+| [0025](0025-two-host-product-line.md) | Two hosts, one codebase: HR & Payroll as a separately deployable product | Accepted | extends 0003/0005/0016; spec 0034 | 2026-07-31 |
+| [0026](0026-entitlement-enforcement-completion.md) | Entitlement enforcement completion: choke point 2 and the expiry ladder | Accepted | completes 0016 (Q12); answers P6 | 2026-07-31 |
+| [0027](0027-payroll-policy-as-configuration.md) | Payroll policy is effective-dated configuration, never code | Accepted | §5 M16, §3.4, rules 3 & 5 | 2026-07-31 |
 
 ## Required coverage
 

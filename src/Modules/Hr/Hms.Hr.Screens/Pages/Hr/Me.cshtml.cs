@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Hr.Ui.Pages.Hr;
+namespace Hms.Hr.Screens.Pages.Hr;
 
 public sealed record MyLeaveRow(string No, string Type, DateOnly From, DateOnly To, int DaysBp, string State);
 public sealed record MyBalanceRow(string Type, int AvailableBp);

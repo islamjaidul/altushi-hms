@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hms.Kernel\Hms.Kernel.csproj" />
+    <ProjectReference Include="..\Hms.Shell\Hms.Shell.csproj" />
     <ProjectReference Include="..\Modules\Registration\Hms.Registration\Hms.Registration.csproj" />
     <ProjectReference Include="..\Modules\Appointments\Hms.Appointments\Hms.Appointments.csproj" />
     <ProjectReference Include="..\Modules\Billing\Hms.Billing\Hms.Billing.csproj" />
@@ -15,6 +16,8 @@
     <ProjectReference Include="..\Modules\Ot\Hms.Ot\Hms.Ot.csproj" />
     <ProjectReference Include="..\Modules\Radiology\Hms.Radiology\Hms.Radiology.csproj" />
     <ProjectReference Include="..\Modules\Ipd\Hms.Ipd\Hms.Ipd.csproj" />
+    <ProjectReference Include="..\Modules\Hr\Hms.Hr\Hms.Hr.csproj" />
+    <ProjectReference Include="..\Modules\Hr\Hms.Hr.Screens\Hms.Hr.Screens.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +32,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The shell (layout, Ui formatters, HmsPageModel, OrgIdentity) moved to Hms.Shell so a second
+         host can render into it (ADR-0025). Importing it globally keeps the 76 existing page models
+         unchanged. -->
+    <Using Include="Hms.Shell" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- vendor entitlement public key must ship in the published image (ADR-0016) -->

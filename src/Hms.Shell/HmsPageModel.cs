@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Hms.Kernel.Auth;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace Hms.Web.Pages;
+namespace Hms.Shell;
 
 /// <summary>
 /// What every screen needs from the signed-in principal. Attribution is not optional —
@@ -10,8 +10,11 @@ namespace Hms.Web.Pages;
 /// </summary>
 public abstract class HmsPageModel : PageModel
 {
-    /// <summary>MVP is single-branch; multi-branch resolution lands with ADR-0007.</summary>
-    public const long BranchId = 1;
+    /// <summary>
+    /// The branch this request acts on. The ERP SKU is single-branch and answers 1 (ADR-0007);
+    /// the HRM SKU resolves it per user (P28), so this is virtual rather than a constant.
+    /// </summary>
+    public virtual long BranchId => 1;
 
     public long ActorId => long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
 

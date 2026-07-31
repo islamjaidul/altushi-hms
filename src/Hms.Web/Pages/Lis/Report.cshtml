@@ -30,7 +30,7 @@
 
     <div class="sheet">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead(Model.FullyVerified ? "Investigation Report" : "Provisional Report",
+            new Letterhead(Model.FullyVerified ? "Investigation Report" : "Provisional Report",
                 Model.OrderNo, Model.CreatedAt))
 
         <div class="sheet-info">
@@ -57,7 +57,7 @@
                     @part.TestName
                     @if (part.Version > 1)
                     {
-                        <text> — amended, version @part.Version</text>
+                        <span> — amended, version @part.Version</span>
                     }
                 </div>
 
@@ -124,7 +124,7 @@
                     @(signer.SignerDegrees ?? "—") — e-signed<br />
                     @if (signer.SignerBmdc is { } bmdc)
                     {
-                        <text>BMDC @bmdc<br /></text>
+                        <span>BMDC @bmdc<br /></span>
                     }
                     <span style="font-size:0.5625rem;color:var(--muted-3)">
                         Signature ref @(signer.EsignHash?[..12] ?? "—")

@@ -52,7 +52,7 @@
                         @sel.Uhid · @sel.OrderNo · promised @Ui.DateTimeShort(sel.PromisedAt)
                         @if (sel.Samples.Count > 0)
                         {
-                            <text> · tube @string.Join(", ", sel.Samples.Select(x => x.Barcode))</text>
+                            <span> · tube @string.Join(", ", sel.Samples.Select(x => x.Barcode))</span>
                         }
                     </div>
                 </span>

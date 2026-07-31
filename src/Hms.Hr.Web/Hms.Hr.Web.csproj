@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Assembly name differs from the ERP host so both images can be told apart at a glance. -->
+    <AssemblyName>Hms.Hr.Web</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The HRM SKU references the kernel, the shell and HR. Nothing clinical is in this product,
+         which is the point of ADR-0025: what the customer bought is what they receive. -->
+    <ProjectReference Include="..\Hms.Kernel\Hms.Kernel.csproj" />
+    <ProjectReference Include="..\Hms.Shell\Hms.Shell.csproj" />
+    <ProjectReference Include="..\Modules\Hr\Hms.Hr\Hms.Hr.csproj" />
+    <ProjectReference Include="..\Modules\Hr\Hms.Hr.Screens\Hms.Hr.Screens.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Hms.Shell" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- vendor entitlement public key must ship in the published image (ADR-0016) -->
+    <Content Include="vendor-public-key.pem" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

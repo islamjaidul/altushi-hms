@@ -59,13 +59,27 @@ public static class DevSeed
              "admin.masters.manage", "notifications.read"],
         ["MD"] =
             ["dashboard.read", "admin.approvals.decide", "admin.audit.read", "pharmacy.read",
-             "ipd.read"],
+             "ipd.read",
+             // §12: the MD approves the payroll lock and sees staff numbers, but does not run payroll.
+             "hr.read", "hr.salary.read", "hr.payroll.approve"],
         // §12 Pharmacist row: C on pharmacy, R on patient reg; counter open/close is the money
         // custody the pharmacy POS rides (spec 0016 / ADR-0021 #5).
         ["Pharmacist"] =
             ["registration.read", "pharmacy.read", "pharmacy.sale.create", "pharmacy.purchase.manage",
              "pharmacy.stock.manage", "billing.session.open", "billing.session.close",
-             "billing.receipt.create"],
+             "billing.receipt.create",
+             // §12 gives every clinical role `U (own leave)`.
+             "hr.leave.apply"],
+        // §12 HR Officer row (persona P12, Farid). Salary is a separate grant from `hr.read` on
+        // purpose: a department head browses the directory and approves leave without ever seeing
+        // what anyone earns.
+        ["HR Officer"] =
+            ["hr.read", "hr.salary.read", "hr.employee.manage", "hr.attendance.review",
+             "hr.roster.manage", "hr.leave.apply", "hr.leave.approve", "hr.payroll.run",
+             "hr.policy.manage"],
+        ["Department Head"] =
+            ["hr.read", "hr.attendance.review", "hr.roster.manage", "hr.leave.apply",
+             "hr.leave.recommend"],
     };
 
     private static readonly (string User, string Display, string Role)[] Cast =
@@ -82,6 +96,8 @@ public static class DevSeed
         ("chowdhury", "Dr. A. K. Chowdhury", "OPD Consultant"),
         ("shaheen", "Shaheen Akhter", "OT In-charge"),
         ("moinul", "Moinul Haque", "Radiology Technician"),
+        ("farid", "Farid Ahmed", "HR Officer"),                 // persona P12
+        ("shirin", "Shirin Begum", "Department Head"),
     ];
 
     public const string DevPassword = "Demo#1234";   // on the demo card (07 §1)
@@ -302,6 +318,19 @@ public static class DevSeed
                 new ApprovalPolicy { Type = "patient-block", Tier = 2, Role = "MD" },
                 new ApprovalPolicy { Type = "patient-release", Tier = 1, Role = "Billing Supervisor" },
                 new ApprovalPolicy { Type = "patient-release", Tier = 2, Role = "MD" });
+            await kdb.SaveChangesAsync();
+        }
+
+        // M16's two ⚿ chains (§11). Both are pure data — the kernel engine needs no HR-specific
+        // code to route, escalate or delegate them, which is why §12's "Payroll run lock:
+        // HR Officer → Accounts Manager / MD" costs two rows rather than a workflow.
+        if (!await kdb.ApprovalPolicies.AnyAsync(p => p.Type == "payroll-lock"))
+        {
+            kdb.ApprovalPolicies.AddRange(
+                new ApprovalPolicy { Type = "leave-approval", Tier = 1, Role = "HR Officer" },
+                new ApprovalPolicy { Type = "leave-approval", Tier = 2, Role = "Department Head" },
+                new ApprovalPolicy { Type = "payroll-lock", Tier = 1, Role = "Billing Supervisor" },
+                new ApprovalPolicy { Type = "payroll-lock", Tier = 2, Role = "MD" });
             await kdb.SaveChangesAsync();
         }
 

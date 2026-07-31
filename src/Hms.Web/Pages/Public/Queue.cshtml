@@ -10,8 +10,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta http-equiv="refresh" content="15" />
     <title>Today's Doctors</title>
-    <link rel="stylesheet" href="/css/tokens.css" />
-    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" />
     <style>
         /* Lobby TV: big type, high contrast, nothing interactive. */
         body { padding: 24px; }
@@ -37,7 +37,7 @@
                         <td>
                             @if (row.InChamberSerial is int serial)
                             {
-                                <span class="tv-serial">#@serial</span> <span>@row.InChamberName</span>
+                                <span><span class="tv-serial">#@serial</span> <span>@row.InChamberName</span></span>
                             }
                             else
                             {

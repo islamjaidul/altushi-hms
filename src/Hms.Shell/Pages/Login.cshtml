@@ -1,6 +1,6 @@
 @page "/login"
-@model Hms.Web.Pages.LoginModel
-@inject Hms.Web.HospitalIdentity Hospital
+@model Hms.Shell.Pages.LoginModel
+@inject OrgIdentity Hospital
 @{
     ViewData["Title"] = "Sign in";
     Layout = null;
@@ -11,8 +11,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sign in — @Hospital.Name</title>
-    <link rel="stylesheet" href="/css/tokens.css" />
-    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" />
 </head>
 <body>
 <div class="login-wrap">

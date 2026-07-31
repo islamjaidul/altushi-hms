@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Hr.Ui.Pages.Hr;
+namespace Hms.Hr.Screens.Pages.Hr;
 
 public sealed record RunRow(
     long Id, string RunNo, DateOnly Period, string Kind, string State,
@@ -66,7 +66,7 @@ public class PayrollModel(IHrTx tx, PayrollService payroll, IPayrollPosting post
     /// <summary>§12 puts the lock approval with Accounts Manager / MD, never the requesting officer.</summary>
     public async Task<IActionResult> OnPostApproveAsync(long id)
     {
-        if (!Can(HrPerm.Claim.PayrollApprove))
+        if (!Can("hr.payroll.approve"))
             return Forbid();
 
         return await ActAsync(async s =>
@@ -90,7 +90,7 @@ public class PayrollModel(IHrTx tx, PayrollService payroll, IPayrollPosting post
 
     public async Task<IActionResult> OnPostReverseAsync(long id, string reason)
     {
-        if (!Can(HrPerm.Claim.PayrollApprove))
+        if (!Can("hr.payroll.approve"))
             return Forbid();
 
         return await ActAsync(async s =>
@@ -119,7 +119,7 @@ public class PayrollModel(IHrTx tx, PayrollService payroll, IPayrollPosting post
 
     private async Task LoadAsync()
     {
-        CanSeeMoney = Can(HrPerm.Claim.SalaryRead);
+        CanSeeMoney = Can("hr.salary.read");
 
         await tx.RunAsync(async s =>
         {

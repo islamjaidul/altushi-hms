@@ -13,7 +13,7 @@ namespace Hms.Web.Pages.Registration;
 [Authorize(Policy = Perm.RegistrationCreate)]
 public class NewModel(
     HmsTx tx, RegistrationService registration, SmsQueue sms,
-    HospitalIdentity hospital) : HmsPageModel
+    OrgIdentity hospital) : HmsPageModel
 {
     [BindProperty] public string FullName { get; set; } = "";
     [BindProperty] public string Sex { get; set; } = "M";

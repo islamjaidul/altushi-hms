@@ -1,0 +1,110 @@
+# hrm — the standalone HR & Payroll SKU on a single VM (ADR-0025).
+#
+# Deliberately the same shape as compose.yml: one Caddy, one app, one Postgres, one backup loop. A
+# customer who later buys the full ERP swaps the image and keeps the database — the ERP host adopts
+# an HRM database and migrates the remaining schemas (HmsPlatform.ClaimDatabaseAsync). The reverse is
+# refused rather than half-served.
+#
+# Memory limits are lower than the ERP's because the product is smaller: three schemas, one module.
+name: hrm
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    mem_limit: 64m
+    restart: unless-stopped
+    ports:
+      - "${HRM_HTTP_PORT:-8090}:80"
+      - "${HRM_HTTPS_PORT:-8453}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/hrm.Dockerfile
+    image: hrm-app:dev
+    mem_limit: 600m
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      ASPNETCORE_ENVIRONMENT: "${HRM_ENV:-Production}"
+      DOTNET_gcServer: "0"
+      DOTNET_GCHeapHardLimit: "0x1C200000"   # 450 MiB, below the 600 MiB container limit
+      ConnectionStrings__Hms: "Host=db;Database=hrm;Username=hms_migrator;Password=${HMS_DB_MIGRATOR_PASSWORD:-dev-only-migrator}"
+      Entitlement__Path: /app/entitlements/hrm-only.json
+      # P27: this SKU is sold to employers that are not hospitals.
+      Org__Name: "${HRM_ORG_NAME:-Your Organisation}"
+      Org__Tagline: "${HRM_ORG_TAGLINE:-HR & Payroll}"
+      Seed__DevUsers: "${HRM_SEED:-false}"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    volumes:
+      - docs_archive:/var/hms/docs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17.5-alpine
+    mem_limit: 400m
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hrm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${HMS_DB_SUPER_PASSWORD:-dev-only-super}"
+      HMS_DB_APP_PASSWORD: "${HMS_DB_APP_PASSWORD:-dev-only-app}"
+      HMS_DB_MIGRATOR_PASSWORD: "${HMS_DB_MIGRATOR_PASSWORD:-dev-only-migrator}"
+    command:
+      - postgres
+      - -c
+      - shared_buffers=192MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - max_connections=40
+      - -c
+      - synchronous_commit=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hrm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - wal_archive:/var/hms/wal_archive
+      # Same init script as the ERP: btree_gist is what makes the effective-dated exclusion
+      # constraints possible, and the audit table's no-UPDATE/DELETE grants apply here too (G11).
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+
+  backup:
+    image: postgres:17.5-alpine
+    mem_limit: 128m
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/opt/hms/backup-loop.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: "${HMS_DB_SUPER_PASSWORD:-dev-only-super}"
+      PGDATABASE: hrm
+    volumes:
+      - backups:/var/hms/backups
+      - ./backup-loop.sh:/opt/hms/backup-loop.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  wal_archive:
+  backups:
+  docs_archive:
+  caddy_data:

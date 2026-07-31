@@ -3,7 +3,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Hms.Registration.Contracts\Hms.Registration.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Hms.Kernel\Hms.Kernel.csproj" />
-    <ProjectReference Include="..\..\Billing\Hms.Billing\Hms.Billing.csproj" />
+    <!-- Removed in spec 0035: this referenced Hms.Billing (the implementation, not its contracts),
+         which ADR-0003 forbids. ModuleBoundaryTests reads *referenced assemblies*, so Roslyn's
+         unused-reference elision hid it — no Registration code used the type, so nothing was
+         emitted for the test to see. It would have fired the moment anyone typed "Hms.Billing."
+         here. Registration consumes billing through Hms.Billing.Contracts, like everyone else. -->
   </ItemGroup>
 
   <ItemGroup>

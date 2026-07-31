@@ -1,5 +1,5 @@
 @page "/denied"
-@model Hms.Web.Pages.DeniedModel
+@model Hms.Shell.Pages.DeniedModel
 @{
     ViewData["Title"] = "Not allowed";
     ViewData["Crumb"] = "Access";
@@ -11,11 +11,11 @@
     <div style="margin-top:6px">
         @if (Model.Attempted is not null)
         {
-            <text>You signed in as <b>@Model.ActorName</b>, and <code>@Model.Attempted</code> belongs to another role.</text>
+            <span>You signed in as <b>@Model.ActorName</b>, and <code>@Model.Attempted</code> belongs to another role.</span>
         }
         else
         {
-            <text>You signed in as <b>@Model.ActorName</b>, and this screen belongs to another role.</text>
+            <span>You signed in as <b>@Model.ActorName</b>, and this screen belongs to another role.</span>
         }
         <br />Ask the administrator if you need it — nothing has been changed.
     </div>

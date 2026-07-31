@@ -23,7 +23,7 @@
 
     <div class="sheet">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead(Model.Signed ? "Radiology Report" : "Radiology Report (PROVISIONAL)",
+            new Letterhead(Model.Signed ? "Radiology Report" : "Radiology Report (PROVISIONAL)",
                 Model.Study!.AccessionNo, Model.At))
 
         <div class="sheet-info">

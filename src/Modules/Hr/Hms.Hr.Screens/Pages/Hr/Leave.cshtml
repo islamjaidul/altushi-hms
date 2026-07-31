@@ -1,5 +1,5 @@
 @page "/hr/leave"
-@model Hms.Hr.Ui.Pages.Hr.LeaveModel
+@model Hms.Hr.Screens.Pages.Hr.LeaveModel
 @{
     ViewData["Title"] = "Leave";
     ViewData["Crumb"] = HrNav.Group;
@@ -63,7 +63,7 @@
                         <td>@r.Reason</td>
                         <td><span class="pill @status.Css">@status.Word</span></td>
                         <td>
-                            @if (r.State == LeaveApplicationState.Applied && Model.Can(HrPerm.Claim.LeaveRecommend))
+                            @if (r.State == LeaveApplicationState.Applied && Model.Can("hr.leave.recommend"))
                             {
                                 <form method="post" asp-page-handler="Recommend" class="inline-form">
                                     @Html.AntiForgeryToken()
@@ -72,7 +72,7 @@
                                 </form>
                             }
                             else if (r.State is LeaveApplicationState.Applied or LeaveApplicationState.Recommended
-                                     && Model.Can(HrPerm.Claim.LeaveApprove))
+                                     && Model.Can("hr.leave.approve"))
                             {
                                 <form method="post" asp-page-handler="Decide" class="inline-form">
                                     @Html.AntiForgeryToken()

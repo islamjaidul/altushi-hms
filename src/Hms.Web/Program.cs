@@ -2,6 +2,7 @@ using Hms.Kernel.Audit;
 using Hms.Kernel.Auth;
 using Hms.Kernel.Data;
 using Hms.Kernel.Entitlements;
+using Hms.Kernel.Hosting;
 using Hms.Kernel.Jobs;
 using Hms.Kernel.Numbering;
 using Hms.Kernel.Approvals;
@@ -45,6 +46,8 @@ builder.Services.AddDbContext<Hms.Ot.Data.OtDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "ot")).UseSnakeCaseNamingConvention());
 builder.Services.AddDbContext<Hms.Radiology.Data.RadiologyDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "radiology")).UseSnakeCaseNamingConvention());
+builder.Services.AddDbContext<Hms.Hr.Data.HrDbContext>(o => o
+    .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "hr")).UseSnakeCaseNamingConvention());
 
 builder.Services
     .AddIdentity<AppUser, AppRole>(o =>
@@ -86,6 +89,10 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddRazorPages();
 builder.Services.AddAntiforgery();
 
+// ADR-0026 choke point 2: a de-entitled module's endpoints refuse, not just its menu entries.
+// Applied by route prefix, over every module this host ships, so no screen can forget it.
+builder.Services.AddModuleEntitlement(ModuleNav.RoutePrefixes);
+
 // Kernel services
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<NumberSeriesService>();
@@ -96,8 +103,15 @@ builder.Services.AddSingleton(new FiscalCalendar(
     builder.Configuration.GetValue("Business:FiscalStartMonth", 7)));       // P1 default July
 builder.Services.AddSingleton(new BusinessDayCalendar(
     TimeOnly.Parse(builder.Configuration.GetValue("Business:DayBoundary", "00:00")!))); // P2
-builder.Services.AddSingleton<IReadOnlyList<NavItem>>(ModuleNav.Registry);
+builder.Services.AddSingleton<IReadOnlyList<NavItem>>(ModuleNav.Composed);
 builder.Services.AddSingleton<HmsTx>();
+builder.Services.AddSingleton<Hms.Hr.IHrTx, HrTxAdapter>();
+builder.Services.AddSingleton<Hms.Hr.Contracts.IPayrollPosting, JournalOnlyPosting>();
+builder.Services.AddSingleton<Hms.Hr.PolicyResolver>();
+builder.Services.AddSingleton<Hms.Hr.EmployeeService>();
+builder.Services.AddSingleton<Hms.Hr.AttendanceService>();
+builder.Services.AddSingleton<Hms.Hr.LeaveService>();
+builder.Services.AddSingleton<Hms.Hr.PayrollService>();
 builder.Services.AddSingleton<Hms.Registration.RegistrationService>();
 builder.Services.AddSingleton<Hms.Billing.BillingService>();
 builder.Services.AddSingleton<Hms.Billing.DayCloseService>();
@@ -117,14 +131,8 @@ builder.Services.AddSingleton<Hms.Radiology.RadiologyService>();
 builder.Services.AddSingleton(Hms.Notifications.SmsOptions.From(
     builder.Configuration["HMS_SMS_MODE"]));                                 // edge 3: simulation default
 builder.Services.AddSingleton<Hms.Notifications.SmsQueue>();
-builder.Services.AddSingleton<HospitalIdentity>(_ => new HospitalIdentity(
-    builder.Configuration["Hospital:Name"] ?? "Altushi General Hospital",
-    builder.Configuration["Hospital:Tagline"] ?? "Hospital ERP",
-    builder.Configuration["Hospital:Address"] ?? "VIP Road, Sheikhghat, Sylhet-3100",
-    builder.Configuration["Hospital:Phone"] ?? "0821-719944, 01700-000000",
-    builder.Configuration["Hospital:Monogram"] ?? "A",
-    builder.Configuration["Hospital:FooterNote"]
-        ?? "This is a computer generated document — no signature required for receipts."));
+builder.Services.AddSingleton(OrgIdentity.From(
+    builder.Configuration, "Altushi General Hospital", "Hospital ERP"));
 
 var app = builder.Build();
 
@@ -161,6 +169,14 @@ using (var scope = app.Services.CreateScope())
         await sp.GetRequiredService<Hms.Emr.Data.EmrDbContext>().Database.MigrateAsync();
         await sp.GetRequiredService<Hms.Ot.Data.OtDbContext>().Database.MigrateAsync();
         await sp.GetRequiredService<Hms.Radiology.Data.RadiologyDbContext>().Database.MigrateAsync();
+        await sp.GetRequiredService<Hms.Hr.Data.HrDbContext>().Database.MigrateAsync();
+
+        // ADR-0025: claim the database for the ERP product line. `acceptsAnyExisting` is the
+        // HRM→ERP upsell path — this host can adopt a database the HRM SKU created, because it
+        // has just migrated the thirteen schemas that database never had. The HRM host refuses
+        // the reverse rather than serving a fraction of an ERP database.
+        await HmsPlatform.ClaimDatabaseAsync(kdb, HostKind.Erp, acceptsAnyExisting: true);
+
         await DevSeed.RunAsync(sp);
     }
     finally
@@ -196,6 +212,10 @@ app.UseForwardedHeaders(fwd);
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// P6 / ADR-0026: past the grace window, reads keep working and writes are refused. Sits after
+// authorization so an anonymous request is rejected for the right reason first.
+app.UseMiddleware<ReadOnlyEntitlementMiddleware>();
 
 // The only anonymous surface: login + health (G10).
 app.MapGet("/health", async (KernelDbContext db) =>

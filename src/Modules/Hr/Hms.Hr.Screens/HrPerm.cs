@@ -1,4 +1,4 @@
-namespace Hms.Hr.Ui;
+namespace Hms.Hr.Screens;
 
 /// <summary>
 /// HR permission policies. These live with the module's screens rather than in the ERP host's

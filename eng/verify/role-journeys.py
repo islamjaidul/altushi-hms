@@ -98,6 +98,18 @@ ROUTES = {
     "/emr/history": "emr.read",
     "/emr/prescription/1": "emr.read",
     "/emr/queue": "emr.read",
+    # M16 HR & Payroll (spec 0036). These screens ship in a razor class library so the same build
+    # serves the standalone HRM SKU (ADR-0025); the traceability guard now scans every Pages root,
+    # so they must be listed here like any other module's.
+    "/hr": "hr.read",
+    "/hr/attendance": "hr.attendance.review",
+    "/hr/employees": "hr.read",
+    "/hr/employees/new": "hr.employee.manage",
+    "/hr/leave": "hr.read",
+    "/hr/me": "hr.leave.apply",
+    "/hr/payroll": "hr.payroll.run",
+    "/hr/policies": "hr.policy.manage",
+    "/hr/roster": "hr.roster.manage",
     "/emr/templates": "emr.note.write",
     "/emr/vitals": "emr.vitals.record",
     "/frontdesk": "ipd.read",

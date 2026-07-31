@@ -18,6 +18,9 @@ DOC=docs/qa/patient-lifecycle.md
 JOURNEYS=eng/verify/role-journeys.py
 SEED=src/Hms.Web/DevSeed.cs
 PERMS=src/Hms.Web/Perm.cs
+# Every permission-constant file, not just the ERP host's: HR ships its own alongside the razor
+# class library that holds its screens (ADR-0025).
+PERMS_FILES=$(find src -name 'Perm.cs' -o -name 'HrPerm.cs' | sort | tr '\n' ' ')
 fail=0
 
 note() { printf '  %-6s %s\n' "$1" "$2"; }
@@ -91,7 +94,7 @@ fi
 # Adding to this list should be a considered act, not a way to make the guard quiet.
 KNOWN_UNENFORCED=""
 
-declared=$(grep -oE '= P \+ "[a-z.]+"' "$PERMS" | cut -d'"' -f2 | sort -u)
+declared=$(grep -rhoE '= P \+ "[a-z.]+"' $PERMS_FILES | cut -d'"' -f2 | sort -u)
 in_routes=$(grep -oE '": "[a-z.]+"' "$JOURNEYS" | cut -d'"' -f3)
 in_handlers=$(grep -rhoE 'Can\("[a-z.]+"\)' src/ 2>/dev/null | cut -d'"' -f2)
 used=$(printf '%s\n%s\n%s\n' "$in_routes" "$in_handlers" "$KNOWN_UNENFORCED" | sort -u)
@@ -107,7 +110,11 @@ fi
 drift=$(python3 - "$JOURNEYS" <<'PY'
 import pathlib, re, sys
 routes = {}
-for f in pathlib.Path("src/Hms.Web/Pages").rglob("*.cshtml"):
+# Every UI root, not just the host's. HR's screens live in a razor class library so the same
+# build serves the standalone HRM SKU (ADR-0025); a guard that only knew src/Hms.Web/Pages
+# would pass while covering none of them.
+PAGE_ROOTS = [p for p in pathlib.Path("src").rglob("Pages") if p.is_dir()]
+for f in [f for root in PAGE_ROOTS for f in root.rglob("*.cshtml")]:
     head = f.read_text(errors="ignore").splitlines()[0] if f.stat().st_size else ""
     m = re.match(r'@page\s+"([^"]+)"', head.strip())
     if not m:
@@ -119,11 +126,12 @@ for f in pathlib.Path("src/Hms.Web/Pages").rglob("*.cshtml"):
     code = f.with_suffix(".cshtml.cs")
     if not code.exists():
         continue
-    a = re.search(r"\[Authorize\(Policy = Perm\.(\w+)\)\]", code.read_text(errors="ignore"))
+    a = re.search(r"\[Authorize\(Policy = (?:Hr)?Perm\.(\w+)\)\]", code.read_text(errors="ignore"))
     if a:
         routes[route] = a.group(1)
-consts = dict(re.findall(r'(\w+) = P \+ "([a-z.]+)"',
-                         pathlib.Path("src/Hms.Web/Perm.cs").read_text()))
+consts = {}
+for perms in list(pathlib.Path("src").rglob("Perm.cs")) + list(pathlib.Path("src").rglob("HrPerm.cs")):
+    consts.update(re.findall(r'(\w+) = P \+ "([a-z.]+)"', perms.read_text()))
 real = {r: consts[c] for r, c in routes.items() if c in consts}
 src = pathlib.Path(sys.argv[1]).read_text()
 block = re.search(r"ROUTES = \{(.*?)\n\}", src, re.S).group(1)

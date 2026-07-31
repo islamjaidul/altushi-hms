@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Hr.Ui.Pages.Hr;
+namespace Hms.Hr.Screens.Pages.Hr;
 
 public sealed record RosterCell(long EmployeeId, DateOnly OnDate, string? ShiftCode, bool WeeklyOff);
 public sealed record RosterPerson(long Id, string Code, string Name);

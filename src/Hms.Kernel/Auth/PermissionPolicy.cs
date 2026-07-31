@@ -61,6 +61,19 @@ public sealed class PermissionPolicyProvider(
                 .Build();
             return Task.FromResult<AuthorizationPolicy?>(policy);
         }
+
+        // ADR-0026 choke point 2: "module:Hr" resolves to an entitlement requirement. It rides the
+        // same provider as permissions because the two are evaluated together — an endpoint needs
+        // both the grant and the licence, and neither substitutes for the other.
+        if (Entitlements.ModuleEntitlementPolicy.TryParse(policyName, out var module))
+        {
+            var policy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .AddRequirements(new Entitlements.ModuleEntitlementRequirement(module))
+                .Build();
+            return Task.FromResult<AuthorizationPolicy?>(policy);
+        }
+
         return _fallback.GetPolicyAsync(policyName);
     }
 }

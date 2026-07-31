@@ -1,4 +1,4 @@
-namespace Hms.Web;
+namespace Hms.Shell;
 
 /// <summary>
 /// The letterhead block every printed document shares (05 §6): change the identity once and

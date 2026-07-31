@@ -39,7 +39,7 @@
 
     <div class="sheet">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead("Prescription", "RX-" + Model.Id.ToString("D5"), Model.At))
+            new Letterhead("Prescription", "RX-" + Model.Id.ToString("D5"), Model.At))
 
         <div class="sheet-info">
             <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>

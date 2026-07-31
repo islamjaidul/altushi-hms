@@ -49,9 +49,15 @@ jobs:
           dotnet ef migrations script --idempotent --no-build -c Release \
             --project src/Modules/Registration/Hms.Registration --startup-project src/Hms.Web \
             --context RegDbContext -o reg.sql
+          # hr carries payroll, which is money: a dropped column there loses a locked salary sheet,
+          # and hard rule 4 says financial history is never destroyed (spec 0035).
+          dotnet ef migrations script --idempotent --no-build -c Release \
+            --project src/Modules/Hr/Hms.Hr --startup-project src/Hms.Web \
+            --context HrDbContext -o hr.sql
           sh eng/check-additive-migrations.sh kernel.sql
           sh eng/check-additive-migrations.sh auth.sql
           sh eng/check-additive-migrations.sh reg.sql
+          sh eng/check-additive-migrations.sh hr.sql
       - name: Image build
         run: docker build -f deploy/app.Dockerfile -t hms-app:ci .
 

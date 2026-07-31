@@ -1,6 +1,6 @@
 using Hms.Kernel.Auth;
 
-namespace Hms.Hr.Ui;
+namespace Hms.Hr.Screens;
 
 /// <summary>
 /// The module's sidebar entries. Hosts concatenate this with their own registry — the ERP appends it

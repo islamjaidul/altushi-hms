@@ -124,151 +124,151 @@
 
 @if (!signed)
 {
-<form method="post" asp-page-handler="Save" class="stack">
-    <input type="hidden" name="EncounterId" value="@Model.EncounterId" />
-
-    <div class="card">
-        <div class="card-head">Today's note</div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
-            @if (Model.Templates.Count > 0 && !signed)
-            {
-                <div class="row" style="gap:6px;align-items:end">
-                    <label class="field" style="flex:1">
-                        <span class="field-label">Start from a template</span>
-                        <select class="input" name="TemplateId">
-                            @foreach (var t in Model.Templates)
-                            {
-                                <option value="@t.Id">@t.Name</option>
-                            }
-                        </select>
-                    </label>
-                    <button type="submit" class="btn-tint" formaction="/emr/consult/@Model.EncounterId?handler=ApplyTemplate">
-                        Apply
-                    </button>
-                </div>
-            }
-
-            <label class="field">
-                <span class="field-label">Chief complaint</span>
-                <textarea class="input" name="Complaint" rows="2">@Model.Complaint</textarea>
-            </label>
-            <label class="field">
-                <span class="field-label">On examination</span>
-                <textarea class="input" name="OnExamination" rows="2">@Model.OnExamination</textarea>
-            </label>
-            <label class="field">
-                <span class="field-label">Diagnosis</span>
-                <textarea class="input" name="Diagnosis" rows="2">@Model.Diagnosis</textarea>
-            </label>
-            <label class="field">
-                <span class="field-label">Advice</span>
-                <textarea class="input" name="Advice" rows="2">@Model.Advice</textarea>
-            </label>
-            <label class="field">
-                <span class="field-label">Follow-up on</span>
-                <input class="input" name="FollowUp" hms-date value="@Model.FollowUp"
-                       placeholder="e.g. 7 days" />
-            </label>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-head">Medicines</div>
-        <div class="card-body">
-            @if (Model.Favourites.Count > 0 && !signed)
-            {
-                <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">
-                    <span class="card-hint">Favourites:</span>
-                    @foreach (var f in Model.Favourites)
-                    {
-                        <button type="button" class="btn-tint" data-favourite
-                                data-name="@f.DrugName" data-dose="@f.Dose"
-                                data-frequency="@f.Frequency" data-duration="@f.Duration"
-                                data-product="@f.ProductId">@f.DrugName</button>
-                    }
-                </div>
-            }
-            <div class="table-wrap">
-                <table class="data" id="drug-table">
-                    <thead>
-                    <tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Note</th></tr>
-                    </thead>
-                    <tbody>
-                    @{ var rows = Model.Drugs.ToList(); }
-                    @for (var i = 0; i < rows.Count; i++)
-                    {
-                        <tr>
-                            <td class="typeahead-host">
-                                <input type="hidden" name="DrugProductId" id="drug-prod-@i" value="@rows[i].ProductId" />
-                                <input class="input" name="DrugName" value="@rows[i].Name"
-                                       data-typeahead="/api/typeahead/products" data-target="#drug-prod-@i"
-                                       autocomplete="off" />
-                            </td>
-                            <td><input class="input input-sm" name="DrugDose" value="@rows[i].Dose" /></td>
-                            <td><input class="input input-sm" name="DrugFrequency" value="@rows[i].Frequency" /></td>
-                            <td><input class="input input-sm" name="DrugDuration" value="@rows[i].Duration" /></td>
-                            <td><input class="input input-sm" name="DrugInstruction" value="@rows[i].Instruction" /></td>
-                        </tr>
-                    }
-                    @for (var i = 0; i < 4; i++)
-                    {
-                            <tr>
-                                <td class="typeahead-host">
-                                    <input type="hidden" name="DrugProductId" id="drug-new-@i" value="" />
-                                    <input class="input" name="DrugName" autocomplete="off"
-                                           data-typeahead="/api/typeahead/products" data-target="#drug-new-@i" />
-                                </td>
-                                <td><input class="input input-sm" name="DrugDose" /></td>
-                                <td><input class="input input-sm" name="DrugFrequency" placeholder="1+0+1" /></td>
-                                <td><input class="input input-sm" name="DrugDuration" placeholder="7 days" /></td>
-                                <td><input class="input input-sm" name="DrugInstruction" /></td>
-                            </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-head">
-            Order investigations
-            <span class="spacer"></span>
-            <span class="card-hint">they reach the counter as unbilled charges</span>
-        </div>
-        <div class="card-body">
-            <div class="row" style="gap:6px;flex-wrap:wrap">
-                @foreach (var (id, name) in Model.TestCatalog.Take(40))
-                {
-                    <label class="pill">
-                        <input type="checkbox" name="Tests" value="@id" /> @name
-                    </label>
-                }
-            </div>
-        </div>
-    </div>
+    <form method="post" asp-page-handler="Save" class="stack">
+        <input type="hidden" name="EncounterId" value="@Model.EncounterId" />
 
         <div class="card">
-            <div class="card-body row" style="gap:10px;align-items:end">
-                <button type="submit" class="btn-tint">
-                    <span class="icon icon-sm" aria-hidden="true">save</span> Save without signing
-                </button>
-                <button type="submit" class="btn btn-primary btn-cta"
-                        formaction="/emr/consult/@Model.EncounterId?handler=Finalise">
-                    <span class="icon icon-sm" aria-hidden="true">verified</span> Sign &amp; print
-                </button>
-                <span class="spacer"></span>
-                <label class="field" style="width:220px">
-                    <span class="field-label">Save this as a template</span>
-                    <input class="input" name="TemplateName" placeholder="e.g. URTI adult" autocomplete="off" />
+            <div class="card-head">Today's note</div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                @if (Model.Templates.Count > 0 && !signed)
+                {
+                    <div class="row" style="gap:6px;align-items:end">
+                        <label class="field" style="flex:1">
+                            <span class="field-label">Start from a template</span>
+                            <select class="input" name="TemplateId">
+                                @foreach (var t in Model.Templates)
+                                {
+                                    <option value="@t.Id">@t.Name</option>
+                                }
+                            </select>
+                        </label>
+                        <button type="submit" class="btn-tint" formaction="/emr/consult/@Model.EncounterId?handler=ApplyTemplate">
+                            Apply
+                        </button>
+                    </div>
+                }
+
+                <label class="field">
+                    <span class="field-label">Chief complaint</span>
+                    <textarea class="input" name="Complaint" rows="2">@Model.Complaint</textarea>
                 </label>
-                <button type="submit" class="btn-tint"
-                        formaction="/emr/consult/@Model.EncounterId?handler=SaveTemplate">
-                    <span class="icon icon-sm" aria-hidden="true">edit_note</span> Save template
-                </button>
+                <label class="field">
+                    <span class="field-label">On examination</span>
+                    <textarea class="input" name="OnExamination" rows="2">@Model.OnExamination</textarea>
+                </label>
+                <label class="field">
+                    <span class="field-label">Diagnosis</span>
+                    <textarea class="input" name="Diagnosis" rows="2">@Model.Diagnosis</textarea>
+                </label>
+                <label class="field">
+                    <span class="field-label">Advice</span>
+                    <textarea class="input" name="Advice" rows="2">@Model.Advice</textarea>
+                </label>
+                <label class="field">
+                    <span class="field-label">Follow-up on</span>
+                    <input class="input" name="FollowUp" hms-date value="@Model.FollowUp"
+                           placeholder="e.g. 7 days" />
+                </label>
             </div>
         </div>
-</form>
+
+        <div class="card">
+            <div class="card-head">Medicines</div>
+            <div class="card-body">
+                @if (Model.Favourites.Count > 0 && !signed)
+                {
+                    <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                        <span class="card-hint">Favourites:</span>
+                        @foreach (var f in Model.Favourites)
+                        {
+                            <button type="button" class="btn-tint" data-favourite
+                                    data-name="@f.DrugName" data-dose="@f.Dose"
+                                    data-frequency="@f.Frequency" data-duration="@f.Duration"
+                                    data-product="@f.ProductId">@f.DrugName</button>
+                        }
+                    </div>
+                }
+                <div class="table-wrap">
+                    <table class="data" id="drug-table">
+                        <thead>
+                        <tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Note</th></tr>
+                        </thead>
+                        <tbody>
+                        @{ var rows = Model.Drugs.ToList(); }
+                        @for (var i = 0; i < rows.Count; i++)
+                        {
+                            <tr>
+                                <td class="typeahead-host">
+                                    <input type="hidden" name="DrugProductId" id="drug-prod-@i" value="@rows[i].ProductId" />
+                                    <input class="input" name="DrugName" value="@rows[i].Name"
+                                           data-typeahead="/api/typeahead/products" data-target="#drug-prod-@i"
+                                           autocomplete="off" />
+                                </td>
+                                <td><input class="input input-sm" name="DrugDose" value="@rows[i].Dose" /></td>
+                                <td><input class="input input-sm" name="DrugFrequency" value="@rows[i].Frequency" /></td>
+                                <td><input class="input input-sm" name="DrugDuration" value="@rows[i].Duration" /></td>
+                                <td><input class="input input-sm" name="DrugInstruction" value="@rows[i].Instruction" /></td>
+                            </tr>
+                        }
+                        @for (var i = 0; i < 4; i++)
+                        {
+                                <tr>
+                                    <td class="typeahead-host">
+                                        <input type="hidden" name="DrugProductId" id="drug-new-@i" value="" />
+                                        <input class="input" name="DrugName" autocomplete="off"
+                                               data-typeahead="/api/typeahead/products" data-target="#drug-new-@i" />
+                                    </td>
+                                    <td><input class="input input-sm" name="DrugDose" /></td>
+                                    <td><input class="input input-sm" name="DrugFrequency" placeholder="1+0+1" /></td>
+                                    <td><input class="input input-sm" name="DrugDuration" placeholder="7 days" /></td>
+                                    <td><input class="input input-sm" name="DrugInstruction" /></td>
+                                </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                Order investigations
+                <span class="spacer"></span>
+                <span class="card-hint">they reach the counter as unbilled charges</span>
+            </div>
+            <div class="card-body">
+                <div class="row" style="gap:6px;flex-wrap:wrap">
+                    @foreach (var (id, name) in Model.TestCatalog.Take(40))
+                    {
+                        <label class="pill">
+                            <input type="checkbox" name="Tests" value="@id" /> @name
+                        </label>
+                    }
+                </div>
+            </div>
+        </div>
+
+            <div class="card">
+                <div class="card-body row" style="gap:10px;align-items:end">
+                    <button type="submit" class="btn-tint">
+                        <span class="icon icon-sm" aria-hidden="true">save</span> Save without signing
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-cta"
+                            formaction="/emr/consult/@Model.EncounterId?handler=Finalise">
+                        <span class="icon icon-sm" aria-hidden="true">verified</span> Sign &amp; print
+                    </button>
+                    <span class="spacer"></span>
+                    <label class="field" style="width:220px">
+                        <span class="field-label">Save this as a template</span>
+                        <input class="input" name="TemplateName" placeholder="e.g. URTI adult" autocomplete="off" />
+                    </label>
+                    <button type="submit" class="btn-tint"
+                            formaction="/emr/consult/@Model.EncounterId?handler=SaveTemplate">
+                        <span class="icon icon-sm" aria-hidden="true">edit_note</span> Save template
+                    </button>
+                </div>
+            </div>
+    </form>
 }
 
 <script>

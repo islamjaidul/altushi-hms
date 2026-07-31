@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Hr.Ui.Pages.Hr;
+namespace Hms.Hr.Screens.Pages.Hr;
 
 public sealed record AttendanceRow(
     long Id, string Code, string Name, DateOnly OnDate, string Status,

@@ -1,6 +1,6 @@
 @page "/registration/{id:long}/card"
 @model Hms.Web.Pages.Registration.CardModel
-@inject Hms.Web.HospitalIdentity Hospital
+@inject OrgIdentity Hospital
 @{
     ViewData["Title"] = "Patient ID Card";
     ViewData["Crumb"] = "Front Desk";
@@ -13,7 +13,7 @@
 
     <div class="sheet">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead(Model.Reissue ? "Patient ID Card (re-issue)" : "Patient ID Card",
+            new Letterhead(Model.Reissue ? "Patient ID Card (re-issue)" : "Patient ID Card",
                 Model.Uhid, Model.RegisteredAt))
 
         <div class="sheet-info">

@@ -12,7 +12,7 @@
 
     <div class="sheet">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead("Counter Day-Close Statement",
+            new Letterhead("Counter Day-Close Statement",
                 Model.CounterName + " · " + Ui.DateLong(Model.BusinessDay), Model.ClosedAt))
 
         <div class="sheet-info">

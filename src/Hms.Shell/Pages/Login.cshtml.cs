@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace Hms.Web.Pages;
+namespace Hms.Shell.Pages;
 
 [AllowAnonymous]
 public class LoginModel(SignInManager<AppUser> signIn) : PageModel

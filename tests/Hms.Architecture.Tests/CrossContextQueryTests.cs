@@ -13,7 +13,8 @@ namespace Hms.Architecture.Tests;
 public class CrossContextQueryTests
 {
     private static readonly string[] Scopes =
-        ["s.Kernel", "s.Auth", "s.Reg", "s.Bill", "s.Diag", "s.Lis", "s.Adm", "s.Appt", "s.Notif"];
+        ["s.Kernel", "s.Auth", "s.Reg", "s.Bill", "s.Diag", "s.Lis", "s.Adm", "s.Appt", "s.Notif",
+         "s.Pharm", "s.Ipd", "s.Emr", "s.Ot", "s.Radiology", "s.Hr"];
 
     [Fact]
     public void No_linq_query_expression_mixes_two_TxScope_contexts()

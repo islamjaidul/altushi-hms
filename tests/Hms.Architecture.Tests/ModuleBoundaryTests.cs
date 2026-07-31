@@ -10,9 +10,11 @@ namespace Hms.Architecture.Tests;
 /// </summary>
 public class ModuleBoundaryTests
 {
+    // Every module assembly. Emr, Ot and Radiology were absent until spec 0035 — three modules were
+    // shipping entirely unguarded by this test, which is exactly the drift it exists to catch.
     private static readonly string[] Modules =
         ["Registration", "Appointments", "Billing", "Diagnostics", "Lis", "Dashboard", "Admin",
-         "Notifications", "Pharmacy", "Ipd"];
+         "Notifications", "Pharmacy", "Ipd", "Emr", "Ot", "Radiology", "Hr"];
 
     private static Assembly Load(string name) => Assembly.Load(name);
 

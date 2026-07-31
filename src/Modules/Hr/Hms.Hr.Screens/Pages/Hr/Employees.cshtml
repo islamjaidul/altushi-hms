@@ -1,5 +1,5 @@
 @page "/hr/employees"
-@model Hms.Hr.Ui.Pages.Hr.EmployeesModel
+@model Hms.Hr.Screens.Pages.Hr.EmployeesModel
 @{
     ViewData["Title"] = "Employees";
     ViewData["Crumb"] = HrNav.Group;
@@ -8,7 +8,7 @@
 <div class="card card-clip">
     <div class="card-head">
         <h2>Employees <span class="card-hint">@Model.Total on record</span></h2>
-        @if (Model.Can(HrPerm.Claim.EmployeeManage))
+        @if (Model.Can("hr.employee.manage"))
         {
             <a class="btn btn-primary" href="/hr/employees/new">
                 <span class="icon icon-sm" aria-hidden="true">person_add</span> Add employee

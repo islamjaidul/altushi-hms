@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Hr.Ui.Pages.Hr;
+namespace Hms.Hr.Screens.Pages.Hr;
 
 /// <summary>
 /// Hiring. §7's operators are non-technical and slow typists, so the form asks for the minimum that

@@ -20,7 +20,7 @@
                     @Ui.Humanize(a.Type)
                     @if (a.Amount is { } amt)
                     {
-                        <text> — @Ui.Money(amt)</text>
+                        <span> — @Ui.Money(amt)</span>
                     }
                 </div>
                 <div class="approval-sub">@a.Subject</div>

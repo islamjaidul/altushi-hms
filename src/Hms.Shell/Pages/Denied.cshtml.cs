@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace Hms.Web.Pages;
+namespace Hms.Shell.Pages;
 
 /// <summary>
 /// Where the cookie handler sends an authenticated user who lacks the endpoint's permission

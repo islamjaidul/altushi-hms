@@ -36,7 +36,7 @@ public sealed record QueueRow(
 [Authorize(Policy = Perm.AppointmentsRead)]
 public class IndexModel(
     HmsTx tx, AppointmentsService appointments, SmsQueue sms,
-    HospitalIdentity hospital, TimeProvider clock) : HmsPageModel
+    OrgIdentity hospital, TimeProvider clock) : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public long? PatientId { get; set; }
     [BindProperty] public long DoctorId { get; set; }

@@ -18,7 +18,7 @@
 
     <div class="sheet @(Model.Thermal ? "thermal" : "")">
         @await Html.PartialAsync("_Letterhead",
-            new Hms.Web.Letterhead("Money Receipt", Model.InvoiceNo, Model.CreatedAt))
+            new Letterhead("Money Receipt", Model.InvoiceNo, Model.CreatedAt))
 
         <div class="sheet-info">
             <div><span class="k">Patient:</span> <b>@Model.PatientName</b></div>

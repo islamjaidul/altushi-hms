@@ -79,4 +79,47 @@ public static class ModuleNav
         new("Admin", "SMS Templates", "/admin/sms", "admin.masters.manage", "mail", "Administration"),
         new("Admin", "Audit Viewer", "/admin/audit", "admin.audit.read", "history", "Administration"),
     ];
+
+    /// <summary>
+    /// What the sidebar actually renders. HR's screens live in a razor class library so the same
+    /// build serves the standalone HRM SKU (ADR-0025), and a library cannot reference this host —
+    /// so its entries are contributed rather than listed above. Further such modules append here.
+    /// </summary>
+    public static readonly IReadOnlyList<NavItem> Composed =
+        [.. Registry, .. Hms.Hr.Screens.HrNav.Registry];
+
+    /// <summary>
+    /// Route prefix → module, for ADR-0026 choke point 2. Derived from the nav registry rather than
+    /// hand-listed, because a hand-listed map is exactly the thing that goes stale: adding a screen
+    /// would otherwise leave its module unenforced and nobody would notice until a customer found
+    /// they could reach what they had not licensed.
+    /// <para>
+    /// The first path segment is the unit of enforcement, so <c>/billing/invoice/7</c> is covered by
+    /// the same rule as <c>/billing/opd</c> even though only the latter is in the menu. Routes with
+    /// no module — <c>/login</c>, <c>/denied</c>, <c>/health</c>, the public displays — are not
+    /// gated, which is correct: they belong to the product, not to a module.
+    /// </para>
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> RoutePrefixes = BuildPrefixes();
+
+    private static Dictionary<string, string> BuildPrefixes()
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in Composed)
+        {
+            var segments = item.Url.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 0) continue;              // "/" belongs to no module
+            var prefix = "/" + segments[0];
+
+            if (map.TryGetValue(prefix, out var owner) && owner != item.Module)
+                throw new InvalidOperationException(
+                    $"Route prefix {prefix} is claimed by both {owner} and {item.Module}. "
+                    + "Entitlement is enforced per prefix, so two modules cannot share one.");
+
+            map[prefix] = item.Module;
+        }
+
+        return map;
+    }
 }

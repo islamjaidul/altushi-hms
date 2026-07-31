@@ -4,25 +4,25 @@
 
 @font-face {
   font-family: "Public Sans";
-  src: url("/fonts/PublicSans-Regular.woff2") format("woff2");
+  src: url("../fonts/PublicSans-Regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: "Public Sans";
-  src: url("/fonts/PublicSans-Medium.woff2") format("woff2");
+  src: url("../fonts/PublicSans-Medium.woff2") format("woff2");
   font-weight: 500;
   font-display: swap;
 }
 @font-face {
   font-family: "Public Sans";
-  src: url("/fonts/PublicSans-Bold.woff2") format("woff2");
+  src: url("../fonts/PublicSans-Bold.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
 @font-face {
   font-family: "Noto Sans Bengali";
-  src: url("/fonts/NotoSansBengali-Regular.ttf") format("truetype");
+  src: url("../fonts/NotoSansBengali-Regular.ttf") format("truetype");
   font-weight: 100 900;
   font-display: swap;
 }
@@ -30,7 +30,7 @@
    no CDN, ever (edge 1; gate: eng/check-no-external-hosts.sh). */
 @font-face {
   font-family: "Material Symbols Outlined";
-  src: url("/fonts/MaterialSymbolsOutlined-subset.woff2") format("woff2");
+  src: url("../fonts/MaterialSymbolsOutlined-subset.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: block;

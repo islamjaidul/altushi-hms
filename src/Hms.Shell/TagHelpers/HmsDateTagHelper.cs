@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
-namespace Hms.Web.TagHelpers;
+namespace Hms.Shell.TagHelpers;
 
 /// <summary>
 /// The kernel date field (ADR-0020, 05 §3, §7 U13): <c>&lt;input hms-date ... /&gt;</c> renders a

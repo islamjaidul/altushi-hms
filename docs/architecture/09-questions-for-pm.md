@@ -96,3 +96,20 @@ retention, partition compression and what an auditor filters on, so a wrong tier
 later. **Not changed here:** re-tiering existing events rewrites the meaning of history already
 recorded, and the tier list is a living document in `03-data-model.md` that §3.2 makes the PM's
 call. Worth one decision rather than six ad-hoc ones.
+
+---
+
+## HRM product-line questions (2026-07-31 · spec `docs/specs/0034-hrm-product-line/` · ADR-0025/0026/0027)
+
+- **Status:** Open · **Date:** 2026-07-31 · **Spec:** 0034
+
+A customer wants HR & Payroll without the hospital. Building M16 as a module that also ships as a
+standalone product raises four business decisions. Defaults below were taken with the product owner
+on 2026-07-31 so the build is unblocked; each is revisitable until the wave that consumes it.
+
+| # | Question | Why it surfaced | Recommended default |
+|---|---|---|---|
+| P26 | **Bangladesh statutory payroll rules** — NBR salary tax slabs, Labour Act 2006 leave entitlements, gratuity, festival bonus, PF rules. Who owns sourcing them, and do we ship defaults? | None of these appear anywhere in the PRD or architecture docs. Rule 3 forbids asserting an unverified regulation; the build plan says unverifiable BD statutory rules go to the PM, not into code. Precedent is P14 (BEFTN/TDS: no fabricated formats or rates). | **Ship the engine configurable and empty** (ADR-0027): every rate, slab and entitlement is an effective-dated row the customer enters. No seeded statutory values. A verified BD default policy pack becomes its own spec once dated, authoritative sources are supplied and someone owns keeping them current. |
+| P27 | **Is HRM a product line beyond hospitals?** The named customer is a hospital, but a standalone HRM is sellable to any 50–500-staff Bangladeshi employer. | CLAUDE.md rule 2 scopes the product to the 22-module hospital PRD. A general-business SKU is genuinely new scope and must be recorded, not absorbed. Competitor PiHR (`mypihr.com`) sells exactly this, cross-industry. | **Yes.** HR carries no clinical vocabulary from day one — org structure is customer-entered masters (`org_unit`, `designation`, `grade`, `location`), never wards or clinical departments. Costs nothing now; a rewrite later. The PRD stays a hospital document; the HRM SKU is recorded here and in spec 0034. |
+| P28 | **Multi-branch / multi-location for the HRM SKU.** ADR-0007 fixed one hospital per install and `BranchId` is a compile-time constant (`HmsPageModel.BranchId = 1`). A 300-staff employer with three sites is an ordinary HRM customer. | Standalone HR hits the constant immediately; rosters, attendance devices and payroll approval all differ per site. `AppUser` has no branch column. | **Resolve branch per user in the HRM host; leave the ERP host on the constant.** HR tables carry `branch_id` per ADR-0007 regardless. This is an ADR-0007 amendment in scope for the HRM SKU only — cross-*customer* sharing remains forbidden. |
+| P29 | **Per-module pricing and what an HRM-only licence includes.** Administration/Security is a dependency of every SKU — is it bundled or priced? And does mobile/GPS attendance belong in the roadmap? | ADR-0016 assumed module-wise selling without defining bundles. ADR-0026 now makes the boundary enforceable, so what a licence *contains* becomes a real commercial input. PiHR sells remote/GPS attendance and face recognition as headline features; we deferred both. | **Bundle Administration/Security into every SKU** (a product with no user management is not a product). Price HR as one module. **Mobile/GPS attendance and face recognition stay deferred** — they need a mobile app or PWA with camera and location APIs, a different platform investment from server-rendered Razor Pages. Revisit as its own spec if the market demands it. |

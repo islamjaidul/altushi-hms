@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Hr.Ui.Pages.Hr;
+namespace Hms.Hr.Screens.Pages.Hr;
 
 public sealed record LeaveRow(
     long Id, string ApplicationNo, string EmployeeName, string EmployeeCode, string LeaveType,
@@ -31,7 +31,7 @@ public class LeaveModel(IHrTx tx, LeaveService leave) : HmsPageModel
 
     public async Task<IActionResult> OnPostRecommendAsync(long id)
     {
-        if (!Can(HrPerm.Claim.LeaveRecommend))
+        if (!Can("hr.leave.recommend"))
             return Forbid();
 
         return await ActAsync(s => leave.RecommendAsync(
@@ -40,7 +40,7 @@ public class LeaveModel(IHrTx tx, LeaveService leave) : HmsPageModel
 
     public async Task<IActionResult> OnPostDecideAsync(long id, bool approve, string? note)
     {
-        if (!Can(HrPerm.Claim.LeaveApprove))
+        if (!Can("hr.leave.approve"))
             return Forbid();
 
         return await ActAsync(

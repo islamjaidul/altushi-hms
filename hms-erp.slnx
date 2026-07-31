@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Hms.Kernel/Hms.Kernel.csproj" />
+    <Project Path="src/Hms.Shell/Hms.Shell.csproj" />
     <Project Path="src/Hms.Web/Hms.Web.csproj" />
+    <Project Path="src/Hms.Hr.Web/Hms.Hr.Web.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
   <Folder Name="/src/Modules/Admin/">
@@ -47,6 +49,11 @@
   </Folder>
   <Folder Name="/src/Modules/Ipd/">
     <Project Path="src/Modules/Ipd/Hms.Ipd/Hms.Ipd.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Hr/">
+    <Project Path="src/Modules/Hr/Hms.Hr.Contracts/Hms.Hr.Contracts.csproj" />
+    <Project Path="src/Modules/Hr/Hms.Hr/Hms.Hr.csproj" />
+    <Project Path="src/Modules/Hr/Hms.Hr.Screens/Hms.Hr.Screens.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Registration/">
     <Project Path="src/Modules/Registration/Hms.Registration.Contracts/Hms.Registration.Contracts.csproj" />

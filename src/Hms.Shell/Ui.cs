@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace Hms.Web;
+namespace Hms.Shell;
 
 /// <summary>
 /// Presentation helpers shared by every screen. Money is whole taka (C3) grouped the way

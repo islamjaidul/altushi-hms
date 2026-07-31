@@ -18,7 +18,7 @@ public sealed record VerifyTest(
 /// </summary>
 [Authorize(Policy = Perm.LisResultVerify)]
 public class VerifyModel(
-    HmsTx tx, LisService lis, SmsQueue sms, HospitalIdentity hospital) : HmsPageModel
+    HmsTx tx, LisService lis, SmsQueue sms, OrgIdentity hospital) : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public long? OrderId { get; set; }
     /// <summary>5A-R1 [Must]: which reporting consultant's block prints on the release.</summary>

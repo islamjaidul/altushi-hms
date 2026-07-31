@@ -4,7 +4,7 @@
 @inject EntitlementProvider Entitlements
 @inject BusinessDayCalendar BusinessDay
 @inject TimeProvider Clock
-@inject HospitalIdentity Hospital
+@inject OrgIdentity Hospital
 @{
     var user = Context.User;
     var isAuthed = user.Identity?.IsAuthenticated == true;
@@ -35,8 +35,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@title — @Hospital.Name</title>
-    <link rel="stylesheet" href="/css/tokens.css" />
-    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" />
 </head>
 <body>
 <div class="shell">
@@ -131,11 +131,11 @@
     </div>
 }
 
-<script src="/js/fkeys.js"></script>
-<script src="/js/typeahead.js"></script>
-<script src="/js/hms-date.js"></script>
-<script src="/js/barcode.js"></script>
-<script src="/js/app.js"></script>
+<script src="/_content/Hms.Shell/js/fkeys.js"></script>
+<script src="/_content/Hms.Shell/js/typeahead.js"></script>
+<script src="/_content/Hms.Shell/js/hms-date.js"></script>
+<script src="/_content/Hms.Shell/js/barcode.js"></script>
+<script src="/_content/Hms.Shell/js/app.js"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
