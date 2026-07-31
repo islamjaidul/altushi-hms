@@ -36,7 +36,7 @@ Both are needed. A rule no journey happens to traverse is invisible to the journ
 | M13 | Blood Bank | D | no | — | out of scope — no code |
 | M14 | Canteen | D | no | — | out of scope — no code |
 | M15 | Accounts & Finance | E | no | — | out of scope — no code |
-| M16 | HR & Payroll | E | no | — | out of scope — no code |
+| M16 | HR & Payroll | E | **yes** | 8 | OK | NONE | NONE | see below |
 | M17 | Consultant Payment | E | no | — | out of scope — no code |
 | M18 | Corporate / Panel Billing | E | no | — | out of scope — no code |
 | M19 | Marketing & Referral | E | no | — | out of scope — no code |
@@ -47,8 +47,21 @@ Both are needed. A rule no journey happens to traverse is invisible to the journ
 Plus **R3 public displays** (`/public/queue`, `/public/report-status`) — a §5A.2 sub-module, swept
 with M9/M3.
 
-**Fourteen modules carry code and are in scope for this sweep.** The eight with no code are not
-gaps in QA; they are unbuilt product, sequenced in `docs/architecture/11-build-plan-phase2.md`.
+**Fifteen modules carry code.** The seven with none are not gaps in QA; they are unbuilt product,
+sequenced in `docs/architecture/11-build-plan-phase2.md`.
+
+**M16 HR & Payroll was added after this sweep** (specs 0034/0035) and has *not* been swept. Its
+row records what is honestly known: eight routes load for the roles that own them, and there is
+**no e2e thread and no business-logic test whatsoever** — no `hr-thread.py`, and not one test
+covering payroll arithmetic (split-period proration, rounding-residue allocation, post-lock
+arrears, night-shift punch pairing, punch-import idempotency, negative-net floor). That is money
+code under hard rules 4 and 5 with zero automated coverage, and it is the single largest known
+risk in the product. Database-level invariants *are* proven (8 exclusion + 12 check constraints,
+each verified by attempting a violation), which is a floor, not a substitute.
+
+M16 also ships as a **standalone SKU** (ADR-0025), deployed at `hrm.specshipper.com`. Wave A is a
+working spine rather than a finished product — no payslip PDF, no punch-file upload screen, no
+org-master CRUD, no employee↔user linking. Tracked in `docs/specs/0035-hrm-platform/notes.md`.
 
 ---
 

@@ -133,3 +133,69 @@ if two modules claim one prefix — a hand-listed map is precisely what goes sta
 - **Employee↔user linking** has no screen, so self-service (`/hr/me`) shows its "ask HR to link your
   login" state for everyone until one exists.
 - **`BillingService.RoundHalfUp`** should now delegate to `Taka.RoundHalfUp` rather than duplicating it.
+
+---
+
+## Post-close: deployed to the shared VM, 2026-08-01
+
+Appended after the spec closed (archive README: post-close outcomes go here, the spec is not
+rewritten). Live at **https://hrm.specshipper.com**, image `hrm-app:dev`, commit `e329582`.
+
+### Two bugs the deploy found that local work could not
+
+**1. The HRM host's public key was never committed.** `.gitignore`'s blanket `*.pem` has an
+explicit un-ignore for `src/Hms.Web/vendor-public-key.pem`; the HRM host's copy had none. Local
+builds passed because the file was on disk. The VM failed with `MSB3030` halfway through a Docker
+build. `eng/check-published-content-tracked.sh` now asserts every file a `.csproj` publishes is
+tracked by git, and is in CI's guard step — it fails on the broken tree and passes on the fix.
+
+**2. `db-init/01-roles.sh` hardcoded `psql -d hms`.** The standalone stack sets `POSTGRES_DB=hrm`,
+so on a real HRM deployment the init script died with `database "hms" does not exist` — leaving a
+Postgres with **no `hms_migrator` and no `hms_app` at all**. A failed init script does not stop
+Postgres restarting, so the container merely looked *unhealthy* rather than broken. Any HRM-only
+customer following RUNBOOK §10's "compose.hrm.yml unmodified" would have hit this.
+
+Note how it surfaced: the shared-box deploy was designed to *avoid* starting that second Postgres,
+and only found the bug because `--no-deps` was missing and it started anyway. The shortcut exposed
+the flaw in the thing it was shortcutting.
+
+**3. `--no-deps` is load-bearing.** Naming `app` does not stop compose pulling in the base file's
+database, and `depends_on: []` in an override does not clear it — compose merges the long-form
+mapping rather than replacing it.
+
+### Verified on the deployment
+
+| Claim | Evidence |
+|---|---|
+| Three schemas only | `\dn` on `hrm` → `kernel`, `adm`, `hr`. No clinical schema exists. |
+| 41 HR tables | 42 counted in `hr` (41 + `__ef_migrations`) |
+| Host interlock | `kernel.host_kind` = `hrm` |
+| Health | `GET /health` → `{"status":"ok"}` over HTTPS |
+| Deny-by-default | `/hr` unauthenticated → 302 `/login?ReturnUrl=%2Fhr` |
+| Shell RCL serves | `/_content/Hms.Shell/{css/tokens.css,css/app.css,js/app.js,fonts/…}` all 200 |
+| Neutral branding (P27) | `<title>Sign in — Meghna Textiles Ltd.</title>` |
+| All eight HR screens | 200 as `farid` (HR Officer) over HTTPS |
+| **No clinical code** | authenticated, `/billing/opd`, `/ipd/board`, `/lis/board`, `/pharmacy/pos`, `/emr/queue`, `/radiology/worklist` all **404** — absent, not merely refused |
+| Footprint | **125.9 MiB** RSS vs the ERP's 194.8 MiB; image 339 MB |
+| ERP unaffected | `hms-app-1` still `Up 3 days (healthy)`, never rebuilt; `/health` 200 |
+
+The 404s are the load-bearing result. A 403 would prove a guard; a 404 proves the code is not in
+the image — which is what ADR-0025 claims and what a customer is actually buying.
+
+### Deliberate compromises on this box
+
+The VM has ~3 GB shared across four products and was already ~950 MB into swap, so the HRM runs
+**app-only against the ERP's Postgres** in a separate `hrm` database (`compose.hrm.vm.yml`), not
+the full stack. Consequences, all recorded in RUNBOOK §10:
+
+- **The `hrm` database is not backed up** — `hms-backup-1` dumps only `hms`.
+- It shares the ERP's connection ceiling (the known CONC-4 pool issue).
+- The entitlement is a **dev** licence signed with `eng/dev-keys/`, naming *"Meghna Textiles Ltd.
+  (DEV)"* and expiring 2028-07-01. Not a sale artifact.
+- `HRM_SEED=true`, so the demo cast exists with the shared `Demo#1234` password. Like the ERP
+  deployment, this is a demo and has not been through RUNBOOK §9's go-live switch.
+
+### Unchanged by deployment
+
+Everything under "Still open" above remains open. In particular **no test covers a single taka of
+payroll arithmetic**, and the deployment does not make that better — it makes it reachable.
