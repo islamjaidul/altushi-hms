@@ -24,6 +24,7 @@ jobs:
           sh eng/check-fkeys.sh src
           sh eng/check-no-native-date.sh src
           bash eng/check-lifecycle-traceability.sh
+          sh eng/check-published-content-tracked.sh
       - name: Unit + architecture tests
         run: |
           dotnet test tests/Hms.Kernel.Tests --no-build -c Release

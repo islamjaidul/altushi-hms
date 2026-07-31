@@ -43,8 +43,10 @@ artifacts/
 # dev-only signing key (never commit)
 eng/dev-keys/
 
-# the entitlement PUBLIC key ships with the app (ADR-0016); private keys stay ignored
+# the entitlement PUBLIC key ships with the app (ADR-0016); private keys stay ignored.
+# One line per host: each composition root publishes its own copy of the verification key.
 !src/Hms.Web/vendor-public-key.pem
+!src/Hms.Hr.Web/vendor-public-key.pem
 
 # Run manifests are artifacts of a QA run against a shared target, not source.
 eng/verify/runs/
