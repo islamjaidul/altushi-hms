@@ -1,0 +1,35 @@
+# VM overlay for the standalone HRM SKU, on the shared box at 103.132.96.250.
+#
+# The box runs four products in ~3 GB and is already into swap, so this overlay does NOT bring up
+# the HRM's own Postgres, backup loop or Caddy. Instead:
+#
+#   * the app joins the existing `hms_default` network and uses the ERP's Postgres server, in a
+#     separate `hrm` database — a different database, not a shared schema, so ADR-0007's
+#     one-database-per-customer boundary still holds;
+#   * TLS terminates at the host-level Caddy, as it does for the ERP (see compose.vm.yml);
+#   * `hms-backup-1` dumps only the `hms` database, so **the hrm database is not yet backed up** —
+#     see RUNBOOK §10.
+#
+# This is a demonstration deployment. A real HRM-only customer gets compose.hrm.yml unmodified:
+# its own server, its own Postgres, its own backups. Deploy with:
+#
+#   docker compose -f compose.hrm.yml -f compose.hrm.vm.yml up -d app
+#
+# Only `app` — naming a service is what stops compose from starting the db it no longer needs.
+
+services:
+  app:
+    # Cleared so `up -d app` does not drag in the base file's Postgres. The ERP's db is already
+    # running and healthy; nothing here should try to manage its lifecycle.
+    depends_on: []
+    mem_limit: 500m
+    networks:
+      - hms_default
+    ports:
+      - "127.0.0.1:8091:8080"
+    environment:
+      ConnectionStrings__Hms: "Host=hms-db-1;Database=hrm;Username=hms_migrator;Password=${HMS_DB_MIGRATOR_PASSWORD}"
+
+networks:
+  hms_default:
+    external: true

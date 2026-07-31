@@ -54,3 +54,62 @@ Run in order, on the PM's written instruction (P16 names the owner):
 **Rehearse first, always.** `eng/verify/golive-rehearsal.sh` runs all of this against two scratch
 databases and proves each claim (spec 0023) — including that the seed flag really gates seeding.
 Run it before the live cutover; it takes about two minutes and touches nothing real.
+
+## 10. The standalone HRM SKU (ADR-0025)
+
+A second product from the same source tree: `Hms.Hr.Web` instead of `Hms.Web`, three schemas
+(`kernel`, `adm`, `hr`) instead of fourteen, no clinical code in the image.
+
+**A real HRM-only customer** gets `compose.hrm.yml` unmodified — its own Postgres, its own backup
+loop, its own Caddy, on its own VM. Nothing below applies to them.
+
+**The shared demo box** (103.132.96.250) cannot afford a second Postgres: four products share
+~3 GB and it is already into swap. `compose.hrm.vm.yml` therefore runs the app alone, against the
+ERP's Postgres server in a separate `hrm` database, behind the host-level Caddy on `:8091`:
+
+```
+git -C /opt/altushi-hms pull --ff-only
+docker compose -f /opt/altushi-hms/deploy/compose.hrm.yml \
+               -f /opt/altushi-hms/deploy/compose.hrm.vm.yml build app
+docker compose -f … -f … up -d app          # `app` only — see the overlay's comment
+```
+
+One-time, before the first boot — the database and its extensions (roles are cluster-wide and
+already exist from the ERP):
+
+```sql
+CREATE DATABASE hrm;
+GRANT ALL ON DATABASE hrm TO hms_migrator;
+GRANT CONNECT ON DATABASE hrm TO hms_app;
+\c hrm
+CREATE EXTENSION IF NOT EXISTS btree_gist;   -- effective-dated exclusion constraints
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;
+```
+
+**Known gap on the demo box: `hms-backup-1` dumps only the `hms` database.** The `hrm` database is
+unbacked-up until the backup loop learns a second `PGDATABASE`, or the HRM moves to its own stack.
+Do not put anything on this deployment you would mind losing.
+
+### The host-kind interlock
+
+`kernel.host_kind` records which product created a database. The ERP host adopts an HRM database
+and migrates the remaining schemas (that is the upgrade path a customer buys). The HRM host
+**refuses** an ERP database rather than half-serving it. If a host exits at startup complaining
+about host kind, it is pointed at the wrong database — that is the guard working.
+
+### Entitlements and vendor key custody
+
+Each SKU boots with a signed entitlement naming the customer, the modules and an expiry
+(ADR-0016); the image bakes only the **public** key. `deploy/entitlements/*.json` are **dev**
+licences signed with `eng/dev-keys/` — gitignored, dev-only, and named `(DEV)` in the payload so
+they cannot be mistaken for a sale.
+
+**The vendor private key never goes on a customer machine, or on this VM.** Signing happens on the
+vendor's own machine; what travels is the resulting `.json`. Rotation means re-signing every live
+customer's file and shipping a new image with the new public key — so treat the key as the most
+sensitive artifact in the product and keep an offline copy.
+
+A licence past expiry does not stop the product: 30 days of grace with a banner, then read-only —
+GETs still work, mutations refuse (P6). Customers get their data back regardless of the commercial
+relationship.
