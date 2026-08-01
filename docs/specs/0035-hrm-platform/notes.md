@@ -199,3 +199,24 @@ the full stack. Consequences, all recorded in RUNBOOK §10:
 
 Everything under "Still open" above remains open. In particular **no test covers a single taka of
 payroll arithmetic**, and the deployment does not make that better — it makes it reachable.
+
+### Post-deploy fix: sign-in landed on 404
+
+Reported by the user immediately after deployment, and correct: **login worked, the landing page
+did not exist.** `Login.cshtml.cs` ends `LocalRedirect(returnUrl ?? "/")`, so signing in from the
+login page directly — rather than being bounced there off a protected URL — goes to `/`. The ERP
+answers that with its dashboard at `@page "/"`; the HRM host had no page at `/` at all.
+
+**Why the deployment verification above did not catch it.** Every row in that table is true and
+none of them exercise the redirect: the HR routes were requested directly, and the login POST was
+checked for a 302 and a working cookie, which is exactly what it returned. The defect lives only
+in *following* the redirect. Route-by-route checking cannot see it — a host is not usable because
+its pages work, it is usable because the path a user walks works. Re-verified by following the
+redirect for all four seeded accounts: each lands on `/hr` with 200.
+
+The root is claim-aware rather than a blind redirect to `/hr`: `/hr` requires `hr.read`, while the
+self-service **Employee** role holds only `hr.leave.apply` and would have been denied there —
+trading one dead end for another. Staff hold both, so ordering decides it. *Not runtime-verified:*
+no Employee-role user is seeded, so that branch is reasoned, not observed.
+
+`HostRootRouteTests` asserts every host has a page at `/`, and fails on the tree without the fix.
