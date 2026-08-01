@@ -1,6 +1,6 @@
 @page "/login"
 @model Hms.Shell.Pages.LoginModel
-@inject OrgIdentity Hospital
+@inject OrgIdentity Org
 @{
     ViewData["Title"] = "Sign in";
     Layout = null;
@@ -10,64 +10,71 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sign in — @Hospital.Name</title>
-    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" />
-    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" />
+    <title>Sign in — @Org.Name</title>
+    @* asp-append-version stamps a content hash, so a shipped CSS fix actually reaches a browser
+       that has the old file cached. Without it a UI change is invisible until a hard refresh. *@
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" asp-append-version="true" />
 </head>
 <body>
 <div class="login-wrap">
-    <form method="post" class="login-card">
-        <div class="login-brand">
-            <span class="brand-mark">@Hospital.Monogram</span>
-            <span>
-                <h1>@Hospital.Name</h1>
-                <div class="user-role">@Hospital.Tagline</div>
-            </span>
-        </div>
+    <div class="login-shell">
+        <aside class="login-aside">
+            <span class="brand-mark">@Org.Monogram</span>
+            <h1>@Org.Name</h1>
+            <div class="tagline">@Org.Tagline</div>
+            <div class="rule"></div>
+            <div class="aside-note">Use the account your administrator issued you.</div>
+        </aside>
 
-        @if (Model.Failed)
-        {
-            <div class="alert bad">
-                <span class="icon icon-sm" aria-hidden="true">error</span>
-                <span>Sign-in failed — check the username and password.</span>
-            </div>
-        }
-        @if (Model.LockedOut)
-        {
-            <div class="alert warn">
-                <span class="icon icon-sm" aria-hidden="true">lock</span>
-                <span>Account locked after repeated failures — try again in a few minutes.</span>
-            </div>
-        }
+        <form method="post" class="login-card">
+            <h2>Sign in</h2>
+            <p class="sub">Enter your username and password to continue.</p>
 
-        <label class="field">
-            <span class="field-label">Username <span class="req">*</span></span>
-            @* `required` gives instant browser-native feedback with no script and no CDN — the
-               server-side check behind it stays authoritative. *@
-            <input class="input @(Model.UsernameError is null ? null : "input-invalid")"
-                   asp-for="Username" required maxlength="64" autocomplete="username"
-                   autofocus="@(Model.FocusPassword ? null : "autofocus")" />
-            @if (Model.UsernameError is not null)
+            @if (Model.Failed)
             {
-                <div class="help-text bad">@Model.UsernameError</div>
+                <div class="alert bad">
+                    <span class="icon icon-sm" aria-hidden="true">error</span>
+                    <span>Sign-in failed — check the username and password.</span>
+                </div>
             }
-        </label>
-        <label class="field">
-            <span class="field-label">Password <span class="req">*</span></span>
-            @* Deliberately no maxlength: capping it here would silently truncate a longer existing
-               password and turn a correct credential into a failed sign-in. *@
-            <input class="input @(Model.PasswordError is null ? null : "input-invalid")"
-                   asp-for="Password" type="password" required autocomplete="current-password"
-                   autofocus="@(Model.FocusPassword ? "autofocus" : null)" />
-            @if (Model.PasswordError is not null)
+            @if (Model.LockedOut)
             {
-                <div class="help-text bad">@Model.PasswordError</div>
+                <div class="alert warn">
+                    <span class="icon icon-sm" aria-hidden="true">lock</span>
+                    <span>Account locked after repeated failures — try again in a few minutes.</span>
+                </div>
             }
-        </label>
-        <button type="submit" class="btn btn-primary btn-block btn-cta">
-            <span class="icon icon-sm" aria-hidden="true">lock</span> Sign in
-        </button>
-    </form>
+
+            <label class="field">
+                <span class="field-label">Username <span class="req">*</span></span>
+                @* `required` gives instant browser-native feedback with no script and no CDN — the
+                   server-side check behind it stays authoritative. *@
+                <input class="input @(Model.UsernameError is null ? null : "input-invalid")"
+                       asp-for="Username" required maxlength="64" autocomplete="username"
+                       autofocus="@(Model.FocusPassword ? null : "autofocus")" />
+                @if (Model.UsernameError is not null)
+                {
+                    <div class="help-text bad">@Model.UsernameError</div>
+                }
+            </label>
+            <label class="field">
+                <span class="field-label">Password <span class="req">*</span></span>
+                @* Deliberately no maxlength: capping it here would silently truncate a longer
+                   existing password and turn a correct credential into a failed sign-in. *@
+                <input class="input @(Model.PasswordError is null ? null : "input-invalid")"
+                       asp-for="Password" type="password" required autocomplete="current-password"
+                       autofocus="@(Model.FocusPassword ? "autofocus" : null)" />
+                @if (Model.PasswordError is not null)
+                {
+                    <div class="help-text bad">@Model.PasswordError</div>
+                }
+            </label>
+            <button type="submit" class="btn btn-primary btn-block btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">lock</span> Sign in
+            </button>
+        </form>
+    </div>
 </div>
 </body>
 </html>

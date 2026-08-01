@@ -35,8 +35,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@title — @Hospital.Name</title>
-    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" />
-    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" asp-append-version="true" />
 </head>
 <body>
 <div class="shell">
@@ -131,11 +131,11 @@
     </div>
 }
 
-<script src="/_content/Hms.Shell/js/fkeys.js"></script>
-<script src="/_content/Hms.Shell/js/typeahead.js"></script>
-<script src="/_content/Hms.Shell/js/hms-date.js"></script>
-<script src="/_content/Hms.Shell/js/barcode.js"></script>
-<script src="/_content/Hms.Shell/js/app.js"></script>
+<script src="/_content/Hms.Shell/js/fkeys.js" asp-append-version="true"></script>
+<script src="/_content/Hms.Shell/js/typeahead.js" asp-append-version="true"></script>
+<script src="/_content/Hms.Shell/js/hms-date.js" asp-append-version="true"></script>
+<script src="/_content/Hms.Shell/js/barcode.js" asp-append-version="true"></script>
+<script src="/_content/Hms.Shell/js/app.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

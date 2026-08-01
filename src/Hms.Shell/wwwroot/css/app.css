@@ -843,17 +843,46 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
 
 .login-wrap {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: var(--rail);
+  padding: 24px;
+  background: linear-gradient(155deg, var(--rail) 0%, var(--rail-active) 100%);
 }
-.login-card {
-  width: 400px; background: var(--paper);
+.login-shell {
+  display: grid; grid-template-columns: 296px 1fr;
+  width: 100%; max-width: 792px;
+  background: var(--paper);
   border-radius: var(--radius-card);
-  padding: 30px 32px 32px;
   box-shadow: var(--shadow-modal);
+  overflow: hidden;
 }
-.login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-.login-card h1 { margin: 0; font-size: 1.0625rem; font-weight: 700; }
+.login-aside {
+  background: var(--rail);
+  padding: 40px 32px;
+  display: flex; flex-direction: column; justify-content: center; gap: 14px;
+}
+.login-aside .brand-mark { width: 52px; height: 52px; font-size: 1.5rem; border-radius: var(--radius-card); }
+.login-aside h1 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--paper); line-height: 1.3; }
+.login-aside .tagline { font-size: 0.875rem; color: var(--rail-muted-2); }
+.login-aside .rule { height: 1px; background: var(--rail-rule); margin: 4px 0; }
+.login-aside .aside-note { font-size: 0.78125rem; color: var(--rail-muted); line-height: 1.55; }
+
+.login-card { padding: 40px 40px 36px; }
+.login-card h2 { margin: 0 0 4px; font-size: 1.125rem; font-weight: 700; }
+.login-card .sub { margin: 0 0 22px; font-size: 0.84375rem; color: var(--muted-1); }
 .login-card .field { margin-bottom: 16px; }
+.login-card .btn-cta { margin-top: 10px; }
+
+/* Self-service reaches this page on a phone (§7's 1366x768 target does not cover that), so the
+   brand panel becomes a header band rather than disappearing — the operator still sees whose
+   system they are signing in to. */
+@media (max-width: 760px) {
+  .login-wrap { padding: 0; align-items: stretch; }
+  .login-shell { grid-template-columns: 1fr; max-width: 460px; border-radius: 0; box-shadow: none; align-content: center; }
+  .login-aside { flex-direction: row; align-items: center; gap: 14px; padding: 24px 24px 22px; }
+  .login-aside .brand-mark { width: 44px; height: 44px; font-size: 1.25rem; }
+  .login-aside h1 { font-size: 1.0625rem; }
+  .login-aside .rule, .login-aside .aside-note { display: none; }
+  .login-card { padding: 28px 24px 32px; }
+}
 
 /* ====================================================================== */
 /* Print media — the sheet is the page (§7 U10)                           */

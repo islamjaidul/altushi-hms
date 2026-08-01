@@ -14,4 +14,17 @@ if [ -n "$offenders" ]; then
   echo "$offenders" >&2
   exit 1
 fi
+
+# Shipped CSS must actually reach the browser. Without asp-append-version the URL never changes,
+# so a cached copy survives a deploy and a UI fix looks like it did not happen — which is exactly
+# how a corrected login page kept rendering in its old styling after the image was rebuilt.
+stale=$(grep -rIn '_content/Hms\.Shell/\(css\|js\)/' "$root" --include='*.cshtml' 2>/dev/null \
+  | grep -v 'asp-append-version' || true)
+
+if [ -n "$stale" ]; then
+  echo "Static asset references without asp-append-version (cached copies survive a deploy):" >&2
+  echo "$stale" >&2
+  exit 1
+fi
+
 echo "ui-tokens: OK"
