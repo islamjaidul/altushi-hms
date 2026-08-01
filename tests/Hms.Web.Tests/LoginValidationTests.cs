@@ -68,11 +68,28 @@ public class LoginValidationTests
     }
 
     [Fact]
-    public void A_password_that_is_only_spaces_is_accepted()
+    public void The_password_is_not_judged_on_content()
     {
-        // Passwords are never trimmed and never judged on content. Whatever the account was
-        // created with must remain enterable, or we lock people out of their own credential.
-        var (_, p) = LoginModel.Validate("farid", "   ");
-        Assert.Null(p);
+        // Validate only asks whether something was typed. It does not trim, cap length, or
+        // inspect characters — whatever the account was created with must stay enterable, or we
+        // lock people out of their own credential.
+        Assert.Null(LoginModel.Validate("farid", " a b ").Password);
+        Assert.Null(LoginModel.Validate("farid", "   x").Password);
+    }
+
+    [Fact]
+    public void A_wholly_whitespace_password_never_reaches_this_code()
+    {
+        // Verified against the deployment: submitting Password="   ", properly URL-encoded, still
+        // renders "Enter your password." That is not this method — MVC's ConvertEmptyStringToNull
+        // tests IsNullOrWhiteSpace, not IsNullOrEmpty, so an all-whitespace field binds to null
+        // upstream and Validate is handed nothing.
+        //
+        // So the function accepts it and the framework never delivers it. Recorded because the
+        // two together look like a contradiction in the source. Only *wholly* whitespace is
+        // affected: " a b " above has real characters and binds untouched, which is what the
+        // "passwords are never trimmed" claim actually rests on.
+        Assert.Null(LoginModel.Validate("farid", "   ").Password);
+        Assert.NotNull(LoginModel.Validate("farid", null).Password);
     }
 }

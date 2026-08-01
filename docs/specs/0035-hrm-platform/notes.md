@@ -220,3 +220,34 @@ trading one dead end for another. Staff hold both, so ordering decides it. *Not 
 no Employee-role user is seeded, so that branch is reasoned, not observed.
 
 `HostRootRouteTests` asserts every host has a page at `/`, and fails on the tree without the fix.
+
+### Post-deploy fix: the login form had no validation
+
+Neither box was checked, and `OnPostAsync` never consulted `ModelState`. Beyond the missing
+message, the sign-in call runs with `lockoutOnFailure: true` and Identity charges a wrong password
+**against the account** — so a real username with an empty password consumed one of that account's
+attempts. On a shared counter PC, stray Enter presses lock out a colleague who did nothing. The
+guard now returns *before* the sign-in call, not merely before the redirect.
+
+Per-field messages replace the single "check the username and password", which is right for a
+wrong credential and useless for an empty box because it does not say which box. `.input-invalid`
+already existed in `app.css` and was used by nothing — the affordance had been designed and never
+wired up. Only `.help-text.bad` is new.
+
+**The first attempt shipped broken and I reported it as working.** `Validate` called
+`password.Length`; MVC binds an empty field to `null` (`ConvertEmptyStringToNull`), which
+overwrites the `= ""` initialiser — so the validation meant to stop blank submits returned HTTP 500
+on every one. The unit tests passed because I wrote them with `""`: I tested the contract as I
+imagined it rather than as the framework calls it. Both facts are the lesson, and the second is the
+worse one — seven green tests bought confidence they had not earned. The suite now leads with
+`null` and was checked against the broken expression first, where it reproduces the
+`NullReferenceException`.
+
+A related discrepancy, found only by testing the deployment: `ConvertEmptyStringToNull` tests
+`IsNullOrWhiteSpace`, not `IsNullOrEmpty`, so a *wholly* whitespace password binds to null upstream
+and can never be submitted — the code accepts it, the framework never delivers it. Passwords with
+real characters and surrounding spaces are unaffected, which is what "never trimmed" rests on.
+
+Live matrix, all eight cases (blank/blank, no username, no password on a real account, whitespace
+only, wrong password, unknown user, username with spaces, valid) verified against
+`hrm.specshipper.com` after deployment — not inferred from the tests.
