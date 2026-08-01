@@ -9,8 +9,11 @@ namespace Hms.Shell.Pages;
 [AllowAnonymous]
 public class LoginModel(SignInManager<AppUser> signIn) : PageModel
 {
-    [BindProperty] public string Username { get; set; } = "";
-    [BindProperty] public string Password { get; set; } = "";
+    // Nullable on purpose. MVC model binding has ConvertEmptyStringToNull on by default, so an
+    // empty box arrives as null and quietly overwrites any `= ""` initialiser. Declaring these
+    // non-nullable would be a lie the compiler believes and the first blank submit disproves.
+    [BindProperty] public string? Username { get; set; }
+    [BindProperty] public string? Password { get; set; }
 
     public bool Failed { get; private set; }
     public bool LockedOut { get; private set; }
@@ -28,9 +31,15 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
     /// Field-level validation, kept pure so it can be tested without standing up a
     /// <see cref="SignInManager{T}"/>. Null means the field is fine.
     /// </summary>
-    public static (string? Username, string? Password) Validate(string username, string password)
+    /// <remarks>
+    /// Both parameters are nullable because that is what model binding hands over for an empty
+    /// field. <c>IsNullOrEmpty</c> rather than <c>IsNullOrWhiteSpace</c> on the password: a
+    /// password of spaces is a password, and refusing it would lock someone out of a credential
+    /// their account genuinely has.
+    /// </remarks>
+    public static (string? Username, string? Password) Validate(string? username, string? password)
         => (string.IsNullOrWhiteSpace(username) ? "Enter your username." : null,
-            password.Length == 0 ? "Enter your password." : null);
+            string.IsNullOrEmpty(password) ? "Enter your password." : null);
 
     public void OnGet() { }
 
@@ -38,7 +47,7 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
     {
         // Operators scan and paste into this box, and a trailing space is not a different person.
         // The password is never trimmed: a space there is a character someone deliberately chose.
-        Username = Username.Trim();
+        Username = Username?.Trim();
 
         (UsernameError, PasswordError) = Validate(Username, Password);
 
@@ -50,7 +59,8 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
         if (UsernameError is not null || PasswordError is not null) return Page();
 
         // lockoutOnFailure: ADR-0019 login throttling; failures audited in S5's audit viewer scope
-        var result = await signIn.PasswordSignInAsync(Username, Password,
+        // Non-null past the guard above: Validate rejects null or blank for both.
+        var result = await signIn.PasswordSignInAsync(Username!, Password!,
             isPersistent: false, lockoutOnFailure: true);
 
         if (result.Succeeded)

@@ -18,11 +18,19 @@ namespace Hms.Web.Tests;
 public class LoginValidationTests
 {
     [Theory]
+    // null is not a hypothetical: MVC binds an empty form field to null, not "",
+    // because ConvertEmptyStringToNull defaults to true. The first version of these
+    // tests used only "" — they passed while the deployed page threw
+    // NullReferenceException on every blank submit. Test what the framework hands
+    // you, not what the property declaration suggests.
+    [InlineData(null, null)]
+    [InlineData(null, "Demo#1234")]
+    [InlineData("farid", null)]
     [InlineData("", "")]
     [InlineData("", "Demo#1234")]
     [InlineData("   ", "Demo#1234")]     // whitespace is not a username
     [InlineData("farid", "")]            // the dangerous one: a real account, no password
-    public void Blank_input_is_rejected_before_the_sign_in_call(string user, string password)
+    public void Blank_input_is_rejected_before_the_sign_in_call(string? user, string? password)
     {
         var (u, p) = LoginModel.Validate(user, password);
         Assert.True(u is not null || p is not null,
@@ -31,9 +39,18 @@ public class LoginValidationTests
     }
 
     [Fact]
+    public void Validate_never_throws_on_null()
+    {
+        // The regression that reached production. Asserted explicitly so it cannot come back
+        // disguised as a refactor.
+        var ex = Record.Exception(() => LoginModel.Validate(null, null));
+        Assert.Null(ex);
+    }
+
+    [Fact]
     public void Each_field_is_named_separately()
     {
-        var (u, p) = LoginModel.Validate("", "");
+        var (u, p) = LoginModel.Validate(null, null);
         Assert.NotNull(u);
         Assert.NotNull(p);
 
