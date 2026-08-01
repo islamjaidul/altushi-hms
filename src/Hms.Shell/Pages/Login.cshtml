@@ -41,12 +41,28 @@
         }
 
         <label class="field">
-            <span class="field-label">Username</span>
-            <input class="input" asp-for="Username" autofocus autocomplete="username" />
+            <span class="field-label">Username <span class="req">*</span></span>
+            @* `required` gives instant browser-native feedback with no script and no CDN — the
+               server-side check behind it stays authoritative. *@
+            <input class="input @(Model.UsernameError is null ? null : "input-invalid")"
+                   asp-for="Username" required maxlength="64" autocomplete="username"
+                   autofocus="@(Model.FocusPassword ? null : "autofocus")" />
+            @if (Model.UsernameError is not null)
+            {
+                <div class="help-text bad">@Model.UsernameError</div>
+            }
         </label>
         <label class="field">
-            <span class="field-label">Password</span>
-            <input class="input" asp-for="Password" type="password" autocomplete="current-password" />
+            <span class="field-label">Password <span class="req">*</span></span>
+            @* Deliberately no maxlength: capping it here would silently truncate a longer existing
+               password and turn a correct credential into a failed sign-in. *@
+            <input class="input @(Model.PasswordError is null ? null : "input-invalid")"
+                   asp-for="Password" type="password" required autocomplete="current-password"
+                   autofocus="@(Model.FocusPassword ? "autofocus" : null)" />
+            @if (Model.PasswordError is not null)
+            {
+                <div class="help-text bad">@Model.PasswordError</div>
+            }
         </label>
         <button type="submit" class="btn btn-primary btn-block btn-cta">
             <span class="icon icon-sm" aria-hidden="true">lock</span> Sign in

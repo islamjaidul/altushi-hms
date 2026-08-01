@@ -357,6 +357,7 @@ input, select, textarea, button { font-family: inherit; }
 .span-2 { grid-column: span 2; }
 .span-3 { grid-column: span 3; }
 .help-text { font-size: 0.71875rem; color: var(--muted-2); margin-top: 4px; }
+.help-text.bad { color: var(--danger); font-weight: 600; }
 
 /* type-ahead results (05 §3) — never a free-text foreign key (§7 U5) */
 .typeahead-results {
