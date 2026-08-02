@@ -489,6 +489,36 @@
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
         }
       },
+      "hms.hr": {
+        "type": "Project",
+        "dependencies": {
+          "EFCore.NamingConventions": "[10.0.1, )",
+          "Hms.Hr.Contracts": "[1.0.0, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
+        }
+      },
+      "hms.hr.contracts": {
+        "type": "Project"
+      },
+      "hms.hr.screens": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Hr": "[1.0.0, )",
+          "Hms.Hr.Contracts": "[1.0.0, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Hms.Shell": "[1.0.0, )"
+        }
+      },
+      "hms.hr.web": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Hr": "[1.0.0, )",
+          "Hms.Hr.Screens": "[1.0.0, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Hms.Shell": "[1.0.0, )"
+        }
+      },
       "hms.ipd": {
         "type": "Project",
         "dependencies": {
@@ -562,7 +592,6 @@
         "type": "Project",
         "dependencies": {
           "EFCore.NamingConventions": "[10.0.1, )",
-          "Hms.Billing": "[1.0.0, )",
           "Hms.Kernel": "[1.0.0, )",
           "Hms.Registration.Contracts": "[1.0.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
@@ -570,6 +599,12 @@
       },
       "hms.registration.contracts": {
         "type": "Project"
+      },
+      "hms.shell": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Kernel": "[1.0.0, )"
+        }
       }
     }
   }

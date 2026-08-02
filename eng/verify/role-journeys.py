@@ -55,13 +55,16 @@ ROLE_GRANTS = {
     "Admin": [
         "admin.users.manage", "admin.audit.read", "admin.approvals.decide",
         "admin.masters.manage", "notifications.read"],
+    # The HR grants below are real, and were missing here: spec 0034 put the HR module on the ERP
+    # host and gave §12's rows their HR claims, but this table was not updated, so every run since
+    # reported MD's and the Pharmacist's legitimate HR routes as a permission leak (spec 0037).
     "MD": [
         "dashboard.read", "admin.approvals.decide", "admin.audit.read", "pharmacy.read",
-        "ipd.read"],
+        "ipd.read", "hr.read", "hr.salary.read", "hr.payroll.approve"],
     "Pharmacist": [
         "registration.read", "pharmacy.read", "pharmacy.sale.create",
         "pharmacy.purchase.manage", "pharmacy.stock.manage", "billing.session.open",
-        "billing.session.close", "billing.receipt.create"],
+        "billing.session.close", "billing.receipt.create", "hr.leave.apply"],
 }
 
 # ---------------------------------------------------------------------------

@@ -74,6 +74,13 @@ public class UsersModel(
         if (string.IsNullOrWhiteSpace(RoleName))
         { await LoadAsync(); Fail("Every account needs a role — that is what decides its screens."); return Page(); }
 
+        // Identity commits the account on CreateAsync, so a role that turns out not to exist used
+        // to leave a *roleless* account behind and throw — a 500, and a login that signs in to an
+        // empty product, which is the exact symptom spec 0036 existed to end. Check first, and
+        // undo the account if the grant still fails: creating a user is all or nothing (0037).
+        if (!await roleManager.RoleExistsAsync(RoleName))
+        { await LoadAsync(); Fail($"There is no role called {RoleName}."); return Page(); }
+
         var user = new AppUser { UserName = Username.Trim(), DisplayName = DisplayName.Trim() };
         var created = await userManager.CreateAsync(user, Password);
         if (!created.Succeeded)
@@ -82,7 +89,16 @@ public class UsersModel(
             Fail(string.Join(" ", created.Errors.Select(e => e.Description)));
             return Page();
         }
-        await userManager.AddToRoleAsync(user, RoleName);
+
+        var granted = await userManager.AddToRoleAsync(user, RoleName);
+        if (!granted.Succeeded)
+        {
+            await userManager.DeleteAsync(user);
+            await LoadAsync();
+            Fail($"Could not put {Username} on {RoleName} — no account was created. "
+                 + string.Join(" ", granted.Errors.Select(e => e.Description)));
+            return Page();
+        }
 
         Toast($"{DisplayName} can sign in as {RoleName}", "person_add");
         return Redirect("/admin/users");

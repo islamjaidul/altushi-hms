@@ -15,7 +15,16 @@
 
 <div class="card card-clip">
     <div class="card-head">
-        <h2>Week of @Ui.DateLong(Model.WeekStart)</h2>
+        <h2>Week of @Ui.DateLong(Model.WeekStart)
+            @if (Model.Truncated)
+            {
+                <span class="card-hint">showing @Model.People.Count of @Model.Total — filter by unit to reach the rest</span>
+            }
+            else if (Model.Total > 0)
+            {
+                <span class="card-hint">@Model.Total on the board</span>
+            }
+        </h2>
     </div>
 
     <form method="get" class="filter-row">
@@ -70,6 +79,10 @@
                             <td>
                                 <form method="post" asp-page-handler="Assign" class="inline-form">
                                     @Html.AntiForgeryToken()
+                                    @* The week and unit ride with the post, so the redirect lands
+                                       the operator back where they were rostering (0037). *@
+                                    <input type="hidden" name="WeekOf" value="@Model.WeekStart.ToString("dd MMM yyyy")" />
+                                    <input type="hidden" name="OrgUnitId" value="@Model.OrgUnitId" />
                                     <input type="hidden" name="employeeId" value="@p.Id" />
                                     <input type="hidden" name="onDate" value="@d.ToString("dd MMM yyyy")" />
                                     <select class="input input-sm" name="shiftId"

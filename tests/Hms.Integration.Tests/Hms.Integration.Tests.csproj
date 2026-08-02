@@ -34,6 +34,10 @@
     <ProjectReference Include="..\..\src\Modules\Ot\Hms.Ot\Hms.Ot.csproj" />
     <ProjectReference Include="..\..\src\Modules\Radiology\Hms.Radiology\Hms.Radiology.csproj" />
     <ProjectReference Include="..\..\src\Modules\Notifications\Hms.Notifications\Hms.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Hr\Hms.Hr\Hms.Hr.csproj" />
+    <!-- The HRM host, for its transaction seam. Nothing referenced the HR module from a test
+         project before spec 0037, which is how the seam's defect stayed invisible. -->
+    <ProjectReference Include="..\..\src\Hms.Hr.Web\Hms.Hr.Web.csproj" />
   </ItemGroup>
 
 </Project>

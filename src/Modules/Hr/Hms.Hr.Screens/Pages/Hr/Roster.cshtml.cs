@@ -17,6 +17,9 @@ public sealed record RosterPerson(long Id, string Code, string Name);
 [Authorize(Policy = HrPerm.RosterManage)]
 public class RosterModel(IHrTx tx) : HmsPageModel
 {
+    /// <summary>Rows per board. Seven selects each, so this is a page-weight budget (§16).</summary>
+    private const int PageSize = 60;
+
     [BindProperty(SupportsGet = true)] public string? WeekOf { get; set; }
     [BindProperty(SupportsGet = true)] public long? OrgUnitId { get; set; }
 
@@ -27,6 +30,10 @@ public class RosterModel(IHrTx tx) : HmsPageModel
     public IReadOnlyList<Shift> Shifts { get; private set; } = [];
     public IReadOnlyList<OrgUnit> Units { get; private set; } = [];
 
+    /// <summary>How many people the filter matched, against how many the board is showing.</summary>
+    public int Total { get; private set; }
+    public bool Truncated => Total > People.Count;
+
     public string? ShiftFor(long employeeId, DateOnly day)
         => Cells.FirstOrDefault(c => c.EmployeeId == employeeId && c.OnDate == day) is { } cell
             ? cell.WeeklyOff ? "Off" : cell.ShiftCode
@@ -36,9 +43,14 @@ public class RosterModel(IHrTx tx) : HmsPageModel
 
     public async Task<IActionResult> OnPostAssignAsync(long employeeId, string onDate, long shiftId)
     {
+        // Load first. Without it WeekStart is default(DateOnly), which Npgsql stores as -infinity:
+        // every assignment wrote a roster header spanning a range no real date falls inside, so
+        // the "reuse the week's roster" lookup below could never match one and a fresh orphan was
+        // inserted per click. It also redirected the operator to the week of January year 1 (0037).
+        await LoadAsync();
+
         if (!FlexibleDate.TryParse(onDate, out var day))
         {
-            await LoadAsync();
             Fail("That date could not be read.");
             return Page();
         }
@@ -115,11 +127,17 @@ public class RosterModel(IHrTx tx) : HmsPageModel
 
             var employeeIds = await assignmentQuery.Select(a => a.EmployeeId).ToListAsync();
 
-            People = await s.Hr.Employees.AsNoTracking()
-                .Where(e => employeeIds.Contains(e.Id) && e.SeparatedOn == null)
+            var roster = s.Hr.Employees.AsNoTracking()
+                .Where(e => employeeIds.Contains(e.Id) && e.SeparatedOn == null);
+
+            // A board of 60 is a rendering limit, not an editorial one — a hundred rows of seven
+            // selects is a 587 KB page on a §16 box. It used to truncate in silence, so the last
+            // forty people simply could not be rostered and nobody was told (0037). Say the number.
+            Total = await roster.CountAsync();
+            People = await roster
                 .OrderBy(e => e.EmployeeCode)
                 .Select(e => new RosterPerson(e.Id, e.EmployeeCode, e.FullName))
-                .Take(60)
+                .Take(PageSize)
                 .ToListAsync();
 
             var ids = People.Select(p => p.Id).ToList();

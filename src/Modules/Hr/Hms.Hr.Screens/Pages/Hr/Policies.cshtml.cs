@@ -26,7 +26,8 @@ public class PoliciesModel(IHrTx tx) : HmsPageModel
     [BindProperty] public string DayCount { get; set; } = DayCountConvention.CalendarDays;
     [BindProperty] public long MinimumNetPay { get; set; }
 
-    public async Task OnGetAsync() => await LoadAsync();
+    /// <summary>Opening the screen fills the form with what is actually in force.</summary>
+    public async Task OnGetAsync() => await LoadAsync(fillForm: true);
 
     /// <summary>
     /// Creates the one policy a run cannot start without. Everything else can legitimately be absent
@@ -34,6 +35,16 @@ public class PoliciesModel(IHrTx tx) : HmsPageModel
     /// </summary>
     public async Task<IActionResult> OnPostSavePayrollPolicyAsync()
     {
+        // A long that would not bind — letters, or a number too big — leaves the property at 0 and
+        // the form would quietly save "no minimum". §7's operators are slow typists; a typo must
+        // not become a payroll setting (spec 0037).
+        if (!ModelState.IsValid)
+        {
+            await LoadAsync();
+            Fail("The minimum net pay has to be a whole number of taka.");
+            return Page();
+        }
+
         if (MinimumNetPay < 0)
         {
             await LoadAsync();
@@ -41,40 +52,60 @@ public class PoliciesModel(IHrTx tx) : HmsPageModel
             return Page();
         }
 
-        await tx.RunAsync(async s =>
+        try
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
-            var open = await s.Hr.PayrollPolicies
-                .Where(p => p.BranchId == BranchId && p.EffectiveTo == null)
-                .OrderByDescending(p => p.EffectiveFrom)
-                .FirstOrDefaultAsync();
-
-            // Effective-dating, not overwriting: last year's salary sheet must still resolve last
-            // year's convention. The database refuses an overlap outright.
-            if (open is not null)
+            await tx.RunAsync(async s =>
             {
-                if (open.EffectiveFrom >= today)
-                    throw new HrException(
-                        "A policy already starts today or later — change its dates instead of adding another.");
-                open.EffectiveTo = today.AddDays(-1);
-            }
+                var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
+                var open = await s.Hr.PayrollPolicies
+                    .Where(p => p.BranchId == BranchId && p.EffectiveTo == null)
+                    .OrderByDescending(p => p.EffectiveFrom)
+                    .FirstOrDefaultAsync();
 
-            s.Hr.PayrollPolicies.Add(new PayrollPolicy
-            {
-                BranchId = BranchId,
-                EffectiveFrom = today,
-                DayCountConvention = DayCount,
-                MinimumNetPayTaka = MinimumNetPay,
-                CreatedAt = DateTimeOffset.UtcNow,
-                CreatedBy = ActorId,
+                // Effective-dating, not overwriting: last year's salary sheet must still resolve
+                // last year's convention. The database refuses an overlap outright.
+                if (open is not null)
+                {
+                    // Saving twice in one day is the ordinary case — an operator corrects a typo in
+                    // the minimum and presses Save again. Amend today's policy in place rather than
+                    // opening a second one that would start on the same day. Before spec 0037 this
+                    // branch threw an HrException nobody caught: a 500 on the second Save.
+                    if (open.EffectiveFrom == today)
+                    {
+                        open.DayCountConvention = DayCount;
+                        open.MinimumNetPayTaka = MinimumNetPay;
+                        return;
+                    }
+                    if (open.EffectiveFrom > today)
+                        throw new HrException(
+                            "A policy already starts in the future — change its dates instead of adding another.");
+
+                    open.EffectiveTo = today.AddDays(-1);
+                }
+
+                s.Hr.PayrollPolicies.Add(new PayrollPolicy
+                {
+                    BranchId = BranchId,
+                    EffectiveFrom = today,
+                    DayCountConvention = DayCount,
+                    MinimumNetPayTaka = MinimumNetPay,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    CreatedBy = ActorId,
+                });
             });
-        });
+        }
+        catch (HrException e)
+        {
+            await LoadAsync();
+            Fail(e.Message);
+            return Page();
+        }
 
         Toast("Payroll policy saved — it applies from today onward", "rule");
         return Redirect("/hr/policies");
     }
 
-    private async Task LoadAsync() => await tx.RunAsync(async s =>
+    private async Task LoadAsync(bool fillForm = false) => await tx.RunAsync(async s =>
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
 
@@ -104,9 +135,21 @@ public class PoliciesModel(IHrTx tx) : HmsPageModel
                 "/hr/masters?tab=components"),
         ];
 
-        var payrollPolicy = await s.Hr.PayrollPolicies.CountAsync(
-            x => x.BranchId == BranchId && x.EffectiveFrom <= today
-                 && (x.EffectiveTo == null || x.EffectiveTo >= today));
+        var effective = await s.Hr.PayrollPolicies.AsNoTracking()
+            .Where(x => x.BranchId == BranchId && x.EffectiveFrom <= today
+                        && (x.EffectiveTo == null || x.EffectiveTo >= today))
+            .OrderByDescending(x => x.EffectiveFrom)
+            .FirstOrDefaultAsync();
+        var payrollPolicy = effective is null ? 0 : 1;
+
+        // Show what is configured. The form used to render its defaults on every visit — 0 and
+        // calendar days — so the operator could not read the current setting, and pressing Save to
+        // change only the convention silently reset the minimum net pay to zero (spec 0037).
+        if (fillForm && effective is not null)
+        {
+            DayCount = effective.DayCountConvention;
+            MinimumNetPay = effective.MinimumNetPayTaka;
+        }
         var taxSlabs = await s.Hr.TaxSlabs.CountAsync(x => x.BranchId == BranchId);
         var pf = await s.Hr.PfPolicies.CountAsync(x => x.BranchId == BranchId);
         var overtime = await s.Hr.OvertimeRules.CountAsync(x => x.BranchId == BranchId);

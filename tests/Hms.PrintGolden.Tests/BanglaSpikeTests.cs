@@ -22,7 +22,9 @@ public class BanglaSpikeTests
     public void Bangla_spike_document_renders_with_embedded_bengali_font()
     {
         var root = RepoRoot();
-        PdfRenderer.Initialize(Path.Combine(root, "src/Hms.Web/wwwroot/fonts"));
+        // The fonts moved to the shared UI library when spec 0035 gave the two SKUs one shell;
+        // this path was left pointing at the ERP host and the test has been red ever since (0037).
+        PdfRenderer.Initialize(Path.Combine(root, "src/Hms.Shell/wwwroot/fonts"));
 
         var pdf = PdfRenderer.RenderBanglaSpikeDocument(
             "Altushi General Hospital",

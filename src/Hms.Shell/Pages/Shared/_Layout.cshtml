@@ -92,9 +92,14 @@
                                placeholder="Search patient by name, ID or phone…" autocomplete="off" />
                     </form>
                 }
-                <a class="topbar-btn" href="/notifications/tray" title="Notifications" aria-label="Notifications">
-                    <span class="icon icon-lg" aria-hidden="true">notifications</span>
-                </a>
+                @* Gated like the search above it. The HRM SKU ships no Notifications module, so the
+                   bell was a 404 in the chrome of every one of its screens (spec 0037). *@
+                @if (perms.Contains("notifications.read"))
+                {
+                    <a class="topbar-btn" href="/notifications/tray" title="Notifications" aria-label="Notifications">
+                        <span class="icon icon-lg" aria-hidden="true">notifications</span>
+                    </a>
+                }
                 <div class="user-chip">
                     <span class="avatar">@Ui.Initials(displayName)</span>
                     <span>

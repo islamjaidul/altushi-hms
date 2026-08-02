@@ -22,6 +22,13 @@ namespace Hms.Web;
 /// G19: one business action = one transaction. All module contexts ride ONE NpgsqlConnection
 /// and one transaction; commit makes invoice+number+audit+outbox durable together (mirrors the
 /// integration-test harness the services are proven with).
+/// <para>
+/// The scope's contexts are <b>flushed before the commit</b> (spec 0037). A commit over an
+/// unflushed change tracker writes nothing, and the HR module — which reaches this class through
+/// <see cref="HrTxAdapter"/> — had six screens reporting success for writes that never happened.
+/// Every ERP service already saves for itself, so this is a no-op on those paths; it is here so
+/// that being durable is a property of the seam and not of each author's memory.
+/// </para>
 /// </summary>
 public sealed class HmsTx(IConfiguration config)
 {
@@ -34,6 +41,7 @@ public sealed class HmsTx(IConfiguration config)
         await using var tx = await conn.BeginTransactionAsync(ct);
         await using var scope = new TxScope(conn, tx);
         var result = await body(scope);
+        await scope.SaveAllAsync(ct);
         await tx.CommitAsync(ct);
         return result;
     }
@@ -75,6 +83,18 @@ public sealed class TxScope(NpgsqlConnection conn, NpgsqlTransaction tx) : IAsyn
     public OtDbContext Ot => Attach<OtDbContext>(o => new(o), "ot");
     public RadiologyDbContext Radiology => Attach<RadiologyDbContext>(o => new(o), "radiology");
     public HrDbContext Hr => Attach<HrDbContext>(o => new(o), "hr");
+
+    /// <summary>
+    /// Flushes every context this action actually touched. Attachment is lazy, so an action that
+    /// used two schemas pays for two calls, not fourteen. Kernel first: a module row commonly
+    /// depends on a number-series or audit row staged alongside it.
+    /// </summary>
+    public async Task SaveAllAsync(CancellationToken ct = default)
+    {
+        foreach (var c in _contexts.OrderByDescending(c => c is KernelDbContext))
+            if (c.ChangeTracker.HasChanges())
+                await c.SaveChangesAsync(ct);
+    }
 
     public async ValueTask DisposeAsync()
     {

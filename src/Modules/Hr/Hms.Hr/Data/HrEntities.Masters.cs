@@ -7,10 +7,22 @@ namespace Hms.Hr.Data;
 // company division, whatever the customer calls it. There is no ward, no bed, no patient.
 
 /// <summary>
+/// What every master on <c>/hr/masters</c> has in common: a name you can change and an active flag
+/// you can turn off. It exists so the screen's rename and retire can resolve a row once instead of
+/// six times through a switch — the shape that used to throw when the id was not on the open tab.
+/// </summary>
+public interface IMasterRow
+{
+    long Id { get; }
+    string Name { get; set; }
+    bool Active { get; set; }
+}
+
+/// <summary>
 /// A node of the customer's own org tree (department / section / division). Self-referencing so a
 /// three-level structure costs no schema, and no level is assumed.
 /// </summary>
-public class OrgUnit
+public class OrgUnit : IMasterRow
 {
     public long Id { get; set; }
     public long BranchId { get; set; }
@@ -23,7 +35,7 @@ public class OrgUnit
 }
 
 /// <summary>Job title. Separate from grade: two designations can share a pay grade.</summary>
-public class Designation
+public class Designation : IMasterRow
 {
     public long Id { get; set; }
     public long BranchId { get; set; }
@@ -33,7 +45,7 @@ public class Designation
 }
 
 /// <summary>Pay grade / band. The salary numbers live on <see cref="PayScale"/>, effective-dated.</summary>
-public class Grade
+public class Grade : IMasterRow
 {
     public long Id { get; set; }
     public long BranchId { get; set; }
@@ -84,7 +96,7 @@ public static class PayComponentCalc
 /// are computed is the employer's decision — the engine knows the <em>shapes</em> (fixed, percentage,
 /// computed) and never a Bangladeshi rate (ADR-0027).
 /// </summary>
-public class PayComponent
+public class PayComponent : IMasterRow
 {
     public long Id { get; set; }
     public long BranchId { get; set; }
@@ -136,7 +148,7 @@ public class WorkLocation
 /// window crosses midnight, and attendance attributes the pair to the shift's own date rather than
 /// to whichever calendar day the punch happened to land on.
 /// </summary>
-public class Shift
+public class Shift : IMasterRow
 {
     public long Id { get; set; }
     public long BranchId { get; set; }
@@ -201,7 +213,7 @@ public static class LeaveAccrual
 /// defaults, because Bangladesh Labour Act entitlements are not recorded anywhere we can verify
 /// (ADR-0027, P26). The customer names and quantifies their own.
 /// </summary>
-public class LeaveType
+public class LeaveType : IMasterRow
 {
     public long Id { get; set; }
     public long BranchId { get; set; }

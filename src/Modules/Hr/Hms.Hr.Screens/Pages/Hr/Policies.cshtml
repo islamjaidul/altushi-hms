@@ -33,9 +33,12 @@
             <label class="field" style="width:260px">
                 <span class="field-label">Prorate a part month over</span>
                 <select class="input" name="DayCount">
-                    <option value="@DayCountConvention.CalendarDays">The month's calendar days</option>
-                    <option value="@DayCountConvention.Fixed30">A fixed 30 days</option>
-                    <option value="@DayCountConvention.WorkingDays">Working days only</option>
+                    <option value="@DayCountConvention.CalendarDays"
+                            selected="@(Model.DayCount == DayCountConvention.CalendarDays)">The month's calendar days</option>
+                    <option value="@DayCountConvention.Fixed30"
+                            selected="@(Model.DayCount == DayCountConvention.Fixed30)">A fixed 30 days</option>
+                    <option value="@DayCountConvention.WorkingDays"
+                            selected="@(Model.DayCount == DayCountConvention.WorkingDays)">Working days only</option>
                 </select>
             </label>
             <label class="field" style="width:200px">

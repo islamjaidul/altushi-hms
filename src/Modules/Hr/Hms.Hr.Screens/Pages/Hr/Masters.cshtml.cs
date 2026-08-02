@@ -186,19 +186,17 @@ public class MastersModel(IHrTx tx) : HmsPageModel
         { await LoadAsync(); Fail("A name cannot be blank."); return Page(); }
 
         var name = newName.Trim();
-        await tx.RunAsync(async s =>
+        var found = await tx.RunAsync(async s =>
         {
-            switch (Current.Key)
-            {
-                case "units": (await s.Hr.OrgUnits.SingleAsync(x => x.Id == id)).Name = name; break;
-                case "designations": (await s.Hr.Designations.SingleAsync(x => x.Id == id)).Name = name; break;
-                case "grades": (await s.Hr.Grades.SingleAsync(x => x.Id == id)).Name = name; break;
-                case "shifts": (await s.Hr.Shifts.SingleAsync(x => x.Id == id)).Name = name; break;
-                case "leave-types": (await s.Hr.LeaveTypes.SingleAsync(x => x.Id == id)).Name = name; break;
-                case "components": (await s.Hr.PayComponents.SingleAsync(x => x.Id == id)).Name = name; break;
-            }
+            var row = await FindAsync(s, id);
+            if (row is null) return false;
+            row.Name = name;
             await s.Hr.SaveChangesAsync();
+            return true;
         });
+
+        if (!found)
+        { await LoadAsync(); Fail(Gone); return Page(); }
 
         Toast("Renamed", "edit_note");
         return Redirect($"/hr/masters?tab={Current.Key}");
@@ -211,29 +209,44 @@ public class MastersModel(IHrTx tx) : HmsPageModel
     /// </summary>
     public async Task<IActionResult> OnPostToggleAsync(long id)
     {
-        await tx.RunAsync(async s =>
+        var found = await tx.RunAsync(async s =>
         {
-            switch (Current.Key)
-            {
-                case "units":
-                { var e = await s.Hr.OrgUnits.SingleAsync(x => x.Id == id); e.Active = !e.Active; break; }
-                case "designations":
-                { var e = await s.Hr.Designations.SingleAsync(x => x.Id == id); e.Active = !e.Active; break; }
-                case "grades":
-                { var e = await s.Hr.Grades.SingleAsync(x => x.Id == id); e.Active = !e.Active; break; }
-                case "shifts":
-                { var e = await s.Hr.Shifts.SingleAsync(x => x.Id == id); e.Active = !e.Active; break; }
-                case "leave-types":
-                { var e = await s.Hr.LeaveTypes.SingleAsync(x => x.Id == id); e.Active = !e.Active; break; }
-                case "components":
-                { var e = await s.Hr.PayComponents.SingleAsync(x => x.Id == id); e.Active = !e.Active; break; }
-            }
+            var row = await FindAsync(s, id);
+            if (row is null) return false;
+            row.Active = !row.Active;
             await s.Hr.SaveChangesAsync();
+            return true;
         });
+
+        if (!found)
+        { await LoadAsync(); Fail(Gone); return Page(); }
 
         Toast("Updated", "task_alt");
         return Redirect($"/hr/masters?tab={Current.Key}");
     }
+
+    private const string Gone =
+        "That row is not on this tab any more — the screen was reloaded, so try again.";
+
+    /// <summary>
+    /// The row this tab's id refers to, or null.
+    /// <para>
+    /// Was <c>SingleAsync(x =&gt; x.Id == id)</c> per tab, which threw — an unhandled 500 — whenever
+    /// the id was not on the current tab. Two browser windows on different tabs is enough to
+    /// produce it, and the operator sees a stack trace (spec 0037). Scoped by branch as well: an id
+    /// is not an authorisation.
+    /// </para>
+    /// </summary>
+    private async Task<IMasterRow?> FindAsync(HrScope s, long id) => Current.Key switch
+    {
+        "units" => await s.Hr.OrgUnits.FirstOrDefaultAsync(x => x.Id == id && x.BranchId == BranchId),
+        "designations" => await s.Hr.Designations.FirstOrDefaultAsync(x => x.Id == id && x.BranchId == BranchId),
+        "grades" => await s.Hr.Grades.FirstOrDefaultAsync(x => x.Id == id && x.BranchId == BranchId),
+        "shifts" => await s.Hr.Shifts.FirstOrDefaultAsync(x => x.Id == id && x.BranchId == BranchId),
+        "leave-types" => await s.Hr.LeaveTypes.FirstOrDefaultAsync(x => x.Id == id && x.BranchId == BranchId),
+        "components" => await s.Hr.PayComponents.FirstOrDefaultAsync(x => x.Id == id && x.BranchId == BranchId),
+        _ => null,
+    };
 
     private static void RejectDuplicate(bool clash, string code)
     {

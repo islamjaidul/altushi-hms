@@ -34,6 +34,16 @@ public class EmployeeNewModel(IHrTx tx, EmployeeService employees) : HmsPageMode
 
     public async Task<IActionResult> OnPostAsync()
     {
+        // The one field this screen cannot do without was the one field it did not check: a blank
+        // name reached the service and came back as a NullReferenceException — a 500 on the create
+        // action of the create screen (spec 0037).
+        if (string.IsNullOrWhiteSpace(FullName))
+        {
+            await LoadAsync();
+            Fail("Enter the employee's full name.");
+            return Page();
+        }
+
         if (!FlexibleDate.TryParse(JoinedOn, out var joined))
         {
             await LoadAsync();

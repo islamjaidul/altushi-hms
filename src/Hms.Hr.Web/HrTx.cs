@@ -12,6 +12,15 @@ namespace Hms.Hr.Web;
 /// G19 for the HRM SKU: one business action, one transaction. The same shape as the ERP host's
 /// <c>HmsTx</c>, over three contexts instead of fourteen — an HR write and its kernel audit row
 /// commit together or not at all.
+/// <para>
+/// The body's staged changes are <b>flushed here</b>, immediately before the commit. Until spec
+/// 0037 they were not, and a commit over an unflushed change tracker writes nothing: six screens —
+/// attendance correction, leave recommend and approve, payroll review, the payroll policy and the
+/// roster — each returned 302 with a success toast and changed no row. EF stages, it does not
+/// write on commit, and every one of those handlers was written against the belief that it does.
+/// Flushing at the boundary is what makes "one business action, one transaction" a property of the
+/// seam rather than something each of a hundred call sites has to remember.
+/// </para>
 /// </summary>
 public sealed class HrTx(IConfiguration config) : IHrTx
 {
@@ -28,6 +37,13 @@ public sealed class HrTx(IConfiguration config) : IHrTx
         await using var hr = Attach<HrDbContext>(conn, tx, o => new(o), "hr");
 
         var result = await body(new HrScope(kernel, auth, hr));
+
+        // Order matters: hr last, because a kernel number-series row an HR insert depends on has
+        // to exist first. A context with nothing tracked costs one no-op call.
+        await kernel.SaveChangesAsync(ct);
+        await auth.SaveChangesAsync(ct);
+        await hr.SaveChangesAsync(ct);
+
         await tx.CommitAsync(ct);
         return result;
     }
