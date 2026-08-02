@@ -23,6 +23,7 @@ public static class HrNav
         new(HrModule.Name, "Roster", "/hr/roster", HrPerm.Claim.RosterManage, "calendar_month", Group),
         new(HrModule.Name, "Leave", "/hr/leave", HrPerm.Claim.Read, "event_busy", Group),
         new(HrModule.Name, "Payroll", "/hr/payroll", HrPerm.Claim.PayrollRun, "payments", Group),
+        new(HrModule.Name, "Org structure", "/hr/masters", HrPerm.Claim.PolicyManage, "factory", Group),
         new(HrModule.Name, "Policies", "/hr/policies", HrPerm.Claim.PolicyManage, "rule", Group),
         new(HrModule.Name, "My Leave", "/hr/me", HrPerm.Claim.LeaveApply, "person", Group),
     ];

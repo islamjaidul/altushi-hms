@@ -1,4 +1,5 @@
 using Hms.Hr.Screens;
+using Hms.Shell;
 using Hms.Kernel.Approvals;
 using Hms.Kernel.Auth;
 using Hms.Kernel.Data;
@@ -44,8 +45,26 @@ public static class HrSeed
         // The self-service role every employee gets: apply for own leave, read own payslip. It
         // deliberately does NOT carry hr.read — a colleague's record is not theirs to browse.
         ("Employee", [HrPerm.Claim.LeaveApply]),
-        ("System Admin", [HrPerm.Claim.Read, HrPerm.Claim.PolicyManage]),
     ];
+
+    /// <summary>
+    /// The superuser. Its grants are not listed — they are <b>every permission this host ships</b>,
+    /// read from the catalogue at startup.
+    /// <para>
+    /// It was previously listed, and held two of the eleven HR claims. The result was an
+    /// administrator who saw four of eight sidebar entries and no "Add employee" button, on an
+    /// install whose every automated check passed: the nav filter and the view guards were working
+    /// exactly as designed, on a role that was seeded wrong. In a single-tenant product bought by one
+    /// employer, the person who installs it is the HR head — a superuser who cannot open payroll is
+    /// not a security posture, it is a broken install.
+    /// </para>
+    /// <para>
+    /// Taking the list from the catalogue rather than restating it means a permission added tomorrow
+    /// is granted without anyone remembering this file. §12's segregation of duties still holds for
+    /// every other role, which is where it does real work.
+    /// </para>
+    /// </summary>
+    public const string SuperuserRole = "System Admin";
 
     private static readonly (string User, string Display, string Role)[] Cast =
     [
@@ -76,8 +95,15 @@ public static class HrSeed
         var roleMgr = sp.GetRequiredService<RoleManager<AppRole>>();
         var userMgr = sp.GetRequiredService<UserManager<AppUser>>();
         var auth = sp.GetRequiredService<AuthDbContext>();
+        var catalog = sp.GetRequiredService<PermissionCatalog>();
 
-        foreach (var (roleName, perms) in Roles)
+        // The superuser's grants are reconciled on every start, not only on first run. A database
+        // seeded before spec 0036 already has the role, so a first-run-only fix would repair nothing
+        // on the one install that has the problem — and "run this SQL by hand" is not a fix a
+        // customer can apply.
+        var wanted = Roles.Append((SuperuserRole, catalog.Claims.ToArray()));
+
+        foreach (var (roleName, perms) in wanted)
         {
             var role = await roleMgr.FindByNameAsync(roleName);
             if (role is null)

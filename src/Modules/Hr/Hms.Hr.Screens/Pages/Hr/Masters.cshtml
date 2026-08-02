@@ -1,0 +1,204 @@
+@page "/hr/masters"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.MastersModel
+@{
+    ViewData["Title"] = "Org structure";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card" style="margin-bottom:14px">
+    <div class="filter-row" style="border-bottom:none">
+        @foreach (var t in Hms.Hr.Screens.Pages.Hr.MastersModel.Tabs)
+        {
+            <a class="btn @(t.Key == Model.Current.Key ? "btn-primary" : "")" href="/hr/masters?tab=@t.Key">
+                <span class="icon icon-sm" aria-hidden="true">@t.Icon</span> @t.Title
+            </a>
+        }
+    </div>
+</div>
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            @Model.Current.Title
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Rows.Count(r => r.Active) in use</span>
+        </div>
+        <div class="card-hint" style="padding:0 16px 12px">@Model.Current.Blurb</div>
+
+        @if (Model.Rows.Count == 0)
+        {
+            <div class="empty-state">
+                Nothing here yet. Add the first one on the right — payroll waits on this.
+            </div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Code</th><th>Name</th><th>Detail</th><th>Status</th><th class="num">Action</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="id-cell">@r.Code</td>
+                            <td>
+                                <form method="post" asp-page-handler="Rename" class="inline-form">
+                                    <input type="hidden" name="Tab" value="@Model.Current.Key" />
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input class="input" name="newName" value="@r.Name"
+                                           aria-label="Name of @r.Name" style="min-width:200px" />
+                                    <button type="submit" class="btn-tint">Rename</button>
+                                </form>
+                            </td>
+                            <td class="text-muted">@(string.IsNullOrEmpty(r.Detail) ? "—" : r.Detail)</td>
+                            <td>
+                                @if (r.Active)
+                                {
+                                    <span class="pill good">In use</span>
+                                }
+                                else
+                                {
+                                    <span class="pill">Retired</span>
+                                }
+                            </td>
+                            <td class="num">
+                                <form method="post" asp-page-handler="Toggle" class="inline-form"
+                                      style="justify-content:flex-end"
+                                      data-confirm="Records already written against this keep it — retiring only takes it out of the pickers.">
+                                    <input type="hidden" name="Tab" value="@Model.Current.Key" />
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="btn-tint @(r.Active ? "danger" : "")">
+                                        @(r.Active ? "Retire" : "Bring back")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <form method="post" asp-page-handler="Create" class="card">
+        <input type="hidden" name="Tab" value="@Model.Current.Key" />
+        <div class="card-head">Add @Model.Current.Title.TrimEnd('s').ToLowerInvariant()</div>
+        <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Name <span class="req">*</span></span>
+                <input class="input" asp-for="Name" data-advance autocomplete="off" />
+            </label>
+            <label class="field">
+                <span class="field-label">Code</span>
+                <input class="input" asp-for="Code" autocomplete="off" placeholder="Left blank, we make one" />
+            </label>
+
+            @if (Model.Current.Key == "grades")
+            {
+                <label class="field">
+                    <span class="field-label">Rank</span>
+                    <input class="input" asp-for="Rank" inputmode="numeric" />
+                    <span class="help-text">Lower sorts higher. Only used for ordering.</span>
+                </label>
+            }
+
+            @if (Model.Current.Key == "shifts")
+            {
+                <div class="field-grid cols-2">
+                    <label class="field">
+                        <span class="field-label">Starts <span class="req">*</span></span>
+                        <input class="input" asp-for="StartsAt" placeholder="09:00" autocomplete="off" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Ends <span class="req">*</span></span>
+                        <input class="input" asp-for="EndsAt" placeholder="17:00" autocomplete="off" />
+                    </label>
+                </div>
+                <label class="field">
+                    <span class="field-label">Break (minutes)</span>
+                    <input class="input" asp-for="BreakMinutes" inputmode="numeric" />
+                    <span class="help-text">
+                        An end earlier than the start is a night shift — 20:00 to 04:00. Punches then
+                        pair across midnight instead of counting as two absent days.
+                    </span>
+                </label>
+            }
+
+            @if (Model.Current.Key == "leave-types")
+            {
+                <label class="field">
+                    <span class="field-label">How the balance builds</span>
+                    <select class="select" asp-for="Accrual">
+                        <option value="@LeaveAccrual.AnnualGrant">Granted at the start of each year</option>
+                        <option value="@LeaveAccrual.Earned">Earned as they work</option>
+                        <option value="@LeaveAccrual.None">No balance — just recorded</option>
+                    </select>
+                </label>
+                <label class="check">
+                    <input type="checkbox" asp-for="Paid" />
+                    <span>Paid leave</span>
+                </label>
+                <span class="help-text">
+                    Unpaid leave feeds the without-pay deduction instead of paying the day. We ship no
+                    leave types at all — Labour Act entitlements are yours to set, not ours to assert.
+                </span>
+            }
+
+            @if (Model.Current.Key == "components")
+            {
+                <label class="field">
+                    <span class="field-label">Kind</span>
+                    <select class="select" asp-for="Kind">
+                        <option value="@PayComponentKind.Earning">Earning — adds to the payslip</option>
+                        <option value="@PayComponentKind.Deduction">Deduction — subtracts</option>
+                        <option value="@PayComponentKind.EmployerContribution">Employer contribution</option>
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">How it is worked out</span>
+                    <select class="select" asp-for="CalcMethod">
+                        <option value="@PayComponentCalc.Fixed">A fixed amount, per employee</option>
+                        <option value="@PayComponentCalc.PercentOf">A percentage of another component</option>
+                    </select>
+                </label>
+                <div class="field-grid cols-2">
+                    <label class="field">
+                        <span class="field-label">Percentage of</span>
+                        <select class="select" asp-for="BasedOnComponentId">
+                            <option value="">—</option>
+                            @foreach (var (id, name) in Model.EarningComponents)
+                            {
+                                <option value="@id">@name</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Percent</span>
+                        <input class="input" asp-for="PercentBp" inputmode="numeric" placeholder="4000 = 40%" />
+                    </label>
+                </div>
+                <label class="check">
+                    <input type="checkbox" asp-for="Taxable" />
+                    <span>Counts toward taxable income</span>
+                </label>
+            }
+
+            <button type="submit" class="btn btn-primary btn-block">
+                <span class="icon icon-sm" aria-hidden="true">add</span> Add
+            </button>
+        </div>
+    </form>
+</div>

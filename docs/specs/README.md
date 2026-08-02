@@ -86,5 +86,6 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0033-user-guide](0033-user-guide/spec.md) | Operator user guide — per-role handbook + honest money-flow answer | Done | §4, §5, §6, §7 | 2026-07-29 |
 | [0034-hrm-product-line](0034-hrm-product-line/spec.md) | HRM as a dual-SKU product line (M16 HR & Payroll, sellable standalone) | In Progress | §5 M16, §5A-16/17, §3.4, §10, §11, §12 | 2026-07-31 |
 | [0035-hrm-platform](0035-hrm-platform/spec.md) | Wave 0 — shared UI library, transaction seam, entitlement enforcement, second host | Done | §5 M16, ADR-0025/0026 | 2026-07-31 |
+| [0036-hrm-operable](0036-hrm-operable/spec.md) | The HRM SKU has to be operable by an administrator — superuser grants, Users and Roles on both hosts, org-master CRUD, employee record, UI defects, 100-person demo seed | Done | §5 M16, §5 M21, §7, §12 | 2026-08-02 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

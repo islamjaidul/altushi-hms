@@ -106,6 +106,12 @@ builder.Services.AddSingleton(new BusinessDayCalendar(
 builder.Services.AddSingleton<IReadOnlyList<NavItem>>(ModuleNav.Composed);
 builder.Services.AddSingleton<HmsTx>();
 builder.Services.AddSingleton<Hms.Hr.IHrTx, HrTxAdapter>();
+builder.Services.AddSingleton<IPlatformTx, PlatformTxAdapter>();
+
+// What this host can grant. Reflected off the policy constants the [Authorize] attributes use, so
+// the role matrix cannot offer a permission no screen enforces, nor omit one that exists.
+builder.Services.AddSingleton(PermissionCatalog.FromPolicyConstants(
+    typeof(Perm), typeof(PlatformPerm), typeof(Hms.Hr.Screens.HrPerm)));
 builder.Services.AddSingleton<Hms.Hr.Contracts.IPayrollPosting, JournalOnlyPosting>();
 builder.Services.AddSingleton<Hms.Hr.PolicyResolver>();
 builder.Services.AddSingleton<Hms.Hr.EmployeeService>();

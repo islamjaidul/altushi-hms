@@ -1,32 +1,43 @@
 using Hms.Kernel.Auth;
+using Hms.Kernel.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Hms.Web.Pages.Admin;
+namespace Hms.Shell.Pages.Admin;
 
 public sealed record UserRow(long Id, string Username, string DisplayName, string Roles, bool Active, bool LockedOut);
-public sealed record RoleRow(long Id, string Name, int Users, IReadOnlyList<string> Permissions);
+public sealed record RoleRow(long Id, string Name, bool System, int Users, IReadOnlyList<string> Permissions);
 
 /// <summary>
 /// §5 M21 [M]: user management and role-based access, both editable. §12's matrix is data —
 /// granting a permission here changes the sidebar and the endpoint policy together, because
 /// both read the same claim. Nobody is deleted: deactivation keeps the audit trail whole (§8 N5).
+/// <para>
+/// Moved out of <c>src/Hms.Web</c> in spec 0036. It had been the ERP host's alone, which meant the
+/// standalone HRM SKU shipped with no way to create a second login — the one screen that could have
+/// repaired a wrongly-seeded role was the screen that SKU did not have.
+/// </para>
 /// </summary>
-[Authorize(Policy = Perm.AdminUsersManage)]
+[Authorize(Policy = PlatformPerm.UsersManage)]
 public class UsersModel(
-    HmsTx tx, UserManager<AppUser> userManager, TimeProvider clock) : HmsPageModel
+    IPlatformTx tx,
+    UserManager<AppUser> userManager,
+    RoleManager<AppRole> roleManager,
+    PermissionCatalog catalog,
+    TimeProvider clock) : HmsPageModel
 {
     [BindProperty] public string? Username { get; set; }
     [BindProperty] public string? DisplayName { get; set; }
     [BindProperty] public string? Password { get; set; }
     [BindProperty] public string? RoleName { get; set; }
+    [BindProperty] public string? NewRoleName { get; set; }
+    [BindProperty] public string? CopyFromRole { get; set; }
 
     public IReadOnlyList<UserRow> Users { get; private set; } = [];
     public IReadOnlyList<RoleRow> Roles { get; private set; } = [];
-    /// <summary>Every permission any role holds, so the matrix has columns to toggle.</summary>
-    public IReadOnlyList<string> AllPermissions { get; private set; } = [];
+    public PermissionCatalog Catalog => catalog;
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -47,17 +58,10 @@ public class UsersModel(
                     .Select(ur => roleNameById.GetValueOrDefault(ur.RoleId, "—"))),
                 u.Active, u.LockoutEnd is { } end && end > now)).ToList();
 
-            Roles = roles.Select(r => new RoleRow(r.Id, r.Name ?? "—",
+            Roles = roles.Select(r => new RoleRow(r.Id, r.Name ?? "—", r.System,
                 userRoles.Count(ur => ur.RoleId == r.Id),
-                permissions.Where(p => p.RoleId == r.Id).Select(p => p.Value).OrderBy(v => v).ToList()))
+                permissions.Where(p => p.RoleId == r.Id).Select(p => p.Value).ToList()))
                 .ToList();
-
-            // The registry is the authority on what permissions exist — a role cannot be granted
-            // something no screen is protected by.
-            AllPermissions = ModuleNav.Registry.Select(i => i.Permission)
-                .Concat(permissions.Select(p => p.Value))
-                .Distinct().OrderBy(v => v).ToList();
-            return 0;
         });
     }
 
@@ -84,6 +88,58 @@ public class UsersModel(
         return Redirect("/admin/users");
     }
 
+    /// <summary>
+    /// A new role, optionally starting from an existing one's grants. Copying matters more than it
+    /// looks: the alternative is an empty role, and an empty role hands its holder a product with an
+    /// empty sidebar — which reads as a broken install rather than as a permission problem.
+    /// </summary>
+    public async Task<IActionResult> OnPostCreateRoleAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewRoleName))
+        { await LoadAsync(); Fail("Give the role a name."); return Page(); }
+
+        var name = NewRoleName.Trim();
+        if (await roleManager.RoleExistsAsync(name))
+        { await LoadAsync(); Fail($"A role called {name} already exists."); return Page(); }
+
+        var role = new AppRole { Name = name, System = false };
+        var created = await roleManager.CreateAsync(role);
+        if (!created.Succeeded)
+        {
+            await LoadAsync();
+            Fail(string.Join(" ", created.Errors.Select(e => e.Description)));
+            return Page();
+        }
+
+        var copied = 0;
+        if (!string.IsNullOrWhiteSpace(CopyFromRole))
+            copied = await tx.RunAsync(async s =>
+            {
+                var source = await s.Auth.Roles.AsNoTracking()
+                    .FirstOrDefaultAsync(r => r.Name == CopyFromRole);
+                if (source is null) return 0;
+
+                var grants = await s.Auth.Permissions.AsNoTracking()
+                    .Where(p => p.RoleId == source.Id).ToListAsync();
+                foreach (var g in grants)
+                    s.Auth.Permissions.Add(new Permission
+                    {
+                        RoleId = role.Id, Module = g.Module, Action = g.Action,
+                    });
+
+                await s.Auth.SaveChangesAsync();
+                await AuditAsync(s, "role.create", "adm.role", role.Id, new { name, copiedFrom = CopyFromRole });
+                return grants.Count;
+            });
+        else
+            await tx.RunAsync(s => AuditAsync(s, "role.create", "adm.role", role.Id, new { name }));
+
+        Toast(copied > 0
+            ? $"Role {name} created with {copied} permission(s) copied from {CopyFromRole}"
+            : $"Role {name} created — grant it permissions below", "admin_panel_settings");
+        return Redirect("/admin/users");
+    }
+
     /// <summary>Deactivation, never deletion — receipts carry this name forever (§8 N5).</summary>
     public async Task<IActionResult> OnPostToggleAsync(long id)
     {
@@ -99,12 +155,36 @@ public class UsersModel(
             u.Active = !u.Active;
             u.LockoutEnd = u.Active ? null : DateTimeOffset.MaxValue;   // deactivated = cannot sign in
             await s.Auth.SaveChangesAsync();
-            return 0;
         });
         // Deactivation must also kill the live session, not only the next sign-in (ADR-0019).
         if (await userManager.FindByIdAsync(id.ToString()) is { } affected)
             await userManager.UpdateSecurityStampAsync(affected);
         Toast("Account updated", "manage_accounts");
+        return Redirect("/admin/users");
+    }
+
+    /// <summary>
+    /// Moves an account to a different role. Without this the only way to correct a mis-assigned
+    /// login was to deactivate it and make another, which leaves two names on the audit trail for
+    /// one person.
+    /// </summary>
+    public async Task<IActionResult> OnPostAssignRoleAsync(long id, string? roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+        { await LoadAsync(); Fail("Pick a role."); return Page(); }
+
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user is null) { await LoadAsync(); Fail("No such account."); return Page(); }
+
+        var existing = await userManager.GetRolesAsync(user);
+        if (existing.Count > 0) await userManager.RemoveFromRolesAsync(user, existing);
+        await userManager.AddToRoleAsync(user, roleName);
+        await userManager.UpdateSecurityStampAsync(user);
+
+        await tx.RunAsync(s => AuditAsync(s, "user.role.assign", "adm.user", id,
+            new { user.UserName, from = string.Join(",", existing), to = roleName }));
+
+        Toast($"{user.DisplayName} is now {roleName}", "manage_accounts");
         return Redirect("/admin/users");
     }
 
@@ -134,19 +214,7 @@ public class UsersModel(
             return Page();
         }
 
-        await tx.RunAsync(async s =>
-        {
-            s.Kernel.AuditEvents.Add(new Hms.Kernel.Data.AuditEvent
-            {
-                BranchId = BranchId, At = clock.GetUtcNow(), ActorId = ActorId,
-                ActorNameSnapshot = ActorName, Action = "user.password.reset",
-                Entity = "adm.user", EntityId = id,
-                After = System.Text.Json.JsonSerializer.Serialize(new { user.UserName }),
-                CorrelationId = Guid.NewGuid(), Tier = 2,
-            });
-            await s.Kernel.SaveChangesAsync();
-            return 0;
-        });
+        await tx.RunAsync(s => AuditAsync(s, "user.password.reset", "adm.user", id, new { user.UserName }));
 
         Toast($"{user.DisplayName}'s password is changed — they are signed out now", "key");
         return Redirect("/admin/users");
@@ -163,6 +231,11 @@ public class UsersModel(
         var parts = permission.Split('.', 2);
         if (parts.Length != 2) { await LoadAsync(); Fail("Malformed permission."); return Page(); }
 
+        // A permission this host does not ship would sit in the database enforcing nothing, and
+        // would then show up in the matrix as a row nobody can explain.
+        if (!catalog.Claims.Contains(permission))
+        { await LoadAsync(); Fail($"This installation has no permission called {permission}."); return Page(); }
+
         var roleName = await tx.RunAsync(async s =>
         {
             var existing = await s.Auth.Permissions.FirstOrDefaultAsync(
@@ -174,16 +247,9 @@ public class UsersModel(
                 s.Auth.Permissions.Remove(existing);
 
             await s.Auth.SaveChangesAsync();
+            await AuditAsync(s, grant ? "role.grant" : "role.revoke", "adm.permission", roleId,
+                new { roleId, permission });
 
-            s.Kernel.AuditEvents.Add(new Hms.Kernel.Data.AuditEvent
-            {
-                BranchId = BranchId, At = clock.GetUtcNow(), ActorId = ActorId,
-                ActorNameSnapshot = ActorName, Action = grant ? "role.grant" : "role.revoke",
-                Entity = "adm.permission", EntityId = roleId,
-                After = System.Text.Json.JsonSerializer.Serialize(new { roleId, permission }),
-                CorrelationId = Guid.NewGuid(), Tier = 2,
-            });
-            await s.Kernel.SaveChangesAsync();
             return (await s.Auth.Roles.AsNoTracking()
                 .Where(r => r.Id == roleId).Select(r => r.Name).FirstOrDefaultAsync()) ?? "";
         });
@@ -195,5 +261,18 @@ public class UsersModel(
 
         Toast($"{(grant ? "Granted" : "Revoked")} {permission} — enforced within minutes", "admin_panel_settings");
         return Redirect("/admin/users");
+    }
+
+    private async Task AuditAsync(PlatformScope s, string action, string entity, long entityId, object after)
+    {
+        s.Kernel.AuditEvents.Add(new AuditEvent
+        {
+            BranchId = BranchId, At = clock.GetUtcNow(), ActorId = ActorId,
+            ActorNameSnapshot = ActorName, Action = action,
+            Entity = entity, EntityId = entityId,
+            After = System.Text.Json.JsonSerializer.Serialize(after),
+            CorrelationId = Guid.NewGuid(), Tier = 2,
+        });
+        await s.Kernel.SaveChangesAsync();
     }
 }

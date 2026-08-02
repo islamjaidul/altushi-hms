@@ -61,7 +61,21 @@ each verified by attempting a violation), which is a floor, not a substitute.
 
 M16 also ships as a **standalone SKU** (ADR-0025), deployed at `hrm.specshipper.com`. Wave A is a
 working spine rather than a finished product — no payslip PDF, no punch-file upload screen, no
-org-master CRUD, no employee↔user linking. Tracked in `docs/specs/0035-hrm-platform/notes.md`.
+employee↔user linking. Tracked in `docs/specs/0035-hrm-platform/notes.md`.
+
+**Spec 0036 closed the operability gaps** the row above could not see. Four defects that every check
+here passed over — a superuser seeded with 2 of 11 permissions, `/admin/users` shipped only in the ERP
+host, three stylesheet classes used by seven pages and defined nowhere, and ten icon ligatures absent
+from the vendored font — plus org-master CRUD, the employee record page, and a deterministic
+100-person demo seed. Two CI guards were added for the classes of defect that return HTTP 200 with
+correct markup (`check-css-classes.sh`, `check-icon-glyphs.sh`), each proven to fail on the pre-fix
+tree.
+
+That work also found a defect in code this table calls covered: `EmployeeService` issued employee
+codes against a fiscal-year-scoped series with no `{fy}` in the format, so **the first hire after any
+fiscal-year rollover would have thrown a 500**. `NumberSeriesScopeTests` now asserts the rule across
+all fourteen modules. Nothing in the eight route checks could have seen it, because it needs two
+fiscal years of data to appear.
 
 ---
 

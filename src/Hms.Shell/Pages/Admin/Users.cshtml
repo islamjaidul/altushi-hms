@@ -1,0 +1,209 @@
+@page "/admin/users"
+@model Hms.Shell.Pages.Admin.UsersModel
+@{
+    ViewData["Title"] = "Users & Roles";
+    ViewData["Crumb"] = "Administration";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card-hint" style="margin-bottom:14px;max-width:660px">
+    A role decides which screens exist for the people who hold it — the sidebar and the server
+    read the same grants, so they cannot disagree. Staff who leave are deactivated, never deleted:
+    their name has to stay readable on every receipt they issued.
+</div>
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Login accounts
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Users.Count account(s)</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th class="num">Action</th></tr></thead>
+                <tbody>
+                @foreach (var u in Model.Users)
+                {
+                    <tr>
+                        <td class="id-cell">@u.Username</td>
+                        <td><b>@u.DisplayName</b></td>
+                        <td>
+                            <form method="post" asp-page-handler="AssignRole" class="inline-form">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <select class="select" name="roleName" aria-label="Role for @u.Username">
+                                    @foreach (var r in Model.Roles)
+                                    {
+                                        <option value="@r.Name" selected="@(u.Roles == r.Name)">@r.Name</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn-tint">Set</button>
+                            </form>
+                        </td>
+                        <td>
+                            @if (u.LockedOut && !u.Active)
+                            {
+                                <span class="pill">Deactivated</span>
+                            }
+                            else if (u.LockedOut)
+                            {
+                                <span class="pill bad">Locked out</span>
+                            }
+                            else
+                            {
+                                <span class="pill good">Active</span>
+                            }
+                        </td>
+                        <td class="num">
+                            @* RUNBOOK §9 step 2: go-live rotates every credential that stays and
+                               deactivates every one that does not. Both live on this row. *@
+                            <form method="post" asp-page-handler="ResetPassword" class="inline-form"
+                                  data-confirm="Set a new password for this account? They are signed out immediately.">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <input class="input" name="newPassword" type="password" autocomplete="new-password"
+                                       placeholder="New password" style="width:150px" />
+                                <button type="submit" class="btn-tint">Set password</button>
+                            </form>
+                            <form method="post" asp-page-handler="Toggle" class="inline-form"
+                                  data-confirm="Change this account's access? Their history stays on record either way.">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <button type="submit" class="btn-tint @(u.Active ? "danger" : "")">
+                                    @(u.Active ? "Deactivate" : "Reactivate")
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="stack">
+        <form method="post" asp-page-handler="Create" class="card">
+            <div class="card-head">Add a login</div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+                <label class="field">
+                    <span class="field-label">Username <span class="req">*</span></span>
+                    <input class="input" asp-for="Username" placeholder="e.g. shirin" data-advance autocomplete="off" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Full name <span class="req">*</span></span>
+                    <input class="input" asp-for="DisplayName" placeholder="Shirin Akter" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Role <span class="req">*</span></span>
+                    <select class="select" asp-for="RoleName">
+                        <option value="">— Select role —</option>
+                        @foreach (var r in Model.Roles)
+                        {
+                            <option value="@r.Name">@r.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Password <span class="req">*</span></span>
+                    <input class="input" asp-for="Password" type="password" autocomplete="new-password" />
+                    <span class="help-text">At least 8 characters. They can change it after signing in.</span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-cta btn-block">
+                    <span class="icon icon-sm" aria-hidden="true">person_add</span> Create account
+                </button>
+            </div>
+        </form>
+
+        <form method="post" asp-page-handler="CreateRole" class="card">
+            <div class="card-head">Add a role</div>
+            <div class="card-body" style="padding-top:0;display:flex;flex-direction:column;gap:12px">
+                <label class="field">
+                    <span class="field-label">Role name <span class="req">*</span></span>
+                    <input class="input" asp-for="NewRoleName" placeholder="e.g. Payroll Assistant" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Start from</span>
+                    <select class="select" asp-for="CopyFromRole">
+                        <option value="">— No permissions —</option>
+                        @foreach (var r in Model.Roles)
+                        {
+                            <option value="@r.Name">@r.Name (@r.Permissions.Count)</option>
+                        }
+                    </select>
+                    <span class="help-text">
+                        Copies that role's grants so you can take a few away, rather than
+                        remembering every one to add.
+                    </span>
+                </label>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span class="icon icon-sm" aria-hidden="true">add</span> Create role
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card card-clip" style="margin-top:14px">
+    <div class="card-head">
+        Role permissions
+        <span class="spacer"></span>
+        <span class="card-hint">§12 as data — a change applies within minutes, without a sign-out</span>
+    </div>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+            <tr>
+                <th style="position:sticky;left:0;background:var(--th-bg);min-width:320px">Permission</th>
+                @foreach (var r in Model.Roles)
+                {
+                    <th class="mid">@r.Name<div class="text-muted" style="font-weight:400">@r.Users user(s)</div></th>
+                }
+            </tr>
+            </thead>
+            <tbody>
+            @* Grouped by module, and drawn from the host's catalogue rather than from whatever
+               happens to be granted — so a permission nobody holds yet is still on screen to grant.
+               That is precisely what was missing: nine HR permissions existed, the seeded admin held
+               two, and there was no screen anywhere that listed the other seven. *@
+            @foreach (var group in Model.Catalog.ByGroup)
+            {
+                <tr class="total-row">
+                    <td colspan="@(Model.Roles.Count + 1)"
+                        style="position:sticky;left:0"><b>@group.Key</b></td>
+                </tr>
+                @foreach (var perm in group)
+                {
+                    <tr>
+                        <td style="position:sticky;left:0;background:var(--paper)">
+                            <b>@perm.Label</b>
+                            <div class="text-muted" style="font-size:0.6875rem">@perm.Claim</div>
+                        </td>
+                        @foreach (var r in Model.Roles)
+                        {
+                            var held = r.Permissions.Contains(perm.Claim);
+                            <td class="mid">
+                                <form method="post" asp-page-handler="Permission" class="inline-form"
+                                      style="justify-content:center">
+                                    <input type="hidden" name="roleId" value="@r.Id" />
+                                    <input type="hidden" name="permission" value="@perm.Claim" />
+                                    <input type="hidden" name="grant" value="@((!held).ToString().ToLowerInvariant())" />
+                                    <button type="submit" class="btn-icon @(held ? "primary" : "")"
+                                            title="@(held ? "Revoke" : "Grant") @perm.Claim for @r.Name"
+                                            aria-label="@(held ? "Revoke" : "Grant") @perm.Claim for @r.Name">
+                                        <span class="icon icon-sm" aria-hidden="true">@(held ? "check" : "add")</span>
+                                    </button>
+                                </form>
+                            </td>
+                        }
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

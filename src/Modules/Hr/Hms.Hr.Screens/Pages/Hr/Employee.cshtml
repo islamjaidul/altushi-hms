@@ -1,0 +1,247 @@
+@page "/hr/employees/{id:long}"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.EmployeeModel
+@{
+    var p = Model.Person!;
+    ViewData["Title"] = p.FullName;
+    ViewData["Crumb"] = HrNav.Group;
+    var status = Ui.Status(p.Status);
+}
+
+<div class="row-end" style="margin-bottom:14px">
+    <div>
+        <a class="btn" href="/hr/employees">
+            <span class="icon icon-sm" aria-hidden="true">arrow_back</span> All employees
+        </a>
+    </div>
+    <span class="pill @status.Css">@status.Word</span>
+</div>
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card">
+            <div class="card-head">
+                @p.FullName
+                <span class="spacer"></span>
+                <span class="card-hint">@p.EmployeeCode</span>
+            </div>
+            <div class="card-body">
+                <div class="field-grid cols-3">
+                    <div class="field"><span class="micro-label">Joined</span>@Ui.DateLong(p.JoinedOn)</div>
+                    <div class="field">
+                        <span class="micro-label">Confirmed</span>
+                        @(p.ConfirmedOn is { } c ? Ui.DateLong(c) : "—")
+                    </div>
+                    <div class="field">
+                        <span class="micro-label">Separated</span>
+                        @(p.SeparatedOn is { } sep ? Ui.DateLong(sep) : "—")
+                    </div>
+                    <div class="field"><span class="micro-label">Phone</span>@(p.Phone ?? "—")</div>
+                    <div class="field"><span class="micro-label">Email</span>@(p.Email ?? "—")</div>
+                    <div class="field">
+                        <span class="micro-label">Date of birth</span>
+                        @(p.DateOfBirth is { } d ? Ui.DateLong(d) : "—")
+                    </div>
+                    <div class="field"><span class="micro-label">National ID</span>@(p.NationalId ?? "—")</div>
+                    <div class="field"><span class="micro-label">Blood group</span>@(p.BloodGroup ?? "—")</div>
+                    <div class="field"><span class="micro-label">Father's name</span>@(p.FatherName ?? "—")</div>
+                    <div class="field span-2"><span class="micro-label">Present address</span>@(p.PresentAddress ?? "—")</div>
+                    <div class="field"><span class="micro-label">Emergency contact</span>@(p.EmergencyContact ?? "—")</div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.CanSeePay)
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    Pay structure
+                    <span class="spacer"></span>
+                    <span class="card-hint">
+                        @(Model.PayEffectiveFrom is { } from ? "effective " + Ui.DateLong(from) : "none set")
+                    </span>
+                </div>
+                @if (Model.PayLines.Count == 0)
+                {
+                    <div class="empty-state">No pay structure yet — payroll will skip this person.</div>
+                }
+                else
+                {
+                    <div class="table-wrap">
+                        <table class="data">
+                            <thead>
+                            <tr><th>Component</th><th>Kind</th><th>Basis</th><th class="num">Amount</th></tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var l in Model.PayLines)
+                            {
+                                <tr>
+                                    <td>@l.Component</td>
+                                    <td class="text-muted">@l.Kind.Replace("_", " ")</td>
+                                    <td class="text-muted">@l.Basis</td>
+                                    <td class="num">@Ui.Money(l.AmountTaka)</td>
+                                </tr>
+                            }
+                            </tbody>
+                            <tfoot>
+                            <tr><td colspan="3">Gross earnings</td><td class="num">@Ui.Money(Model.GrossTaka)</td></tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="card card-clip">
+            <div class="card-head">Attendance <span class="card-hint">last 30 days on record</span></div>
+            @if (Model.Attendance.Count == 0)
+            {
+                <div class="empty-state">Nothing derived yet — import or enter punches first.</div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Date</th><th>Status</th><th>In</th><th>Out</th><th class="num">Worked</th><th class="num">Late</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var a in Model.Attendance)
+                        {
+                            var st = Ui.Status(a.Status);
+                            <tr>
+                                <td class="tabular">@Ui.DateLong(a.OnDate)</td>
+                                <td><span class="pill @st.Css">@st.Word</span></td>
+                                <td class="tabular">@(a.In is { } i ? Ui.Time(i) : "—")</td>
+                                <td class="tabular">@(a.Out is { } o ? Ui.Time(o) : "—")</td>
+                                <td class="num">@(a.WorkedMinutes > 0 ? $"{a.WorkedMinutes / 60}h {a.WorkedMinutes % 60}m" : "—")</td>
+                                <td class="num @(a.LateMinutes > 0 ? "text-danger" : "")">
+                                    @(a.LateMinutes > 0 ? a.LateMinutes + "m" : "—")
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <div class="card-head">Current posting</div>
+            <div class="card-body">
+                @if (Model.Current is { } cur)
+                {
+                    <div class="field-grid">
+                        <div class="field"><span class="micro-label">Unit</span>@cur.Unit</div>
+                        <div class="field"><span class="micro-label">Designation</span>@cur.Designation</div>
+                        <div class="field"><span class="micro-label">Grade</span>@cur.Grade</div>
+                        <div class="field"><span class="micro-label">Since</span>@Ui.DateLong(cur.From)</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">Not assigned to a unit yet.</div>
+                }
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">Bank <span class="card-hint">for the BEFTN file</span></div>
+            <div class="card-body">
+                <div class="field-grid">
+                    <div class="field"><span class="micro-label">Bank</span>@(p.BankName ?? "—")</div>
+                    <div class="field"><span class="micro-label">Branch</span>@(p.BankBranch ?? "—")</div>
+                    <div class="field"><span class="micro-label">Account</span>@(p.BankAccountNo ?? "—")</div>
+                    <div class="field"><span class="micro-label">Routing</span>@(p.BankRoutingNo ?? "—")</div>
+                    <div class="field"><span class="micro-label">TIN</span>@(p.Tin ?? "—")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">Leave balance</div>
+            @if (Model.Balances.Count == 0)
+            {
+                <div class="empty-state">No balances — set a leave policy first.</div>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>Type</th><th class="num">Entitled</th><th class="num">Taken</th><th class="num">Left</th></tr></thead>
+                    <tbody>
+                    @foreach (var b in Model.Balances)
+                    {
+                        <tr>
+                            <td>@b.LeaveType</td>
+                            <td class="num">@(b.EntitledBp / 10000m)</td>
+                            <td class="num">@(b.AvailedBp / 10000m)</td>
+                            <td class="num"><b>@(b.AvailableBp / 10000m)</b></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">Recent leave</div>
+            @if (Model.Leave.Count == 0)
+            {
+                <table class="data"><tbody><tr><td class="empty">No applications.</td></tr></tbody></table>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>Type</th><th>Dates</th><th>State</th></tr></thead>
+                    <tbody>
+                    @foreach (var l in Model.Leave)
+                    {
+                        var ls = Ui.Status(l.State);
+                        <tr>
+                            <td>@l.LeaveType<div class="text-muted" style="font-size:0.6875rem">@l.ApplicationNo</div></td>
+                            <td class="tabular">@Ui.DateLong(l.From) – @Ui.DateLong(l.To)</td>
+                            <td><span class="pill @ls.Css">@ls.Word</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">
+                Employment history
+                <span class="spacer"></span>
+                <span class="card-hint">append-only</span>
+            </div>
+            @if (Model.Events.Count == 0)
+            {
+                <table class="data"><tbody><tr><td class="empty">Nothing recorded.</td></tr></tbody></table>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>What</th><th>When</th><th>By</th></tr></thead>
+                    <tbody>
+                    @foreach (var e in Model.Events)
+                    {
+                        <tr>
+                            <td>
+                                @e.Kind.Replace("_", " ")
+                                @if (!string.IsNullOrEmpty(e.Note))
+                                {
+                                    <div class="text-muted" style="font-size:0.6875rem">@e.Note</div>
+                                }
+                            </td>
+                            <td class="tabular">@Ui.DateLong(e.OnDate)</td>
+                            <td class="text-muted">@e.By</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>

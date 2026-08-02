@@ -19,10 +19,17 @@ public sealed record OrgIdentity(
     string Address,
     string Phone,
     string Monogram,
-    string FooterNote)
+    string FooterNote,
+    string ProductName,
+    string DefaultShortcuts)
 {
     /// <summary>Reads <c>Org:*</c>, falling back to <c>Hospital:*</c>, then to the supplied defaults.</summary>
-    public static OrgIdentity From(IConfiguration config, string defaultName, string defaultTagline)
+    public static OrgIdentity From(
+        IConfiguration config,
+        string defaultName,
+        string defaultTagline,
+        string productName = "Hospital ERP",
+        string shortcuts = "F2 New patient · F3 Item search · F10 Payment")
     {
         string Value(string key, string fallback)
             => config[$"Org:{key}"] ?? config[$"Hospital:{key}"] ?? fallback;
@@ -36,7 +43,9 @@ public sealed record OrgIdentity(
             Value("Phone", "0821-719944, 01700-000000"),
             Value("Monogram", Initial(name)),
             Value("FooterNote",
-                "This is a computer generated document — no signature required for receipts."));
+                "This is a computer generated document — no signature required for receipts."),
+            productName,
+            shortcuts);
     }
 
     /// <summary>
@@ -52,4 +61,19 @@ public sealed record OrgIdentity(
 
         return "•";   // a name with no letters at all — better than an empty box
     }
+}
+
+/// <summary>
+/// Product-level naming and shortcuts, supplied by each host. The layout used to hardcode
+/// <c>F2 New patient · F3 Item search · F10 Payment</c> and <c>MVP build</c>, which the HRM SKU then
+/// displayed on every screen of a payroll product sold to a textile mill — the two lines every page
+/// shows, both belonging to a different product (P27's neutral-vocabulary commitment, spec 0036).
+/// </summary>
+public static class ProductChrome
+{
+    public const string ErpName = "Hospital ERP";
+    public const string ErpShortcuts = "F2 New patient · F3 Item search · F10 Payment";
+
+    public const string HrmName = "HR & Payroll";
+    public const string HrmShortcuts = "F2 New employee · F3 Search · F10 Payroll";
 }

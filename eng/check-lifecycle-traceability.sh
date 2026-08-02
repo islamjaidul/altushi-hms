@@ -126,12 +126,17 @@ for f in [f for root in PAGE_ROOTS for f in root.rglob("*.cshtml")]:
     code = f.with_suffix(".cshtml.cs")
     if not code.exists():
         continue
-    a = re.search(r"\[Authorize\(Policy = (?:Hr)?Perm\.(\w+)\)\]", code.read_text(errors="ignore"))
+    # Any policy-constant class, not a fixed list of two. Hms.Shell added PlatformPerm when the
+    # identity screens moved out of the ERP host (spec 0036); a hardcoded alternation would have
+    # reported the moved page as unprotected rather than as protected by something it did not know.
+    a = re.search(r"\[Authorize\(Policy = \w*Perm\.(\w+)\)\]", code.read_text(errors="ignore"))
     if a:
         routes[route] = a.group(1)
 consts = {}
-for perms in list(pathlib.Path("src").rglob("Perm.cs")) + list(pathlib.Path("src").rglob("HrPerm.cs")):
-    consts.update(re.findall(r'(\w+) = P \+ "([a-z.]+)"', perms.read_text()))
+for perms in pathlib.Path("src").rglob("*.cs"):
+    if "/obj/" in str(perms) or "/bin/" in str(perms):
+        continue
+    consts.update(re.findall(r'(\w+) = P \+ "([a-z.]+)"', perms.read_text(errors="ignore")))
 real = {r: consts[c] for r, c in routes.items() if c in consts}
 src = pathlib.Path(sys.argv[1]).read_text()
 block = re.search(r"ROUTES = \{(.*?)\n\}", src, re.S).group(1)

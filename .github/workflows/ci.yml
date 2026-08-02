@@ -25,6 +25,13 @@ jobs:
           sh eng/check-no-native-date.sh src
           bash eng/check-lifecycle-traceability.sh
           sh eng/check-published-content-tracked.sh
+          sh eng/check-css-classes.sh src
+      # Both of these catch defects that return HTTP 200 with correct markup, which is why every
+      # route, permission and entitlement check passed over them for an entire release (spec 0036).
+      - name: Icon subset covers every ligature used
+        run: |
+          python3 -m pip install --quiet fonttools brotli
+          sh eng/check-icon-glyphs.sh src
       - name: Unit + architecture tests
         run: |
           dotnet test tests/Hms.Kernel.Tests --no-build -c Release

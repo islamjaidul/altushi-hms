@@ -237,6 +237,7 @@ input, select, textarea, button { font-family: inherit; }
 .grid-side-main { grid-template-columns: 272px minmax(0, 1fr); }
 .grid-pos { grid-template-columns: minmax(0, 1fr) 356px; }
 .grid-3 { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 318px; }
+.grid-2col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; align-items: center; gap: 10px; }
 .row-end { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
@@ -261,6 +262,9 @@ input, select, textarea, button { font-family: inherit; }
 }
 .btn:hover { background: var(--app-bg); text-decoration: none; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* The commit action on a screen whose whole purpose is that one button — the pharmacy POS save.
+   Used since spec 0012 and defined nowhere, so "Save Bill" was the same size as "Cancel". */
+.btn-lg { min-height: 48px; padding: 0 26px; font-size: 0.9375rem; }
 .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--paper); }
 .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: var(--paper); }
 .btn-success { background: var(--success); border-color: var(--success); color: var(--paper); }
@@ -359,6 +363,33 @@ input, select, textarea, button { font-family: inherit; }
 .help-text { font-size: 0.71875rem; color: var(--muted-2); margin-top: 4px; }
 .help-text.bad { color: var(--danger); font-weight: 600; }
 
+/* Filter and inline forms.
+   These were used by seven HR screens and defined nowhere, so `.input`'s width:100% pushed the
+   submit button onto the next line at baseline alignment, sitting across the input's bottom border.
+   An undefined class is not an error in HTML: the page returned 200 and the markup was correct.
+   `eng/check-css-classes.sh` now fails the build for it. */
+.filter-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid var(--td-rule);
+}
+.filter-row .input,
+.filter-row .select { flex: 1 1 220px; width: auto; min-width: 0; }
+.filter-row .btn { flex: 0 0 auto; }
+.filter-row .field { flex: 0 1 auto; }
+
+/* A form that sits inside a card head or a table cell and lays out as a row rather than a block. */
+.inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.inline-form .input,
+.inline-form .select { width: auto; min-width: 120px; }
+
+/* Checkbox and its label on one baseline. The control is sized to §7 U3 rather than left at the
+   browser default — these operators are not fast with a mouse. */
+.check {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 0.8125rem; color: var(--ink-2); white-space: nowrap; cursor: pointer;
+}
+.check input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); flex: 0 0 auto; }
+
 /* type-ahead results (05 §3) — never a free-text foreign key (§7 U5) */
 .typeahead-results {
   position: absolute; z-index: 40;
@@ -401,6 +432,13 @@ table.data tbody tr:hover { background: var(--row-hover); }
 table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
 table.data .mid { text-align: center; }
 table.data .id-cell { font-weight: 600; color: var(--primary); font-variant-numeric: tabular-nums; }
+/* The "nothing in this table" cell — a colspan row, as opposed to .empty-state which replaces the
+   whole table. Thirteen pages across five modules used it and it was defined nowhere, so the message
+   rendered as an ordinary left-aligned cell in body colour. */
+table.data td.empty {
+  padding: 24px 12px; text-align: center; color: var(--muted-3); font-size: 0.78125rem;
+}
+table.data tbody tr:hover td.empty { background: transparent; }
 table.data tfoot td, table.data tr.total-row td {
   background: var(--total-row-bg);
   font-weight: 800; font-size: 0.84375rem;
@@ -743,6 +781,13 @@ table.data tfoot td, table.data tr.total-row td {
 /* ====================================================================== */
 /* Print sheet (05 §6) — same layout on screen, on paper and in the PDF   */
 /* ====================================================================== */
+
+/* A card that is also the thing you hand someone — the IPD gate pass. On screen it is a card;
+   printed, it is the only thing on the page. Used since spec 0017 and defined nowhere. */
+.print-sheet { page-break-inside: avoid; }
+@media print {
+  .print-sheet { box-shadow: none; border: none; margin: 0; max-width: none; }
+}
 
 .sheet {
   width: 640px; max-width: 100%;

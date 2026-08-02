@@ -85,14 +85,23 @@ public class PoliciesModel(IHrTx tx) : HmsPageModel
         var leaveTypes = await s.Hr.LeaveTypes.CountAsync(x => x.BranchId == BranchId && x.Active);
         var components = await s.Hr.PayComponents.CountAsync(x => x.BranchId == BranchId && x.Active);
 
+        // Every row links somewhere it can be created. Four of these used to link nowhere, which
+        // made the screen a list of things the operator was told to configure with nothing to
+        // configure them on (spec 0036).
         Structure =
         [
-            new("Units", units, "Departments or sections. Employees are placed in one.", null),
-            new("Designations", designations, "Job titles.", null),
-            new("Grades", grades, "Pay bands. Pay scales hang off these, effective-dated.", null),
-            new("Shifts", shifts, "Working windows. Night shifts pair punches across midnight.", "/hr/roster"),
-            new("Leave types", leaveTypes, "Whatever this employer offers — we ship none.", "/hr/leave"),
-            new("Pay components", components, "The lines on a payslip: basic, allowances, deductions.", null),
+            new("Units", units, "Departments or sections. Employees are placed in one.",
+                "/hr/masters?tab=units"),
+            new("Designations", designations, "Job titles.",
+                "/hr/masters?tab=designations"),
+            new("Grades", grades, "Pay bands. Pay scales hang off these, effective-dated.",
+                "/hr/masters?tab=grades"),
+            new("Shifts", shifts, "Working windows. Night shifts pair punches across midnight.",
+                "/hr/masters?tab=shifts"),
+            new("Leave types", leaveTypes, "Whatever this employer offers — we ship none.",
+                "/hr/masters?tab=leave-types"),
+            new("Pay components", components, "The lines on a payslip: basic, allowances, deductions.",
+                "/hr/masters?tab=components"),
         ];
 
         var payrollPolicy = await s.Hr.PayrollPolicies.CountAsync(

@@ -14,7 +14,7 @@ namespace Hms.Hr;
 /// hiring an employee and its audit event land together or not at all.
 /// </summary>
 public sealed class EmployeeService(
-    NumberSeriesService numbers, AuditWriter audit, FiscalCalendar fiscal, TimeProvider clock)
+    NumberSeriesService numbers, AuditWriter audit, TimeProvider clock)
 {
     /// <summary>
     /// Hires a person. A rehire passes the previous employee's <paramref name="personRef"/>: it
@@ -31,8 +31,19 @@ public sealed class EmployeeService(
         if (draft.JoinedOn == default)
             throw new HrException("A joining date is required — service length depends on it.");
 
-        var fy = fiscal.FiscalYearOf(draft.JoinedOn);
-        var (_, code) = await numbers.IssueAsync(kernel, branchId, "employee", fy, "EMP-{n:D5}", ct);
+        // One series for the life of the organisation, deliberately NOT scoped by fiscal year.
+        //
+        // The number series is keyed (branch, doc_type, fiscal_year), so a fiscal-year scope restarts
+        // the counter every year. With a format carrying no {fy} token, the first hire of each new
+        // fiscal year is issued EMP-00001 again — and the unique index on employee_code rejects it.
+        // Seeding a hundred people with joining dates spread over seven years is what surfaced it
+        // (spec 0036); on a live install it would have appeared as a 500 on the first hire after a
+        // fiscal-year rollover, on a screen that had worked all year.
+        //
+        // An employee code is a person's permanent identifier, not a document number within a
+        // period, so the fix is the scope rather than the format: this row's history must not be
+        // partitioned by year. "all" is a literal scope key, not a year.
+        var (_, code) = await numbers.IssueAsync(kernel, branchId, "employee", "all", "EMP-{n:D5}", ct);
 
         draft.BranchId = branchId;
         draft.EmployeeCode = code;

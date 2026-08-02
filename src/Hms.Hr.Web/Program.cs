@@ -39,8 +39,15 @@ builder.Services.AddModuleEntitlement(new Dictionary<string, string>
     [HrModule.RoutePrefix] = HrModule.Name,
 });
 
-builder.Services.AddSingleton<IReadOnlyList<NavItem>>(HrNav.Registry);
+builder.Services.AddSingleton<IReadOnlyList<NavItem>>(HrmNav.Composed);
 builder.Services.AddSingleton<IHrTx, HrTx>();
+builder.Services.AddSingleton<IPlatformTx, PlatformTxOverHr>();
+
+// What this SKU can grant: HR, plus the platform capabilities every host has. It ships no clinical
+// permission, so none can be granted here — the commercial boundary and the security boundary are
+// the same list.
+builder.Services.AddSingleton(PermissionCatalog.FromPolicyConstants(
+    typeof(HrPerm), typeof(PlatformPerm)));
 builder.Services.AddSingleton<Hms.Hr.Contracts.IPayrollPosting, JournalOnlyPosting>();
 builder.Services.AddSingleton<PolicyResolver>();
 builder.Services.AddSingleton<EmployeeService>();
@@ -50,7 +57,8 @@ builder.Services.AddSingleton<PayrollService>();
 
 // P27: this product is sold to employers that are not hospitals, so the identity is neutral.
 builder.Services.AddSingleton(OrgIdentity.From(
-    builder.Configuration, "Your Organisation", "HR & Payroll"));
+    builder.Configuration, "Your Organisation", "HR & Payroll",
+    ProductChrome.HrmName, ProductChrome.HrmShortcuts));
 
 var app = builder.Build();
 
@@ -75,6 +83,7 @@ using (var scope = app.Services.CreateScope())
         await HmsPlatform.ClaimDatabaseAsync(kernel, HostKind.Hrm, acceptsAnyExisting: false);
 
         await HrSeed.RunAsync(sp);
+        await HrDemoSeed.RunAsync(sp);
     }
     finally
     {

@@ -25,7 +25,9 @@
         .FirstOrDefault();
     var crumb = (string?)ViewData["Crumb"] ?? current?.Group.Label ?? "Home";
     var title = (string?)ViewData["Title"] ?? current?.Item.Title ?? "Home";
-    var fkeys = (string?)ViewData["FKeys"] ?? "F2 New patient · F3 Item search · F10 Payment";
+    // The default belongs to the host, not to this file: the HRM SKU is not a hospital, and these
+    // two lines appear on every screen it renders (P27, spec 0036).
+    var fkeys = (string?)ViewData["FKeys"] ?? Hospital.DefaultShortcuts;
     var toast = TempData["Toast"] as string;
     var toastIcon = TempData["ToastIcon"] as string ?? "task_alt";
 }
@@ -70,7 +72,7 @@
                     </div>
                 }
             </nav>
-            <div class="rail-foot">MVP build · @Entitlements.EnabledModules.Count modules entitled</div>
+            <div class="rail-foot">@Hospital.ProductName · @Entitlements.EnabledModules.Count module(s) licensed</div>
         </aside>
     }
     <div class="main">
