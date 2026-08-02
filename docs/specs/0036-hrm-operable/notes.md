@@ -98,3 +98,41 @@ would make the demo tidier and US16.1's pre-listing invisible.
 - HR payroll arithmetic tests — split-period proration, rounding-residue allocation, post-lock
   arrears, night-shift punch pairing, punch-import idempotency, negative-net floor. Money code with
   no arithmetic coverage.
+
+---
+
+## Deployment record — 2026-08-02
+
+Built and deployed to `hrm.specshipper.com` (103.132.96.250) from `1609c03`, via the RUNBOOK §10
+path: `compose.hrm.yml` + `compose.hrm.vm.yml`, `--no-deps app` against the ERP's Postgres.
+
+**The `hrm` database was dropped and recreated** so the demo seed would run: its guard is
+`employee count == 0`, and the box already held the first seeded set. Only seeded data was lost —
+four seeded logins and no customer records — which is the state RUNBOOK §10 already describes
+("do not put anything on this deployment you would mind losing"). The one-time SQL in §10 was
+re-applied verbatim, which incidentally rehearsed it.
+
+VM memory after: 1345 MB available, against 1187 MB before the deploy. No second Postgres.
+
+### Verified live, signed in as `admin`
+
+| | |
+|---|---|
+| Sidebar | **10** entries — nine HR plus Administration. Was four. |
+| Every route | 200, with `<html>`, version-stamped stylesheet, and the sidebar |
+| `/hr/employees` | 100 employees; every name resolves to a rendered record |
+| `/hr/attendance` | today's register, 1 exception pre-listed, 100 rows under *show all* |
+| `/hr/payroll` | `PR-2026-27-0001`, July 2026, 100 staff, ৳ 43,06,000 net, **Locked** |
+| `/hr/masters` | six tabs; created a unit over HTTP and it appeared |
+| `/admin/users` | created a role copied from HR Officer, then a user on it |
+| Font | the served subset carries all 60 ligatures; the ten that were missing — including `key` and `local_shipping`, both the ERP's — resolve |
+| Chrome | `HR & Payroll · 2 module(s) licensed`, `F2 New employee · F3 Search · F10 Payroll` |
+
+The new `shirin` account signs in and sees the nine HR entries and **not** `/admin/users`, because
+Payroll Assistant was copied from HR Officer, which does not hold `admin.users.manage`. That is the
+permission filter still enforcing after the superuser change — the check worth keeping, since the
+whole spec loosened a role.
+
+**The ERP was not rebuilt** and still runs its old image. `main` now carries the moved
+`/admin/users`, the four ERP CSS classes and the two ERP glyphs, so its next rebuild picks all of
+them up.
