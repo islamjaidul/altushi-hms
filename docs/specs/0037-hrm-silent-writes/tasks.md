@@ -29,4 +29,6 @@
       This is the evidence for the risk the plan recorded: the flush is a no-op on the ERP paths.
 - [x] Guards: css-classes, ui-tokens, icon-glyphs, no-native-date, fkeys, no-external-hosts,
       lifecycle-traceability
-- [ ] Deployed to `hrm.specshipper.com` and re-QA'd against the deployment
+- [x] Deployed to `hrm.specshipper.com` (5eabd79) and re-QA'd there — 37 cases, 0 failed;
+      the six writes confirmed in the live `hrm` database, `PR-2026-27-0002` posted
+- [x] Thread proven re-runnable — green twice against one dirty database (0029)

@@ -1,6 +1,6 @@
 # 0037 — Six HR screens report success and save nothing
 
-- **Status:** Draft
+- **Status:** Done
 - **Date:** 2026-08-02
 - **PRD ref:** §5 M16, §5 M21, §7 (UX principles), §11 (payroll state chain), §12
 - **ADR ref:** ADR-0025 (two-host product line), G19 (one business action, one transaction)
