@@ -34,7 +34,8 @@ namespace Hms.Notifications.Data.Migrations
 
                     b.Property<string>("Body")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("body");
 
                     b.Property<long>("BranchId")
@@ -43,20 +44,31 @@ namespace Hms.Notifications.Data.Migrations
 
                     b.Property<string>("Event")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("event");
 
                     b.Property<string>("FailReason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("fail_reason");
+
+                    b.Property<DateTimeOffset?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
 
                     b.Property<DateTimeOffset>("QueuedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("queued_at");
 
                     b.Property<string>("Recipient")
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("recipient");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
 
                     b.Property<int>("Segments")
                         .HasColumnType("integer")
@@ -72,7 +84,8 @@ namespace Hms.Notifications.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.HasKey("Id")
@@ -81,7 +94,13 @@ namespace Hms.Notifications.Data.Migrations
                     b.HasIndex("QueuedAt")
                         .HasDatabaseName("ix_sms_queued_at");
 
-                    b.ToTable("sms", "notif");
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_sms_state");
+
+                    b.ToTable("sms", "notif", t =>
+                        {
+                            t.HasCheckConstraint("ck_sms_state", "state IN ('queued','sent','delivered','failed','skipped_no_phone')");
+                        });
                 });
 #pragma warning restore 612, 618
         }

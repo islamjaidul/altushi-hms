@@ -56,6 +56,185 @@
     </div>
 </div>
 
+<div class="card">
+    <div class="card-head">Absence deduction @if (!Model.HasDeductionRule) { <span class="pill warn">not configured</span> }</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SaveDeductionRule" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:220px">
+                <span class="field-label">Per absent day</span>
+                <input class="input num" name="PerAbsentDayBp" inputmode="numeric"
+                       value="@Model.PerAbsentDayBp" placeholder="10000 = one day's pay" />
+            </label>
+            <label class="field" style="width:220px">
+                <span class="field-label">Per leave-without-pay day</span>
+                <input class="input num" name="PerLeaveWithoutPayDayBp" inputmode="numeric"
+                       value="@Model.PerLeaveWithoutPayDayBp" placeholder="10000 = one day's pay" />
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+        <p class="card-hint">
+            Rates are basis points of a day's pay: 10000 deducts exactly one day per absent day.
+            Without this rule an absent day deducts nothing.
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Grace time &amp; lateness @if (!Model.HasGraceRule) { <span class="pill warn">not configured</span> }</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SaveGraceTime" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:160px">
+                <span class="field-label">Grace minutes</span>
+                <input class="input num" name="GraceMinutes" inputmode="numeric"
+                       value="@Model.GraceMinutes" placeholder="e.g. 10" />
+            </label>
+            <label class="field" style="width:200px">
+                <span class="field-label">Free lates per month</span>
+                <input class="input num" name="FreeLateCountPerMonth" inputmode="numeric"
+                       value="@Model.FreeLateCountPerMonth" placeholder="e.g. 3" />
+            </label>
+            <label class="field" style="width:220px">
+                <span class="field-label">Deduction per excess late</span>
+                <input class="input num" name="DeductionPerLateBp" inputmode="numeric"
+                       value="@Model.DeductionPerLateBp" placeholder="5000 = half a day's pay" />
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Overtime @if (!Model.HasOvertimeRule) { <span class="pill warn">not configured</span> }</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SaveOvertimeRule" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:180px">
+                <span class="field-label">Starts after (minutes)</span>
+                <input class="input num" name="ThresholdMinutes" inputmode="numeric"
+                       value="@Model.ThresholdMinutes" placeholder="0 = every minute" />
+            </label>
+            <label class="field" style="width:180px">
+                <span class="field-label">Multiplier</span>
+                <input class="input num" name="MultiplierBp" inputmode="numeric"
+                       value="@Model.MultiplierBp" placeholder="20000 = 2.0x" />
+            </label>
+            <label class="field" style="width:200px">
+                <span class="field-label">Monthly cap (minutes)</span>
+                <input class="input num" name="MaxMinutesPerMonth" inputmode="numeric"
+                       value="@Model.MaxMinutesPerMonth" placeholder="0 = no cap" />
+            </label>
+            <label class="check">
+                <input type="checkbox" name="BankInsteadOfPay" value="true"
+                       checked="@Model.BankInsteadOfPay" />
+                <span>Bank as comp-off instead of paying</span>
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+        <p class="card-hint">
+            Overtime pays the day rate's per-minute equivalent times the multiplier. Without this
+            rule, recorded overtime minutes are never paid.
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Provident fund @if (!Model.HasPf) { <span class="pill warn">not configured</span> }</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SavePfPolicy" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:180px">
+                <span class="field-label">Employee share</span>
+                <input class="input num" name="EmployeeShareBp" inputmode="numeric"
+                       value="@Model.EmployeeShareBp" placeholder="800 = 8%" />
+            </label>
+            <label class="field" style="width:180px">
+                <span class="field-label">Employer share</span>
+                <input class="input num" name="EmployerShareBp" inputmode="numeric"
+                       value="@Model.EmployerShareBp" placeholder="800 = 8%" />
+            </label>
+            <label class="field" style="width:180px">
+                <span class="field-label">Eligible after (months)</span>
+                <input class="input num" name="EligibilityMonths" inputmode="numeric"
+                       value="@Model.EligibilityMonths" placeholder="e.g. 6" />
+            </label>
+            <label class="field" style="width:180px">
+                <span class="field-label">Monthly cap (৳)</span>
+                <input class="input num" name="MonthlyCapTaka" inputmode="numeric"
+                       value="@Model.MonthlyCapTaka" placeholder="blank = no cap" />
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+        <p class="card-hint">
+            Shares are basis points of the PF-applicable earnings. These are your fund's rates —
+            the product asserts no statutory ones.
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Income tax table @if (Model.CurrentSlabs.Count == 0) { <span class="pill warn">not configured</span> }</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SaveTaxSlabs">
+            @Html.AntiForgeryToken()
+            <div class="table-wrap" style="max-width:560px">
+                <table class="data">
+                    <thead>
+                    <tr><th>Band</th><th class="num">Monthly income up to (৳)</th><th class="num">Rate</th></tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < 6; i++)
+                    {
+                        var up = i < Model.UpToTaka.Count ? Model.UpToTaka[i] : null;
+                        var rate = i < Model.RateBp.Count ? Model.RateBp[i] : null;
+                        <tr>
+                            <td class="tabular">@(i + 1)</td>
+                            <td class="num">
+                                <input class="input input-sm num" name="UpToTaka[@i]" inputmode="numeric"
+                                       value="@up" placeholder="@(i == 5 ? "0 = everything above" : "")" />
+                            </td>
+                            <td class="num">
+                                <input class="input input-sm num" name="RateBp[@i]" inputmode="numeric"
+                                       value="@rate" placeholder="500 = 5%" />
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="filter-row" style="margin-top:8px">
+                <button type="submit" class="btn btn-primary">Save tax table</button>
+            </div>
+        </form>
+        <p class="card-hint">
+            Your own progressive bands, applied to monthly taxable earnings. Leave a row blank to
+            skip it; give the last band a ceiling of 0 to mean "everything above". Saving replaces
+            the whole table from today — past runs keep the table they resolved.
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Gratuity @if (!Model.HasGratuity) { <span class="pill warn">not configured</span> }</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SaveGratuityRule" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:220px">
+                <span class="field-label">Minimum service (months)</span>
+                <input class="input num" name="MinimumServiceMonths" inputmode="numeric"
+                       value="@Model.MinimumServiceMonths" placeholder="e.g. 60" />
+            </label>
+            <label class="field" style="width:240px">
+                <span class="field-label">Days of pay per year served</span>
+                <input class="input num" name="DaysPerYearBp" inputmode="numeric"
+                       value="@Model.DaysPerYearBp" placeholder="300000 = 30 days" />
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+</div>
+
 <div class="card card-clip">
     <div class="card-head"><h2>Organisation structure</h2></div>
     <div class="table-wrap">

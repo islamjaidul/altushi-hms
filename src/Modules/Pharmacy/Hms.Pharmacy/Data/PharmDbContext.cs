@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -266,6 +267,11 @@ public class StockAuditLine
 
 public class PharmDbContext(DbContextOptions<PharmDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<PharmProduct> Products => Set<PharmProduct>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
@@ -285,49 +291,160 @@ public class PharmDbContext(DbContextOptions<PharmDbContext> options) : DbContex
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Spec 0039 WP2: domain-value CHECKs, state CHECKs from the *State constants above,
+        // intra-schema FKs, HasMaxLength and xmin tokens — same posture as BillDbContext
+        // (additive only, NOT VALID in the migration for pre-existing tables).
         b.HasDefaultSchema("pharm");
-        b.Entity<Company>(e => e.ToTable("company"));
+        b.Entity<Company>(e =>
+        {
+            e.ToTable("company");
+            e.Property(x => x.Name).HasMaxLength(200);
+        });
         b.Entity<PharmProduct>(e =>
         {
             e.ToTable("product");
+            e.Property(x => x.Brand).HasMaxLength(200);
+            e.Property(x => x.Generic).HasMaxLength(200);
+            e.Property(x => x.Strength).HasMaxLength(40);
+            e.Property(x => x.Form).HasMaxLength(40);
+            e.Property(x => x.Unit).HasMaxLength(40);
             e.HasIndex(x => new { x.Brand, x.Generic });
+            e.HasOne<Company>().WithMany().HasForeignKey(x => x.CompanyId);
         });
-        b.Entity<Supplier>(e => e.ToTable("supplier"));
-        b.Entity<Outlet>(e => e.ToTable("outlet"));
-        b.Entity<PurchaseOrder>(e => e.ToTable("purchase_order"));
-        b.Entity<PurchaseOrderLine>(e => e.ToTable("purchase_order_line"));
+        b.Entity<Supplier>(e =>
+        {
+            e.ToTable("supplier");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Phone).HasMaxLength(20);
+        });
+        b.Entity<Outlet>(e =>
+        {
+            e.ToTable("outlet");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Kind).HasMaxLength(40);
+        });
+        b.Entity<PurchaseOrder>(e =>
+        {
+            e.ToTable("purchase_order", t => t.HasCheckConstraint("ck_purchase_order_state",
+                "state IN ('requested','approved','ordered','partially_received',"
+                + "'received','closed','cancelled')"));
+            e.Property(x => x.State).HasMaxLength(40);
+            e.HasOne<Supplier>().WithMany().HasForeignKey(x => x.SupplierId);
+        });
+        b.Entity<PurchaseOrderLine>(e =>
+        {
+            // The database backstop for the over-receipt TOCTOU at PurchaseService (audit §1b).
+            e.ToTable("purchase_order_line", t => t.HasCheckConstraint("ck_po_line_qty",
+                "qty > 0 AND expected_cost >= 0 AND received_qty BETWEEN 0 AND qty"));
+            e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PurchaseOrderId);
+        });
         b.Entity<Batch>(e =>
         {
             // The invariant that makes over-selling impossible even under races (ADR-0021 #3).
-            e.ToTable("batch", t => t.HasCheckConstraint("ck_batch_qty", "qty_on_hand >= 0"));
+            e.ToTable("batch", t =>
+            {
+                t.HasCheckConstraint("ck_batch_qty", "qty_on_hand >= 0");
+                t.HasCheckConstraint("ck_batch_state",
+                    "state IN ('instock','quarantined','returned','disposed')");
+                t.HasCheckConstraint("ck_batch_money", "cost >= 0 AND mrp >= 0");
+            });
+            e.Property(x => x.BatchNo).HasMaxLength(40);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.StateReason).HasMaxLength(4000);
             e.HasIndex(x => new { x.OutletId, x.ProductId, x.State, x.Expiry });
+            // Products/Reports filter without outlet_id, skipping the index above's leading
+            // column (audit §5).
+            e.HasIndex(x => new { x.ProductId, x.State, x.Expiry });
+            e.HasOne<PharmProduct>().WithMany().HasForeignKey(x => x.ProductId);
+            e.HasOne<Outlet>().WithMany().HasForeignKey(x => x.OutletId);
+            e.HasOne<PurchaseOrder>().WithMany().HasForeignKey(x => x.PurchaseOrderId);
+            e.Property<uint>("xmin").IsRowVersion();
         });
         b.Entity<StockMove>(e =>
         {
+            // No qty CHECK: signed by design, and legitimately 0 for the quarantine marker
+            // and for disposing an already-empty quarantined batch (StockService.DisposeAsync).
             e.ToTable("stock_move");
+            e.Property(x => x.Kind).HasMaxLength(40);
+            e.Property(x => x.RefTable).HasMaxLength(40);
+            e.Property(x => x.Reason).HasMaxLength(4000);
             e.HasIndex(x => new { x.BatchId, x.At });
             e.HasIndex(x => new { x.ProductId, x.At });
+            e.HasOne<Batch>().WithMany().HasForeignKey(x => x.BatchId);
+            e.HasOne<PharmProduct>().WithMany().HasForeignKey(x => x.ProductId);
         });
         b.Entity<SaleAllocation>(e =>
         {
-            e.ToTable("sale_allocation");
+            e.ToTable("sale_allocation", t =>
+            {
+                t.HasCheckConstraint("ck_sale_allocation_qty",
+                    "qty > 0 AND refunded_qty BETWEEN 0 AND qty");
+                t.HasCheckConstraint("ck_sale_allocation_money",
+                    "unit_mrp >= 0 AND unit_cost >= 0");
+            });
             e.HasIndex(x => x.InvoiceId);
+            e.HasOne<Batch>().WithMany().HasForeignKey(x => x.BatchId);
         });
         b.Entity<IssueAllocation>(e =>
         {
-            e.ToTable("issue_allocation");
+            e.ToTable("issue_allocation", t => t.HasCheckConstraint(
+                "ck_issue_allocation_qty", "returned_qty BETWEEN 0 AND qty"));
             e.HasIndex(x => x.IndentId);
+            e.HasOne<Batch>().WithMany().HasForeignKey(x => x.BatchId);
         });
-        b.Entity<Transfer>(e => e.ToTable("transfer"));
-        b.Entity<TransferLine>(e => e.ToTable("transfer_line"));
-        b.Entity<TransferBatch>(e => e.ToTable("transfer_batch"));
+        b.Entity<Transfer>(e =>
+        {
+            e.ToTable("transfer", t =>
+            {
+                t.HasCheckConstraint("ck_transfer_state",
+                    "state IN ('indent','sent','received','cancelled')");
+                t.HasCheckConstraint("ck_transfer_sent",
+                    "state <> 'sent' OR sent_at IS NOT NULL");
+                t.HasCheckConstraint("ck_transfer_received",
+                    "state <> 'received' "
+                    + "OR (received_at IS NOT NULL AND received_by IS NOT NULL)");
+            });
+            e.Property(x => x.State).HasMaxLength(40);
+        });
+        b.Entity<TransferLine>(e =>
+        {
+            e.ToTable("transfer_line", t => t.HasCheckConstraint(
+                "ck_transfer_line_qty", "sent_qty BETWEEN 0 AND requested_qty"));
+            e.HasOne<Transfer>().WithMany().HasForeignKey(x => x.TransferId);
+        });
+        b.Entity<TransferBatch>(e =>
+        {
+            e.ToTable("transfer_batch");
+            e.Property(x => x.BatchNo).HasMaxLength(40);
+        });
         b.Entity<SupplierLedgerEntry>(e =>
         {
             e.ToTable("supplier_ledger");
+            e.Property(x => x.Kind).HasMaxLength(40);
+            e.Property(x => x.RefTable).HasMaxLength(40);
+            e.Property(x => x.Note).HasMaxLength(4000);
             e.HasIndex(x => new { x.SupplierId, x.At });
+            e.HasOne<Supplier>().WithMany().HasForeignKey(x => x.SupplierId);
         });
-        b.Entity<StockAudit>(e => e.ToTable("stock_audit"));
-        b.Entity<StockAuditLine>(e => e.ToTable("stock_audit_line"));
+        b.Entity<StockAudit>(e =>
+        {
+            e.ToTable("stock_audit", t => t.HasCheckConstraint("ck_stock_audit_state",
+                "state IN ('count_started','variance_listed','approved','posted')"));
+            e.Property(x => x.State).HasMaxLength(40);
+        });
+        b.Entity<StockAuditLine>(e =>
+        {
+            e.ToTable("stock_audit_line", t => t.HasCheckConstraint(
+                "ck_stock_audit_line_counted", "counted_qty >= 0"));
+            e.HasOne<StockAudit>().WithMany().HasForeignKey(x => x.StockAuditId);
+            e.Property<uint>("xmin").IsRowVersion();
+        });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

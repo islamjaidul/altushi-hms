@@ -1,7 +1,9 @@
+using System.Text;
 using Hms.Hr.Data;
 using Hms.Kernel.Time;
 using Hms.Shell;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +30,66 @@ public class AttendanceModel(IHrTx tx, AttendanceService attendance) : HmsPageMo
     public int ExceptionCount { get; private set; }
 
     public async Task OnGetAsync() => await LoadAsync();
+
+    /// <summary>
+    /// The capture path (AUD-M16-08: `ImportAsync` and `DeriveDayAsync` had zero callers — the
+    /// review screen edited data the product had no way to acquire). A device export file or
+    /// pasted rows go through the same <see cref="CsvPunchSource"/>; the punches land, then every
+    /// touched day is derived — pairing, night-shift spanning and break deduction included.
+    /// Re-importing the same file reports duplicates and changes nothing.
+    /// </summary>
+    public async Task<IActionResult> OnPostImportAsync(IFormFile? punchFile, string? punchRows)
+    {
+        var hasFile = punchFile is { Length: > 0 };
+        var hasText = !string.IsNullOrWhiteSpace(punchRows);
+        if (!hasFile && !hasText)
+        {
+            await LoadAsync();
+            Fail("Choose a punch file, or paste rows as: employee code, date time — one punch per line.");
+            return Page();
+        }
+        if ((hasFile && punchFile!.Length > AttendanceService.MaxImportBytes)
+            || (hasText && punchRows!.Length > AttendanceService.MaxImportBytes))
+        {
+            await LoadAsync();
+            Fail($"That import is larger than {AttendanceService.MaxImportBytes / (1024 * 1024)} MB — split it and import again.");
+            return Page();
+        }
+
+        try
+        {
+            var (result, days) = await tx.RunAsync(async s =>
+            {
+                await using Stream stream = hasFile
+                    ? punchFile!.OpenReadStream()
+                    : new MemoryStream(Encoding.UTF8.GetBytes(punchRows!));
+
+                var import = await attendance.ImportAsync(
+                    s.Hr, s.Kernel, BranchId, hasFile ? punchFile!.FileName : "pasted rows",
+                    new CsvPunchSource(), stream, ActorId, ActorName);
+
+                // The punches must be on disk before derivation reads them back per day.
+                await s.Hr.SaveChangesAsync();
+                var derived = await attendance.DeriveImportedDaysAsync(s.Hr, BranchId, import.BatchId);
+                return (import, derived);
+            });
+
+            var summary = $"Imported {result.Read} row(s): {result.Accepted} accepted, "
+                          + $"{result.Duplicate} duplicate, {result.Rejected} rejected · "
+                          + $"{days} day(s) derived";
+            if (result.Rejected > 0)
+                summary += " — rejected rows name an unknown employee code or an unreadable line";
+            Toast(summary, "fact_check");
+        }
+        catch (HrException e)
+        {
+            await LoadAsync();
+            Fail(e.Message);
+            return Page();
+        }
+
+        return Redirect($"/hr/attendance?OnDate={OnDate}&ShowAll={ShowAll}");
+    }
 
     /// <summary>
     /// The correction path. A reason is mandatory, and if the day belongs to a locked payroll run

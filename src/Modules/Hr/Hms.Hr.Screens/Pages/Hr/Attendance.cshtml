@@ -13,6 +13,32 @@
     </div>
 }
 
+<div class="card">
+    <div class="card-head">Import punches</div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="Import" enctype="multipart/form-data" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:280px">
+                <span class="field-label">Device export file</span>
+                <input class="input" type="file" name="punchFile" accept=".csv,.txt" />
+            </label>
+            <label class="field" style="flex:1;min-width:280px">
+                <span class="field-label">Or paste rows — employee code, date time, in/out</span>
+                <textarea class="input" name="punchRows" rows="2"
+                          placeholder="EMP-00012, 03/08/2026 09:02, in&#10;EMP-00012, 03/08/2026 18:11, out"></textarea>
+            </label>
+            <button type="submit" class="btn btn-primary">
+                <span class="icon icon-sm" aria-hidden="true">fact_check</span> Import
+            </button>
+        </form>
+        <p class="card-hint">
+            Times are Dhaka wall-clock. Each imported day is re-derived against the roster —
+            punches pair, a night shift's morning out-punch lands on the shift's own date, and
+            re-importing the same file reports duplicates without changing anything.
+        </p>
+    </div>
+</div>
+
 <div class="card card-clip">
     <div class="card-head">
         <h2>

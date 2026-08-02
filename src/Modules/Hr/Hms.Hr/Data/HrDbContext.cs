@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -14,6 +15,11 @@ namespace Hms.Hr.Data;
 /// </summary>
 public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     // masters
     public DbSet<OrgUnit> OrgUnits => Set<OrgUnit>();
     public DbSet<Designation> Designations => Set<Designation>();
@@ -177,6 +183,8 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             // Re-importing the same device export is a no-op, not a duplicated day.
             e.HasIndex(x => new { x.EmployeeId, x.DeviceId, x.PunchedAt }).IsUnique();
             e.HasIndex(x => x.ImportBatchId);
+            e.HasOne<PunchImportBatch>().WithMany().HasForeignKey(x => x.ImportBatchId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<AttendanceDay>(e =>
         {
@@ -234,18 +242,29 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             e.HasIndex(x => x.State);
             e.Property(x => x.JournalJson).HasColumnType("jsonb");
         });
+        // Intra-schema foreign keys (spec 0039 WP2 §2.3 / AUD-M16-10): the database, not luck,
+        // holds a line to its run. RESTRICT, never cascade — hard rule 4 forbids the delete a
+        // cascade would amplify. No navigations: services keep addressing rows by id.
         b.Entity<PayrollLine>(e =>
         {
             e.ToTable("payroll_line");
             e.HasIndex(x => new { x.RunId, x.EmployeeId }).IsUnique();
             e.HasIndex(x => x.EmployeeId);
             e.Property(x => x.PolicyStampJson).HasColumnType("jsonb");
+            e.HasOne<PayrollRun>().WithMany().HasForeignKey(x => x.RunId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<PayrollComponentLine>(e =>
         {
             e.ToTable("payroll_component_line");
             e.HasIndex(x => x.PayrollLineId);
             e.HasIndex(x => x.RunId);
+            e.HasOne<PayrollLine>().WithMany().HasForeignKey(x => x.PayrollLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<PayrollRun>().WithMany().HasForeignKey(x => x.RunId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<Payslip>(e =>
         {
@@ -253,6 +272,10 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             e.HasIndex(x => x.PayslipNo).IsUnique();
             e.HasIndex(x => x.PayrollLineId).IsUnique();
             e.HasIndex(x => x.EmployeeId);
+            e.HasOne<PayrollLine>().WithMany().HasForeignKey(x => x.PayrollLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<Loan>(e =>
         {
@@ -313,6 +336,7 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             e.ToTable("deduction_rule");
             e.HasIndex(x => new { x.BranchId, x.EffectiveFrom });
         });
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

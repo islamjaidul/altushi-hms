@@ -840,7 +840,12 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
   font-size: 0.59375rem; color: var(--muted-3);
 }
 .sheet-bn { font-family: var(--font-bn); }
-.barcode {
+/* A real Code 128 symbol (spec 0039 WP6, AUD-M1-01): the container sizes the inline SVG, and
+   currentColor carries the ink token, so no colour literal lives in the markup. */
+.barcode { height: 34px; margin-top: 8px; color: var(--barcode-ink); }
+.barcode svg { display: block; width: 100%; height: 100%; }
+/* The pre-save preview on the registration form encodes nothing yet — decorative by design. */
+.barcode-preview {
   height: 34px; margin-top: 8px;
   background: repeating-linear-gradient(90deg,
     var(--barcode-ink) 0 2px, transparent 2px 5px,

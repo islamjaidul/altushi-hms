@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,17 +24,17 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
 
     // --- new catalog item ---
     [BindProperty] public string Kind { get; set; } = "test";
-    [BindProperty] public string? Code { get; set; }
-    [BindProperty] public string? Name { get; set; }
-    [BindProperty] public string? Dept { get; set; }
-    [BindProperty] public string? SampleType { get; set; }
+    [BindProperty, Required, StringLength(Bounds.Code)] public string? Code { get; set; }
+    [BindProperty, Required, StringLength(Bounds.Name)] public string? Name { get; set; }
+    [BindProperty, StringLength(Bounds.Name)] public string? Dept { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? SampleType { get; set; }
     [BindProperty] public int TatMinutes { get; set; } = 240;
-    [BindProperty] public long Price { get; set; }
+    [BindProperty, Money] public long Price { get; set; }
 
     // --- price change ---
     [BindProperty] public long TargetId { get; set; }
     [BindProperty] public string TargetKind { get; set; } = "test";
-    [BindProperty] public long NewPrice { get; set; }
+    [BindProperty, Money] public long NewPrice { get; set; }
     /// <summary>Free text, parsed by the kernel date contract (ADR-0020) — never a native date input.</summary>
     [BindProperty] public string? EffectiveFrom { get; set; }
 
@@ -181,7 +182,10 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
     public async Task<IActionResult> OnPostRepriceAsync()
     {
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
-        if (NewPrice < 0) { await LoadAsync(); Fail("Price cannot be negative."); return Page(); }
+        // [Money] already refuses a negative; a reprice to exactly 0 parses fine and would make
+        // the item free — that is never what a reprice means (AUD-VAL-24).
+        if (NewPrice <= 0)
+        { await LoadAsync(); Fail("Enter the new price — it must be at least ৳1."); return Page(); }
 
         // Blank = tomorrow (the pre-filled default); anything else must parse (§7 U13).
         DateOnly effectiveFrom;
@@ -191,6 +195,17 @@ public class MastersModel(HmsTx tx, TimeProvider clock) : HmsPageModel
         {
             await LoadAsync();
             Fail("Couldn't read that date — try 12/03/2026, 2026-03-12 or 12 Mar 2026.");
+            return Page();
+        }
+
+        // A date outside 2000–2100 is a typo, and the extremes are worse than typos: 9999-12-31
+        // is DateOnly.MaxValue, which Npgsql stores as `infinity` — the price never takes effect
+        // and the item can never be repriced again, because every later date is "not after" it
+        // (AUD-VAL-24c).
+        if (effectiveFrom < new DateOnly(2000, 1, 1) || effectiveFrom > new DateOnly(2100, 1, 1))
+        {
+            await LoadAsync();
+            Fail("That date cannot be right — the year must be between 2000 and 2100. Check it and try again.");
             return Page();
         }
 

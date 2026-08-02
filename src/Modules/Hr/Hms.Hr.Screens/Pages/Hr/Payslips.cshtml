@@ -1,0 +1,76 @@
+@page "/hr/payslips"
+@model Hms.Hr.Screens.Pages.Hr.PayslipsModel
+@{
+    ViewData["Title"] = "Payslips";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        <h2>Payslips
+            @if (Model.Selected is { } sel)
+            {
+                <span class="card-hint">@sel.RunNo · @sel.Period.ToString("MMMM yyyy") · @sel.State</span>
+            }
+        </h2>
+    </div>
+
+    <form method="get" class="filter-row">
+        <label class="field" style="width:320px">
+            <span class="field-label">Payroll run</span>
+            <select class="input" name="RunId">
+                @foreach (var r in Model.Runs)
+                {
+                    <option value="@r.Id" selected="@(Model.Selected?.Id == r.Id)">
+                        @r.RunNo — @r.Period.ToString("MMMM yyyy") (@r.State)
+                    </option>
+                }
+            </select>
+        </label>
+        <button type="submit" class="btn">Show</button>
+    </form>
+
+    @if (Model.Selected is null)
+    {
+        <div class="empty-state">
+            No locked or posted payroll run yet. Payslips exist once a month's run is locked;
+            their numbers are issued when it posts.
+        </div>
+    }
+    else if (Model.Rows.Count == 0)
+    {
+        <div class="empty-state">This run has no payroll lines.</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Payslip no</th>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th class="num">Gross</th>
+                    <th class="num">Deductions</th>
+                    <th class="num">Net pay</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td class="tabular">@(r.PayslipNo ?? "— issued on post —")</td>
+                        <td class="tabular">@r.EmployeeCode</td>
+                        <td>@r.EmployeeName</td>
+                        <td class="num tabular">@Ui.Money(r.Gross)</td>
+                        <td class="num tabular">@Ui.Money(r.Deductions)</td>
+                        <td class="num tabular"><b>@Ui.Money(r.Net)</b></td>
+                        <td><a class="btn-tint" href="/hr/payslip/@r.LineId">Open</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

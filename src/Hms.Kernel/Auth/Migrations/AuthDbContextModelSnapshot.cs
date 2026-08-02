@@ -78,6 +78,10 @@ namespace Hms.Kernel.Auth.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("active");
 
+                    b.Property<long>("BranchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("branch_id");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text")

@@ -439,3 +439,79 @@ def open_counter(sess: Session, kind: str = "Front Desk", float_amt: str = "2000
 def find_patient(sess: Session, term: str) -> str | None:
     hits = json.loads(sess.get("/api/typeahead/patients?q=" + urllib.parse.quote(term)))
     return str(hits[0]["value"]) if hits else None
+
+
+def _sellable_demo_qty(stock_html: str) -> int:
+    """Sellable units of the demo product on the stock page (main outlet is the default view)."""
+    on_hand = 0
+    for row in re.findall(r"<tr>(.*?)</tr>", stock_html, re.S):
+        cells = [re.sub(r"<[^>]+>", "", c).strip()
+                 for c in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+        if len(cells) >= 7 and "Napa" in cells[0]:
+            state = cells[6].split("\n")[0].strip()
+            if state in ("in stock", "near expiry"):
+                on_hand += int(re.sub(r"\D", "", cells[3]) or 0)
+    return on_hand
+
+
+def ensure_demo_stock(make, min_qty: int = 15, receive_qty: int = 100) -> None:
+    """Guarantee the seeded demo product is on the main-outlet shelf before a run consumes it.
+
+    Tier-1 scripts provision their own patients (that is t1's contract), but the ward threads
+    issue the seeded product from the shared shelf and nothing puts stock back: on a heavily
+    used database the shelf eventually reads zero and the FEFO issue is — correctly — refused,
+    so the run goes red on state it inherited, not code it exercised. The suite's second
+    consecutive used-database run found exactly that (spec 0039). Same class of fix as
+    pharmacy-thread's per-run GRN: a run creates the stock it consumes.
+
+    No-op while at least `min_qty` sellable units remain. Replenishment is the operator path
+    (PO → approve⚿ → order → GRN), not a database write, so it exercises the same controls it
+    relies on. `make(username)` returns a logged-in session — the threads own their `Session`
+    classes, so the helper takes a factory, like `settle_and_discharge`.
+    """
+    ph = make("parvin")                                      # pharmacy: PO, GRN
+    if _sellable_demo_qty(ph.get("/pharmacy/stock?Show=all")) >= min_qty:
+        return
+
+    pur = ph.get("/pharmacy/purchase")
+    prod = fixture(re.search(r'<option value="(\d+)">Napa', pur),
+                   "no demo product on the purchase-order form")
+    sup_opt = fixture(re.search(r'name="SupplierId">.*?<option value="(\d+)">(?!— )', pur, re.S),
+                      "no supplier to raise the replenishment order against")
+    out_opt = fixture(re.search(r'name="OutletId">.*?<option value="(\d+)">(?!— )', pur, re.S),
+                      "no pharmacy outlet to receive the replenishment into")
+
+    sup = make("shahid")                                     # supervisor: PO approval
+    before = set(re.findall(r'name="id" value="(\d+)"', sup.get("/admin/approvals")))
+    ph.post("/pharmacy/purchase?handler=Create", {
+        "SupplierId": sup_opt.group(1), "OutletId": out_opt.group(1),
+        "ProductIds": [prod.group(1), "0", "0"], "LineQtys": [str(receive_qty), "0", "0"],
+        "LineCosts": ["1", "0", "0"]}, pur)
+    pur = ph.get("/pharmacy/purchase")                       # newest-first: ours is on top
+    po_id = fixture(re.search(r"PO #(\d+)", pur),
+                    "the replenishment purchase order was not created").group(1)
+
+    inbox = sup.get("/admin/approvals")
+    mine = sorted(set(re.findall(r'name="id" value="(\d+)"', inbox)) - before, key=int)
+    rid = fixture(mine[-1] if mine else None,
+                  "the replenishment PO never reached the approvals inbox")
+    sup.post("/admin/approvals?handler=Decide",
+             {"id": rid, "approve": "true", "note": "QA stock replenishment"}, inbox)
+
+    for _ in range(2):                                       # Requested → Approved → Ordered
+        pur = ph.get("/pharmacy/purchase")
+        ph.post("/pharmacy/purchase?handler=Advance", {"PoId": po_id}, pur)
+    pur = ph.get("/pharmacy/purchase")
+    line = fixture(re.search(r'name="PoId" value="' + po_id +
+                             r'"\s*/>\s*<input type="hidden" name="PoLineId" value="(\d+)"',
+                             pur, re.S),
+                   "the ordered replenishment PO offers no line to receive against")
+    ph.post("/pharmacy/purchase?handler=Receive", {
+        "PoId": po_id, "PoLineId": line.group(1),
+        "BatchNo": f"SUITE-{int(time.time() * 1000) % 100000:05d}",
+        "Expiry": "31/12/2030", "Qty": str(receive_qty),
+        "UnitCost": "1", "UnitMrp": "2"}, pur)
+
+    fixture(_sellable_demo_qty(ph.get("/pharmacy/stock?Show=all")) >= min_qty,
+            "the replenishment GRN did not put the demo product on the shelf",
+            "walk /pharmacy/purchase by hand — a gate or approval change has broken the PO path")

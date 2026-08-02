@@ -41,20 +41,24 @@ public class ConcurrencyTests : IAsyncLifetime
                 o => o.MigrationsHistoryTable("__ef_migrations", "ipd")))
         .UseSnakeCaseNamingConvention().Options);
 
-    /// <summary>A folio and the admission it belongs to, both this test's own.</summary>
-    private async Task<(long FolioId, long AdmissionId)> SeedFolioAsync()
+    /// <summary>A folio, the admission it belongs to, and a bed — all this test's own.</summary>
+    private async Task<(long FolioId, long AdmissionId, long BedId)> SeedFolioAsync()
     {
         await using var ipd = CreateIpd(null);
-        var admissionId = Random.Shared.NextInt64(1_000_000, 9_000_000);
-        var folio = new Folio { BranchId = 1, AdmissionId = admissionId, PatientId = 1 };
+        var admission = await IpdSeed.OpenAdmissionAsync(ipd);
+        var bed = await IpdSeed.BedAsync(ipd);
+        var folio = new Folio
+        {
+            BranchId = 1, AdmissionId = admission.Id, PatientId = admission.PatientId,
+        };
         ipd.Folios.Add(folio);
         await ipd.SaveChangesAsync();
-        return (folio.Id, admissionId);
+        return (folio.Id, admission.Id, bed.Id);
     }
 
-    private static BedDay Day(long admissionId, int day) => new()
+    private static BedDay Day(long admissionId, long bedId, int day) => new()
     {
-        AdmissionId = admissionId, BedId = 1, ChargeLineId = day,
+        AdmissionId = admissionId, BedId = bedId, ChargeLineId = day,
         OnDate = new DateOnly(2026, 8, day),
     };
 
@@ -64,7 +68,7 @@ public class ConcurrencyTests : IAsyncLifetime
     [Fact]
     public async Task A_transaction_that_dies_partway_leaves_nothing_behind()
     {
-        var (_, admissionId) = await SeedFolioAsync();
+        var (_, admissionId, bedId) = await SeedFolioAsync();
 
         await using var conn = new NpgsqlConnection(_pg.ConnectionString);
         await conn.OpenAsync();
@@ -75,8 +79,8 @@ public class ConcurrencyTests : IAsyncLifetime
         // transaction still uncommitted.
         var tx = await conn.BeginTransactionAsync();
         await ipd.Database.UseTransactionAsync(tx);
-        ipd.BedDays.Add(Day(admissionId, 1));
-        ipd.BedDays.Add(Day(admissionId, 2));
+        ipd.BedDays.Add(Day(admissionId, bedId, 1));
+        ipd.BedDays.Add(Day(admissionId, bedId, 2));
         await ipd.SaveChangesAsync();
 
         // …and the lights go out before COMMIT.
@@ -91,7 +95,7 @@ public class ConcurrencyTests : IAsyncLifetime
     {
         // The other half of N2: whatever was committed before the cut must still be there. A
         // rollback test on its own would pass on a database that lost everything.
-        var (_, admissionId) = await SeedFolioAsync();
+        var (_, admissionId, bedId) = await SeedFolioAsync();
 
         await using (var conn = new NpgsqlConnection(_pg.ConnectionString))
         {
@@ -99,7 +103,7 @@ public class ConcurrencyTests : IAsyncLifetime
             await using var ipd = CreateIpd(conn);
             var tx = await conn.BeginTransactionAsync();
             await ipd.Database.UseTransactionAsync(tx);
-            ipd.BedDays.Add(Day(admissionId, 3));
+            ipd.BedDays.Add(Day(admissionId, bedId, 3));
             await ipd.SaveChangesAsync();
             await tx.CommitAsync();
         }
@@ -114,7 +118,7 @@ public class ConcurrencyTests : IAsyncLifetime
     [Fact]
     public async Task Two_operators_posting_to_one_folio_serialize_rather_than_lose_a_charge()
     {
-        var (folioId, admissionId) = await SeedFolioAsync();
+        var (folioId, admissionId, bedId) = await SeedFolioAsync();
 
         // Both operators open the folio for posting at the same moment. `FolioService.LockAsync`
         // is a SELECT … FOR UPDATE, so the second must WAIT for the first to commit — which is
@@ -129,7 +133,7 @@ public class ConcurrencyTests : IAsyncLifetime
         var txA = await connA.BeginTransactionAsync();
         await ipdA.Database.UseTransactionAsync(txA);
         Assert.Equal(FolioState.Open, await _folios.LockAsync(ipdA, folioId));
-        ipdA.BedDays.Add(Day(admissionId, 4));
+        ipdA.BedDays.Add(Day(admissionId, bedId, 4));
         await ipdA.SaveChangesAsync();
 
         var txB = await connB.BeginTransactionAsync();
@@ -137,7 +141,7 @@ public class ConcurrencyTests : IAsyncLifetime
         var operatorB = Task.Run(async () =>
         {
             await _folios.LockAsync(ipdB, folioId);        // blocks until A commits
-            ipdB.BedDays.Add(Day(admissionId, 5));
+            ipdB.BedDays.Add(Day(admissionId, bedId, 5));
             await ipdB.SaveChangesAsync();
             await txB.CommitAsync();
         });
@@ -159,7 +163,7 @@ public class ConcurrencyTests : IAsyncLifetime
     {
         // Serialization alone is not the whole guarantee: once the first operator has moved the
         // folio into settlement, the second is refused in words rather than quietly dropped.
-        var (folioId, _) = await SeedFolioAsync();
+        var (folioId, _, _) = await SeedFolioAsync();
         await using (var ipd = CreateIpd(null))
             await _folios.BeginSettlementAsync(ipd, folioId);
 

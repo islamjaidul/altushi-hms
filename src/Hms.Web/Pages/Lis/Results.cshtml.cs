@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Hms.Lis;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -78,10 +79,41 @@ public class ResultsModel(HmsTx tx, LisService lis) : HmsPageModel
         });
     }
 
+    /// <summary>AUD-VAL-25: the stored jsonb feeds a numeric range comparison — a value that is
+    /// not a number would print as the patient's cholesterol with a blank abnormality flag.</summary>
+    private static readonly Regex NumericValue = new(@"^-?[0-9]+(\.[0-9]+)?$", RegexOptions.Compiled);
+
     public async Task<IActionResult> OnPostAsync()
     {
         await LoadAsync();
-        if (Selected is null) { Fail("Nothing selected."); return Page(); }
+        if (Selected is null)
+        { Fail("That order is not on the bench worklist — pick one from the list."); return Page(); }
+
+        // Judge every posted value before anything is written: empty means "not entered", but a
+        // filled box must hold a number the reference range can be compared against.
+        foreach (var t in Tests)
+        {
+            foreach (var p in t.Parameters)
+            {
+                var key = $"{t.OrderTestId}.{p.Code}";
+                if (!Values.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw)) continue;
+                var value = raw.Trim();
+                if (value.Length > 40 || !NumericValue.IsMatch(value))
+                {
+                    Fail($"{p.Name}: a result is a number (digits, and a decimal point if needed) — " +
+                         "leave the box empty if it was not measured.");
+                    return Page();
+                }
+            }
+        }
+        foreach (var narrative in Narratives.Values)
+        {
+            if (narrative?.Length > Bounds.Note)
+            {
+                Fail($"The narrative is too long — keep it under {Bounds.Note:N0} characters.");
+                return Page();
+            }
+        }
 
         var saved = 0;
         var skipped = new List<string>();

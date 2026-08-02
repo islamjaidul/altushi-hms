@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Kernel.Approvals;
 using Hms.Pharmacy;
 using Hms.Pharmacy.Data;
@@ -29,7 +30,10 @@ public class StockModel(
     [BindProperty] public bool Replacement { get; set; }
     [BindProperty] public long AuditId { get; set; }
     [BindProperty] public long LineId { get; set; }
-    [BindProperty] public int CountedQty { get; set; }
+    /// <summary>AUD-VAL-19: a scalar, so the annotation is the bound — the gate refuses the
+    /// unparseable ("abc" once bound to 0 and wrote the batch off the shelf).</summary>
+    [BindProperty, Range(0, 9_999_999, ErrorMessage = "The counted quantity must be between 0 and 99,99,999")]
+    public int CountedQty { get; set; }
 
     public IReadOnlyList<Outlet> Outlets { get; private set; } = [];
     public IReadOnlyList<Supplier> Suppliers { get; private set; } = [];
@@ -167,46 +171,64 @@ public class StockModel(
 
     public async Task<IActionResult> OnPostStartAuditAsync()
     {
-        await tx.RunAsync(async s =>
+        if (OutletId is null or 0)
+        { await LoadAsync(); Fail("Pick the outlet to count first."); return Page(); }
+        try
         {
-            var open = await s.Pharm.StockAudits.AnyAsync(a =>
-                a.OutletId == OutletId && a.State != AuditState.Posted);
-            if (open) throw new PharmacyException("An audit is already in progress for this outlet.");
-
-            var audit = new StockAudit
+            await tx.RunAsync(async s =>
             {
-                BranchId = BranchId, OutletId = OutletId!.Value,
-                StartedAt = clock.GetUtcNow(), StartedBy = ActorId,
-            };
-            s.Pharm.StockAudits.Add(audit);
-            await s.Pharm.SaveChangesAsync();
+                var open = await s.Pharm.StockAudits.AnyAsync(a =>
+                    a.OutletId == OutletId && a.State != AuditState.Posted);
+                if (open) throw new PharmacyException("An audit is already in progress for this outlet.");
 
-            var batches = await s.Pharm.Batches.AsNoTracking()
-                .Where(b => b.OutletId == OutletId && b.State == BatchState.InStock).ToListAsync();
-            foreach (var b in batches)
-                s.Pharm.StockAuditLines.Add(new StockAuditLine
+                var audit = new StockAudit
                 {
-                    StockAuditId = audit.Id, BatchId = b.Id, ProductId = b.ProductId,
-                    SystemQty = b.QtyOnHand, CountedQty = b.QtyOnHand,
-                });
-            await s.Pharm.SaveChangesAsync();
-            return 0;
-        });
+                    BranchId = BranchId, OutletId = OutletId!.Value,
+                    StartedAt = clock.GetUtcNow(), StartedBy = ActorId,
+                };
+                s.Pharm.StockAudits.Add(audit);
+                await s.Pharm.SaveChangesAsync();
+
+                var batches = await s.Pharm.Batches.AsNoTracking()
+                    .Where(b => b.OutletId == OutletId && b.State == BatchState.InStock).ToListAsync();
+                foreach (var b in batches)
+                    s.Pharm.StockAuditLines.Add(new StockAuditLine
+                    {
+                        StockAuditId = audit.Id, BatchId = b.Id, ProductId = b.ProductId,
+                        SystemQty = b.QtyOnHand, CountedQty = b.QtyOnHand,
+                    });
+                await s.Pharm.SaveChangesAsync();
+                return 0;
+            });
+        }
+        // AUD-VAL-19: a second "Start count" used to escape as a blank 500 — the one handler
+        // on this page with no catch.
+        catch (PharmacyException e) { await LoadAsync(); Fail(e.Message); return Page(); }
         Toast("Count started — enter what the shelf actually holds", "inventory_2");
         return Redirect($"/pharmacy/stock?OutletId={OutletId}");
     }
 
     public async Task<IActionResult> OnPostCountAsync()
     {
-        await tx.RunAsync(async s =>
+        var found = await tx.RunAsync(async s =>
         {
-            var line = await s.Pharm.StockAuditLines.SingleAsync(l => l.Id == LineId);
-            line.CountedQty = Math.Max(0, CountedQty);
+            // AUD-VAL-19e: an unknown line id is a stale screen, not a crash.
+            var line = await s.Pharm.StockAuditLines.SingleOrDefaultAsync(l => l.Id == LineId);
+            if (line is null) return false;
+            // No Math.Max coercion: CountedQty arrives already judged by its [Range] — a typo
+            // must never silently write the batch down to zero (AUD-VAL-19a).
+            line.CountedQty = CountedQty;
             var audit = await s.Pharm.StockAudits.SingleAsync(a => a.Id == line.StockAuditId);
             if (audit.State == AuditState.CountStarted) audit.State = AuditState.VarianceListed;
             await s.Pharm.SaveChangesAsync();
-            return 0;
+            return true;
         });
+        if (!found)
+        {
+            await LoadAsync();
+            Fail("That count line is not part of the open count any more — reload the screen and try again.");
+            return Page();
+        }
         return Redirect($"/pharmacy/stock?OutletId={OutletId}");
     }
 

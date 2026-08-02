@@ -34,7 +34,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("BatchNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("batch_no");
 
                     b.Property<long>("BranchId")
@@ -79,22 +80,40 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<string>("StateReason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("state_reason");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_batch");
+
+                    b.HasIndex("PurchaseOrderId")
+                        .HasDatabaseName("ix_batch_purchase_order_id");
+
+                    b.HasIndex("ProductId", "State", "Expiry")
+                        .HasDatabaseName("ix_batch_product_id_state_expiry");
 
                     b.HasIndex("OutletId", "ProductId", "State", "Expiry")
                         .HasDatabaseName("ix_batch_outlet_id_product_id_state_expiry");
 
                     b.ToTable("batch", "pharm", t =>
                         {
+                            t.HasCheckConstraint("ck_batch_money", "cost >= 0 AND mrp >= 0");
+
                             t.HasCheckConstraint("ck_batch_qty", "qty_on_hand >= 0");
+
+                            t.HasCheckConstraint("ck_batch_state", "state IN ('instock','quarantined','returned','disposed')");
                         });
                 });
 
@@ -113,7 +132,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -170,10 +190,16 @@ namespace Hms.Pharmacy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_issue_allocation");
 
+                    b.HasIndex("BatchId")
+                        .HasDatabaseName("ix_issue_allocation_batch_id");
+
                     b.HasIndex("IndentId")
                         .HasDatabaseName("ix_issue_allocation_indent_id");
 
-                    b.ToTable("issue_allocation", "pharm");
+                    b.ToTable("issue_allocation", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_issue_allocation_qty", "returned_qty BETWEEN 0 AND qty");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.Outlet", b =>
@@ -195,12 +221,14 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -228,7 +256,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Brand")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("brand");
 
                     b.Property<long>("CompanyId")
@@ -245,12 +274,14 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Form")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("form");
 
                     b.Property<string>("Generic")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("generic");
 
                     b.Property<int>("ReorderLevel")
@@ -259,16 +290,21 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Strength")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("strength");
 
                     b.Property<string>("Unit")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("unit");
 
                     b.HasKey("Id")
                         .HasName("pk_product");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_product_company_id");
 
                     b.HasIndex("Brand", "Generic")
                         .HasDatabaseName("ix_product_brand_generic");
@@ -307,7 +343,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<long>("SupplierId")
@@ -317,7 +354,13 @@ namespace Hms.Pharmacy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_purchase_order");
 
-                    b.ToTable("purchase_order", "pharm");
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_purchase_order_supplier_id");
+
+                    b.ToTable("purchase_order", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_purchase_order_state", "state IN ('requested','approved','ordered','partially_received','received','closed','cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.PurchaseOrderLine", b =>
@@ -352,7 +395,13 @@ namespace Hms.Pharmacy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_purchase_order_line");
 
-                    b.ToTable("purchase_order_line", "pharm");
+                    b.HasIndex("PurchaseOrderId")
+                        .HasDatabaseName("ix_purchase_order_line_purchase_order_id");
+
+                    b.ToTable("purchase_order_line", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_po_line_qty", "qty > 0 AND expected_cost >= 0 AND received_qty BETWEEN 0 AND qty");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.SaleAllocation", b =>
@@ -403,10 +452,18 @@ namespace Hms.Pharmacy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_sale_allocation");
 
+                    b.HasIndex("BatchId")
+                        .HasDatabaseName("ix_sale_allocation_batch_id");
+
                     b.HasIndex("InvoiceId")
                         .HasDatabaseName("ix_sale_allocation_invoice_id");
 
-                    b.ToTable("sale_allocation", "pharm");
+                    b.ToTable("sale_allocation", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_sale_allocation_money", "unit_mrp >= 0 AND unit_cost >= 0");
+
+                            t.HasCheckConstraint("ck_sale_allocation_qty", "qty > 0 AND refunded_qty BETWEEN 0 AND qty");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.StockAudit", b =>
@@ -444,13 +501,17 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.HasKey("Id")
                         .HasName("pk_stock_audit");
 
-                    b.ToTable("stock_audit", "pharm");
+                    b.ToTable("stock_audit", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_audit_state", "state IN ('count_started','variance_listed','approved','posted')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.StockAuditLine", b =>
@@ -482,10 +543,22 @@ namespace Hms.Pharmacy.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("system_qty");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_stock_audit_line");
 
-                    b.ToTable("stock_audit_line", "pharm");
+                    b.HasIndex("StockAuditId")
+                        .HasDatabaseName("ix_stock_audit_line_stock_audit_id");
+
+                    b.ToTable("stock_audit_line", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_audit_line_counted", "counted_qty >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.StockMove", b =>
@@ -515,7 +588,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<long>("OutletId")
@@ -531,7 +605,8 @@ namespace Hms.Pharmacy.Data.Migrations
                         .HasColumnName("qty");
 
                     b.Property<string>("Reason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("reason");
 
                     b.Property<long?>("RefId")
@@ -539,7 +614,8 @@ namespace Hms.Pharmacy.Data.Migrations
                         .HasColumnName("ref_id");
 
                     b.Property<string>("RefTable")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("ref_table");
 
                     b.HasKey("Id")
@@ -569,11 +645,13 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("phone");
 
                     b.HasKey("Id")
@@ -609,11 +687,13 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<string>("Note")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("note");
 
                     b.Property<long?>("RefId")
@@ -621,7 +701,8 @@ namespace Hms.Pharmacy.Data.Migrations
                         .HasColumnName("ref_id");
 
                     b.Property<string>("RefTable")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("ref_table");
 
                     b.Property<long>("SupplierId")
@@ -676,7 +757,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<long>("ToOutletId")
@@ -686,7 +768,14 @@ namespace Hms.Pharmacy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_transfer");
 
-                    b.ToTable("transfer", "pharm");
+                    b.ToTable("transfer", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_transfer_received", "state <> 'received' OR (received_at IS NOT NULL AND received_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_transfer_sent", "state <> 'sent' OR sent_at IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_transfer_state", "state IN ('indent','sent','received','cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Pharmacy.Data.TransferBatch", b =>
@@ -700,7 +789,8 @@ namespace Hms.Pharmacy.Data.Migrations
 
                     b.Property<string>("BatchNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("batch_no");
 
                     b.Property<long>("Cost")
@@ -765,7 +855,133 @@ namespace Hms.Pharmacy.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_transfer_line");
 
-                    b.ToTable("transfer_line", "pharm");
+                    b.HasIndex("TransferId")
+                        .HasDatabaseName("ix_transfer_line_transfer_id");
+
+                    b.ToTable("transfer_line", "pharm", t =>
+                        {
+                            t.HasCheckConstraint("ck_transfer_line_qty", "sent_qty BETWEEN 0 AND requested_qty");
+                        });
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.Batch", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Outlet", null)
+                        .WithMany()
+                        .HasForeignKey("OutletId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_batch_outlet_outlet_id");
+
+                    b.HasOne("Hms.Pharmacy.Data.PharmProduct", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_batch_product_product_id");
+
+                    b.HasOne("Hms.Pharmacy.Data.PurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_batch_purchase_order_purchase_order_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.IssueAllocation", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_issue_allocation_batch_batch_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.PharmProduct", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_product_company_company_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.PurchaseOrder", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_order_supplier_supplier_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.PurchaseOrderLine", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.PurchaseOrder", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_order_line_purchase_order_purchase_order_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.SaleAllocation", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sale_allocation_batch_batch_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.StockAuditLine", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.StockAudit", null)
+                        .WithMany()
+                        .HasForeignKey("StockAuditId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_audit_line_stock_audit_stock_audit_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.StockMove", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Batch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_move_batch_batch_id");
+
+                    b.HasOne("Hms.Pharmacy.Data.PharmProduct", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_move_product_product_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.SupplierLedgerEntry", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_supplier_ledger_supplier_supplier_id");
+                });
+
+            modelBuilder.Entity("Hms.Pharmacy.Data.TransferLine", b =>
+                {
+                    b.HasOne("Hms.Pharmacy.Data.Transfer", null)
+                        .WithMany()
+                        .HasForeignKey("TransferId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_transfer_line_transfer_transfer_id");
                 });
 #pragma warning restore 612, 618
         }

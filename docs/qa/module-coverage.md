@@ -36,11 +36,11 @@ Both are needed. A rule no journey happens to traverse is invisible to the journ
 | M13 | Blood Bank | D | no | — | out of scope — no code |
 | M14 | Canteen | D | no | — | out of scope — no code |
 | M15 | Accounts & Finance | E | no | — | out of scope — no code |
-| M16 | HR & Payroll | E | **yes** | 8 | OK | NONE | NONE | see below |
+| M16 | HR & Payroll | E | **yes** | 12 | OK | OK — `hrm-thread.py` 38/38 + `probe-payroll-math.py` / `probe-payroll-staged.py` 0 failed | OK — `HrPayrollTests` + `HrAttendanceTests` (13 tests) + `TransactionDurabilityTests` | 3 Blockers + 4 High fixed in 0039 WP3; see below |
 | M17 | Consultant Payment | E | no | — | out of scope — no code |
 | M18 | Corporate / Panel Billing | E | no | — | out of scope — no code |
 | M19 | Marketing & Referral | E | no | — | out of scope — no code |
-| M20 | SMS / Notification | F | **yes** | 1 | OK | **GAP** | **GAP** — no test referenced `SmsQueue` | 1 Medium |
+| M20 | SMS / Notification | F | **yes** | 1 | OK | **GAP** | THIN — `SmsQueueTests` (8 tests) asserts G19 atomicity, skip-no-phone, resend, segments | 1 Medium |
 | M21 | Administration, Security & Audit | F | **yes** | 8 | OK | OK | **OK** | none |
 | M22 | Management Dashboards & MIS | F | **yes** | 1 | OK | THIN | **GAP** | **1 High** |
 
@@ -76,6 +76,46 @@ codes against a fiscal-year-scoped series with no `{fy}` in the format, so **the
 fiscal-year rollover would have thrown a 500**. `NumberSeriesScopeTests` now asserts the rule across
 all fourteen modules. Nothing in the eight route checks could have seen it, because it needs two
 fiscal years of data to appear.
+
+**Spec 0037 closed the state machine and durability** (`hrm-thread.py`, 37/37 — every screen driven
+the way an operator drives it, every write proven persisted), and **spec 0038's audit then attacked
+the arithmetic and its configuration surface** and found the M16 findings ledger of
+`full-audit-2026-08.md`: three Blockers (AUD-M16-01 unconfigurable rules, AUD-M16-04 unlockable
+floored runs, AUD-M16-08 uncapturable attendance) and four High/Medium arithmetic defects.
+
+**Spec 0039 WP3 closed all of them, with evidence** (row superseded 2026-08-03; "the single largest
+known risk in the product" above is history, kept for the record):
+
+- **e2e**: `eng/verify/audit/probe-payroll-math.py` (10 cases, 0 failed — was 20 failed checks) and
+  `probe-payroll-staged.py` (4 cases, 0 failed — drives Generate → Review → Approve → Lock over HTTP
+  with a floored employee, a percent-of omission and a truncation-prone salary staged);
+  `hrm-thread.py` grew to 38/38: HRM-EMP-08 now pays the employee it hires through the 0039
+  set-pay screen, so runs no longer accumulate unpayable people and the two instruments can run
+  in any order (the math probe's AUD-M16-03 checks that every unpaid employee's record offers
+  the set-pay form — the invariant its message always claimed).
+- **Business logic**: `tests/Hms.Integration.Tests/HrPayrollTests.cs` — floored run locks *and
+  posts* with a balanced journal (shortfall debited once as a recoverable advance), payslips issued
+  on post (`PS-` numbered), percent-of paid only where configured, overtime multiplied before
+  divided (484 Tk where the old code paid 0), holiday proration branch-scoped, policy writes
+  effective-dated with same-day amend, tax band sets replaced whole and validated.
+  `HrAttendanceTests.cs` — punch pairing, break deduction, late/OT derivation, night-shift
+  spanning across midnight (a 06:00 out-punch lands on the shift's own date, and a morning-only file re-derives
+  the previous night via the roster), import idempotency, and honest rejection counts. Every
+  arithmetic fix was watched to fail against the pre-fix code.
+- **Configuration surface**: `/hr/policies` now writes all six rule tables through
+  `PolicyResolver.Set*` (tier-1 audited, effective-dated, GiST-guarded); `/hr/attendance` imports
+  punch files or pasted rows through `CsvPunchSource` → `ImportAsync` → per-day derivation; the
+  employee record sets pay through `SetPayAsync`; payslips print at `/hr/payslip/{id}`; and
+  `/hr/payroll/approvals` gives the §12 approver (Accounts Manager / MD, `hr.payroll.approve`
+  without `hr.payroll.run`) a door of their own, so maker-checker is usable (AUD-AUZ-01).
+- **Schema**: `HrPayrollIntegrity` migration — intra-schema FKs (`payroll_line→payroll_run`,
+  `payroll_component_line→payroll_line/run`, `payslip→payroll_line/employee`,
+  `punch→punch_import_batch`), all `ON DELETE RESTRICT` (AUD-M16-10).
+
+Still open for M16, deliberately: Wave C money ledgers (loans, PF/welfare ledger postings), the
+OT bank, gratuity *computation* at separation (the rule table now has a write path; the engine
+consumes it only via the policy stamp), server-rendered PDF (payslips are browser-print HTML like
+every other document), and employee↔user self-service linking.
 
 ---
 
@@ -660,10 +700,9 @@ were stronger than the register claimed, not weaker.
 |---|---|
 | UI smoke | **OK** — `/notifications/tray` in `ROUTES` |
 | e2e | **GAP** — no script exercises the module; LC-XCUT-08 is an open gap |
-| Business logic | **GAP** — **no test anywhere references `SmsQueue`** |
+| Business logic | THIN — `tests/Hms.Integration.Tests/SmsQueueTests.cs` (8 tests) now asserts the rules below; written against this section's own gap list *(row corrected 2026-08-03, spec 0039 — the table said "no test referenced `SmsQueue`" after the tests existed)* |
 
-The whole module has zero test coverage. `grep -rn "SmsQueue" tests/` returns nothing. Untested
-rules, each of which the module states explicitly:
+The rules the module states explicitly, now asserted by `SmsQueueTests`:
 
 | Rule | Where |
 |---|---|

@@ -7,7 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hms.Shell.Pages.Admin;
 
-public sealed record UserRow(long Id, string Username, string DisplayName, string Roles, bool Active, bool LockedOut);
+public sealed record UserRow(
+    long Id, string Username, string DisplayName, string Roles, bool Active, bool LockedOut,
+    long BranchId);
+public sealed record BranchOption(long Id, string Name);
 public sealed record RoleRow(long Id, string Name, bool System, int Users, IReadOnlyList<string> Permissions);
 
 /// <summary>
@@ -37,6 +40,7 @@ public class UsersModel(
 
     public IReadOnlyList<UserRow> Users { get; private set; } = [];
     public IReadOnlyList<RoleRow> Roles { get; private set; } = [];
+    public IReadOnlyList<BranchOption> Branches { get; private set; } = [];
     public PermissionCatalog Catalog => catalog;
 
     public async Task OnGetAsync() => await LoadAsync();
@@ -56,7 +60,10 @@ public class UsersModel(
                 u.Id, u.UserName ?? "—", u.DisplayName,
                 string.Join(", ", userRoles.Where(ur => ur.UserId == u.Id)
                     .Select(ur => roleNameById.GetValueOrDefault(ur.RoleId, "—"))),
-                u.Active, u.LockoutEnd is { } end && end > now)).ToList();
+                u.Active, u.LockoutEnd is { } end && end > now, u.BranchId)).ToList();
+
+            Branches = await s.Kernel.Branches.AsNoTracking().Where(x => x.Active)
+                .OrderBy(x => x.Id).Select(x => new BranchOption(x.Id, x.Name)).ToListAsync();
 
             Roles = roles.Select(r => new RoleRow(r.Id, r.Name ?? "—", r.System,
                 userRoles.Count(ur => ur.RoleId == r.Id),
@@ -201,6 +208,33 @@ public class UsersModel(
             new { user.UserName, from = string.Join(",", existing), to = roleName }));
 
         Toast($"{user.DisplayName} is now {roleName}", "manage_accounts");
+        return Redirect("/admin/users");
+    }
+
+    /// <summary>
+    /// §5 M21 / spec 0039 WP5: binds an operator to a branch. The branch travels as a claim, so
+    /// the security-stamp bump makes the move take effect mid-shift like a permission change —
+    /// every write the operator makes from then on stamps the new branch.
+    /// </summary>
+    public async Task<IActionResult> OnPostAssignBranchAsync(long id, long branchId)
+    {
+        var known = await tx.RunAsync(s => s.Kernel.Branches.AsNoTracking()
+            .Where(x => x.Id == branchId && x.Active).Select(x => x.Name).FirstOrDefaultAsync());
+        if (known is null)
+        { await LoadAsync(); Fail("That branch is not on the branch master."); return Page(); }
+
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user is null) { await LoadAsync(); Fail("No such account."); return Page(); }
+
+        var from = user.BranchId;
+        user.BranchId = branchId;
+        await userManager.UpdateAsync(user);
+        await userManager.UpdateSecurityStampAsync(user);
+
+        await tx.RunAsync(s => AuditAsync(s, "user.branch.assign", "adm.user", id,
+            new { user.UserName, from, to = branchId }));
+
+        Toast($"{user.DisplayName} now works at {known}", "manage_accounts");
         return Redirect("/admin/users");
     }
 

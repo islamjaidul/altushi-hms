@@ -395,8 +395,10 @@ public class IpdFolioTests : IAsyncLifetime
         var (admissionId, folioId, _) = await AdmitPatientAsync();
         await InTxAsync(async (ipd, bill, pharm, kernel) =>
         {
+            // ck_folio_locked: a locked folio always carries its settlement invoice — the
+            // simulated lock must satisfy the same invariant the real one writes.
             await ipd.Database.ExecuteSqlAsync(
-                $"UPDATE ipd.folio SET state = 'locked' WHERE id = {folioId}");
+                $"UPDATE ipd.folio SET state = 'locked', settlement_invoice_id = 999999 WHERE id = {folioId}");
             return 0;
         });
 

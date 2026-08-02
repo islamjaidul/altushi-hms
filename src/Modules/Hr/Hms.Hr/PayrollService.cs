@@ -195,7 +195,11 @@ public sealed class PayrollService(
 
         foreach (var def in components.Where(c => c.Kind == PayComponentKind.Earning))
         {
-            if (!byId.TryGetValue(def.Id, out var configured) && def.CalcMethod != PayComponentCalc.PercentOf)
+            // A component the structure does not configure is not paid — for every calc method.
+            // PercentOf used to be exempt here, which paid a percent-of allowance to every
+            // employee whose structure omitted it, computed off whatever base WAS configured
+            // (AUD-M16-05: 6,000 Tk of HRA from nothing, per run, per unconfigured employee).
+            if (!byId.TryGetValue(def.Id, out var configured))
                 continue;
 
             var amount = def.CalcMethod switch
@@ -255,8 +259,13 @@ public sealed class PayrollService(
                 var minutes = Math.Min(
                     line.OvertimeMinutes,
                     overtimeRule.MaxMinutesPerMonth > 0 ? overtimeRule.MaxMinutesPerMonth : line.OvertimeMinutes);
-                var minuteRate = dayRate > 0 ? dayRate / (8 * 60) : 0;
-                var amount = Taka.ApplyBp(minuteRate * minutes, overtimeRule.MultiplierBp);
+                // Multiply first, divide once, round once at the end (C3). The old code
+                // integer-divided the day rate to a whole-taka per-MINUTE rate before the
+                // multiplier: 29% underpayment at a 680 Tk day rate, and zero — however many
+                // hours were worked — below 480 Tk/day, i.e. most of a Bangladeshi hospital's
+                // staff on the Fixed30 convention (AUD-M16-07).
+                var amount = Taka.RoundHalfUp(
+                    (decimal)dayRate * minutes * overtimeRule.MultiplierBp / (8 * 60 * Taka.Bp));
                 if (amount > 0)
                 {
                     earnings.Add((def, amount));
@@ -570,6 +579,32 @@ public sealed class PayrollService(
         run.PostedAt = clock.GetUtcNow();
         run.PostedBy = actorId;
 
+        // Posting is when the figures become the employee's: issue one numbered payslip per line
+        // (PRD §5 M16 [M] "pay slips", AUD-M16-09). A reversal run mirrors money, not documents —
+        // the original payslip stays on record and the reversal run explains itself.
+        if (run.Kind != PayrollRunKind.Reversal)
+        {
+            var lines = await hr.PayrollLines.AsNoTracking()
+                .Where(l => l.RunId == run.Id)
+                .Select(l => new { l.Id, l.EmployeeId })
+                .ToListAsync(ct);
+            var issuedAt = clock.GetUtcNow();
+            foreach (var line in lines)
+            {
+                var (_, slipNo) = await numbers.IssueAsync(
+                    kernel, branchId, "payslip", fiscal.FiscalYearOf(run.Period), "PS-{fy}-{n:D5}", ct);
+                hr.Payslips.Add(new Payslip
+                {
+                    BranchId = branchId,
+                    PayrollLineId = line.Id,
+                    EmployeeId = line.EmployeeId,
+                    PayslipNo = slipNo,
+                    IssuedAt = issuedAt,
+                    IssuedBy = actorId,
+                });
+            }
+        }
+
         audit.Append(kernel, branchId, actorId, actorName, "hr.payroll.post", "hr.payroll_run",
             run.Id, after: new { run.RunNo, journal.TotalDebit }, tier: 1);
     }
@@ -585,15 +620,23 @@ public sealed class PayrollService(
         var net = lines.Sum(l => l.NetPayTaka);
         var shortfall = lines.Sum(l => l.CarriedShortfallTaka);
 
+        // The algebra, so nobody unbalances it again (AUD-M16-04). A floored line satisfies
+        // net = gross − deductions + shortfall (ck_payroll_line_net). The shortfall is money the
+        // employer pays out beyond what the period earned — an advance recoverable from the
+        // employee, so it is a DEBIT (an asset), and the full net stays payable:
+        //   debit  = gross + shortfall
+        //   credit = deductions + net = deductions + (gross − deductions + shortfall)
+        // Both sides equal gross + shortfall. The previous shape credited −shortfall AND paid
+        // net − shortfall, counting it twice; every run with one floored employee refused to lock.
         var journalLines = new List<PayrollJournalLine>
         {
             new("Salary & Wages", $"Payroll {run.Period:MMMM yyyy} gross", gross, 0, null),
         };
+        if (shortfall != 0)
+            journalLines.Add(new("Employee Advances", "Carried shortfall (recoverable)", shortfall, 0, null));
         if (deductions != 0)
             journalLines.Add(new("Payroll Deductions Payable", "Deductions withheld", 0, deductions, null));
-        if (shortfall != 0)
-            journalLines.Add(new("Employee Advances", "Carried shortfall", 0, -shortfall, null));
-        journalLines.Add(new("Net Salary Payable", "Net payable to employees", 0, net - shortfall, null));
+        journalLines.Add(new("Net Salary Payable", "Net payable to employees", 0, net, null));
 
         return new PayrollJournal(run.Id, run.BranchId, run.Period, run.RunNo, journalLines);
     }
@@ -616,8 +659,11 @@ public sealed class PayrollService(
     private static async Task<int> WorkingDaysAsync(
         HrDbContext hr, long branchId, DateOnly from, DateOnly to, CancellationToken ct)
     {
+        // AUD-M16-06: only this branch's calendars count — another branch's holiday must not
+        // shrink this branch's denominator and inflate its day rate.
         var holidays = await hr.Holidays.AsNoTracking()
-            .Where(h => h.OnDate >= from && h.OnDate <= to)
+            .Where(h => h.OnDate >= from && h.OnDate <= to && hr.HolidayCalendars.Any(
+                c => c.Id == h.CalendarId && c.BranchId == branchId && c.Active))
             .CountAsync(ct);
         return Math.Max(1, (to.DayNumber - from.DayNumber + 1) - holidays);
     }

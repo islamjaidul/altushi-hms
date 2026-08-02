@@ -30,8 +30,11 @@ services:
       # Workstation GC + heap hard limit aligned to the container limit (ADR-0001)
       DOTNET_gcServer: "0"
       DOTNET_GCHeapHardLimit: "0x27000000"   # 624 MiB, below the 800 MiB container limit
-      # Runs as hms_migrator (owner of migrated objects) for now; switching runtime traffic to
-      # least-privilege hms_app needs the cross-schema grant migration — tracked in spec 0005 notes.
+      # Runs as hms_migrator (owner of migrated objects) for now. The cross-schema grants for
+      # least-privilege hms_app are applied idempotently on every boot since spec 0039
+      # (HmsPlatform.ApplyHardRule4GrantsAsync) — switching runtime traffic is now only this
+      # connection string: change Username/Password to hms_app after setting its password
+      # (ALTER ROLE hms_app PASSWORD '...'). Keep hms_migrator for migrations only.
       ConnectionStrings__Hms: "Host=db;Database=hms;Username=hms_migrator;Password=${HMS_DB_MIGRATOR_PASSWORD:-dev-only-migrator}"
       HMS_SMS_MODE: "${HMS_SMS_MODE:-simulation}"
       Seed__DevUsers: "${HMS_SEED:-false}"

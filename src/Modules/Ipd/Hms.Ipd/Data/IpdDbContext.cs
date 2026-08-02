@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -177,6 +178,11 @@ public class Certificate
 
 public class IpdDbContext(DbContextOptions<IpdDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Ward> Wards => Set<Ward>();
     public DbSet<Bed> Beds => Set<Bed>();
     public DbSet<Admission> Admissions => Set<Admission>();
@@ -190,49 +196,157 @@ public class IpdDbContext(DbContextOptions<IpdDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Spec 0039 WP2: domain-value CHECKs, state CHECKs from the *State constants above,
+        // intra-schema FKs, HasMaxLength and xmin tokens — same posture as BillDbContext
+        // (additive only, NOT VALID in the migration for pre-existing tables).
+        //
+        // MIGRATION-SQL: the two Tier-2 constraints below cannot be expressed fluently.
+        // The orchestrator must append these statements to the generated migration:
+        //
+        //   CREATE EXTENSION IF NOT EXISTS btree_gist;
+        //
+        //   -- Tier 2 #9: one admission cannot occupy two overlapping stays, and one bed
+        //   -- cannot host two overlapping stays (open stay = to_at NULL = unbounded range).
+        //   ALTER TABLE ipd.bed_stay ADD CONSTRAINT ex_bed_stay_admission
+        //     EXCLUDE USING gist (admission_id WITH =,
+        //       tstzrange(from_at, COALESCE(to_at, 'infinity'::timestamptz)) WITH &&);
+        //   ALTER TABLE ipd.bed_stay ADD CONSTRAINT ex_bed_stay_bed
+        //     EXCLUDE USING gist (bed_id WITH =,
+        //       tstzrange(from_at, COALESCE(to_at, 'infinity'::timestamptz)) WITH &&);
+        //
+        //   -- Tier 2 #10: one open admission per patient (terminal states verified against
+        //   -- AdmissionState above) — turns IpdService's read-then-write check into a constraint.
+        //   CREATE UNIQUE INDEX ux_admission_open_per_patient ON ipd.admission (patient_id)
+        //     WHERE state NOT IN ('discharged','death','absconded');
         b.HasDefaultSchema("ipd");
-        b.Entity<Ward>(e => e.ToTable("ward"));
+        b.Entity<Ward>(e =>
+        {
+            e.ToTable("ward");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Class).HasMaxLength(40);
+        });
         b.Entity<Bed>(e =>
         {
-            e.ToTable("bed");
+            e.ToTable("bed", t => t.HasCheckConstraint("ck_bed_state",
+                "state IN ('free','reserved','occupied','cleaning','out_of_service')"));
+            e.Property(x => x.Code).HasMaxLength(40);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.StateReason).HasMaxLength(4000);
             e.HasIndex(x => new { x.WardId, x.Code }).IsUnique();
+            e.HasIndex(x => x.State);                    // every bed picker filters state='free'
+            e.HasOne<Ward>().WithMany().HasForeignKey(x => x.WardId);
         });
         b.Entity<Admission>(e =>
         {
-            e.ToTable("admission");
+            e.ToTable("admission", t =>
+            {
+                t.HasCheckConstraint("ck_admission_state",
+                    "state IN ('reserved','admitted','blocked','discharge_initiated',"
+                    + "'clinically_cleared','financially_settled','discharged','death','absconded')");
+                // blocked_from holds the state to restore on R4 release — same legal set.
+                t.HasCheckConstraint("ck_admission_blocked_from",
+                    "blocked_from IS NULL OR blocked_from IN ('reserved','admitted','blocked',"
+                    + "'discharge_initiated','clinically_cleared','financially_settled',"
+                    + "'discharged','death','absconded')");
+                t.HasCheckConstraint("ck_admission_service_charge_pct",
+                    "service_charge_pct BETWEEN 0 AND 100");
+                // Every terminal path (discharge, death, abscond) stamps discharged_at (audit §2).
+                t.HasCheckConstraint("ck_admission_discharged",
+                    "state NOT IN ('discharged','death','absconded') OR discharged_at IS NOT NULL");
+            });
+            e.Property(x => x.AdmissionNo).HasMaxLength(40);
+            e.Property(x => x.Source).HasMaxLength(40);
+            e.Property(x => x.ProvisionalDx).HasMaxLength(10000);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.BlockedFrom).HasMaxLength(40);
+            e.Property(x => x.ClinicalSummary).HasMaxLength(10000);
             e.HasIndex(x => x.AdmissionNo).IsUnique();
             e.HasIndex(x => x.PatientId);
             e.HasIndex(x => x.State);
+            // PostgreSQL maintains xmin on every write — a token that cannot be forgotten
+            // (the AUD-ARCH-02 lesson from bill.invoice).
+            e.Property<uint>("xmin").IsRowVersion();
         });
         b.Entity<BedStay>(e =>
         {
             e.ToTable("bed_stay");
             e.HasIndex(x => x.AdmissionId);
             e.HasIndex(x => x.BedId);
+            // The board's hottest predicate: the open stay for an admission (audit §5).
+            e.HasIndex(x => x.AdmissionId, "ix_bed_stay_open_admission")
+                .HasFilter("to_at IS NULL");
+            e.HasOne<Admission>().WithMany().HasForeignKey(x => x.AdmissionId);
+            e.HasOne<Bed>().WithMany().HasForeignKey(x => x.BedId);
         });
         b.Entity<BedDay>(e =>
         {
             e.ToTable("bed_day");
             e.HasIndex(x => new { x.AdmissionId, x.OnDate }).IsUnique();   // idempotency anchor
+            e.HasOne<Admission>().WithMany().HasForeignKey(x => x.AdmissionId);
+            e.HasOne<Bed>().WithMany().HasForeignKey(x => x.BedId);
         });
         b.Entity<Folio>(e =>
         {
-            e.ToTable("folio");
+            e.ToTable("folio", t =>
+            {
+                t.HasCheckConstraint("ck_folio_state",
+                    "state IN ('open','blocked','settlement_draft','locked')");
+                t.HasCheckConstraint("ck_folio_advance", "advance_applied >= 0");
+                // Locking and the settlement invoice are one write (FolioService) — a locked
+                // folio with no settlement invoice is a settled stay with no bill (audit §2).
+                t.HasCheckConstraint("ck_folio_locked",
+                    "state <> 'locked' OR settlement_invoice_id IS NOT NULL");
+            });
+            e.Property(x => x.State).HasMaxLength(40);
             e.HasIndex(x => x.AdmissionId).IsUnique();
+            e.HasOne<Admission>().WithMany().HasForeignKey(x => x.AdmissionId);
+            e.Property<uint>("xmin").IsRowVersion();
         });
-        b.Entity<AdmissionPackage>(e => e.ToTable("admission_package"));
+        b.Entity<AdmissionPackage>(e =>
+        {
+            e.ToTable("admission_package", t => t.HasCheckConstraint(
+                "ck_admission_package_pct", "default_service_charge_pct BETWEEN 0 AND 100"));
+            e.Property(x => x.Name).HasMaxLength(200);
+        });
         b.Entity<Indent>(e =>
         {
-            e.ToTable("indent");
+            e.ToTable("indent", t =>
+            {
+                t.HasCheckConstraint("ck_indent_state",
+                    "state IN ('requested','issued','cancelled')");
+                t.HasCheckConstraint("ck_indent_issued",
+                    "state <> 'issued' OR (issued_by IS NOT NULL AND issued_at IS NOT NULL)");
+            });
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.Note).HasMaxLength(4000);
             e.HasIndex(x => x.State);
+            e.HasOne<Admission>().WithMany().HasForeignKey(x => x.AdmissionId);
+            e.HasOne<Folio>().WithMany().HasForeignKey(x => x.FolioId);
         });
-        b.Entity<IndentItem>(e => { e.ToTable("indent_item"); e.HasIndex(x => x.IndentId); });
+        b.Entity<IndentItem>(e =>
+        {
+            e.ToTable("indent_item", t => t.HasCheckConstraint("ck_indent_item_qty",
+                "qty_requested > 0 AND qty_issued BETWEEN 0 AND qty_requested "
+                + "AND qty_returned BETWEEN 0 AND qty_issued"));
+            e.HasIndex(x => x.IndentId);
+            e.HasOne<Indent>().WithMany().HasForeignKey(x => x.IndentId);
+            // product_id points at pharm.product — cross-schema, so no FK (ADR-0003).
+        });
         b.Entity<Certificate>(e =>
         {
             e.ToTable("certificate");
+            e.Property(x => x.Kind).HasMaxLength(40);
+            e.Property(x => x.CertNo).HasMaxLength(40);
             e.HasIndex(x => x.CertNo).IsUnique();
             e.Property(x => x.Body).HasColumnType("jsonb");
+            e.HasOne<Admission>().WithMany().HasForeignKey(x => x.AdmissionId);
         });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

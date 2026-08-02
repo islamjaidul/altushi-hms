@@ -261,6 +261,24 @@ def main() -> int:
         check(status_of(admin, f"/hr/employees/{new_id.group(1)}") == 200,
               "the new employee's record renders")
 
+    # -- 3b. Pay the new hire (spec 0039 WP3): hired must mean payable --------------------
+    # Before 0039 SetPayAsync's only caller was the demo seed, so every run of this thread
+    # left an unpayable employee behind — which probe-payroll-math's AUD-M16-03 then counted.
+    case("HRM-EMP-08", "The new hire gets a pay structure through the set-pay screen", admin)
+    check(new_id is not None, "there is a new hire to pay (HRM-EMP-07 found the record)")
+    if new_id:
+        rec = admin.get(f"/hr/employees/{new_id.group(1)}")
+        comp = re.search(r'name="PayAmount\[(\d+)\]"', rec)
+        check(comp is not None, "the record offers the set-pay form")
+        if comp:
+            url, body = post_raw(admin, f"/hr/employees/{new_id.group(1)}?handler=SetPay",
+                                 {f"PayAmount[{comp.group(1)}]": "12000",
+                                  "NewPayFrom": "01/07/2026", "PayReason": "joining"}, rec)
+            check(not crashed(url), "saving pay did not 500")
+            rec = admin.get(f"/hr/employees/{new_id.group(1)}")
+            check("Revise pay" in rec,
+                  "the structure took — the record now offers revision, not first-time set")
+
     # -- 4. Masters: six tabs, three verbs, and the pickers that depend on them -----------
     case("HRM-MST-01", "Every masters tab renders its own form", admin)
     for tab in MASTER_TABS:

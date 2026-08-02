@@ -64,7 +64,16 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
             isPersistent: false, lockoutOnFailure: true);
 
         if (result.Succeeded)
-            return LocalRedirect(returnUrl ?? "/");
+        {
+            // AUD-PHI-02: a returnUrl pointing back at the denial (or login) page would land a
+            // freshly signed-in operator on "access denied" — not a loop, just wrong. Home is
+            // the right destination when the remembered URL is one of the auth pages themselves.
+            var target = returnUrl ?? "/";
+            if (target.StartsWith("/denied", StringComparison.OrdinalIgnoreCase) ||
+                target.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+                target = "/";
+            return LocalRedirect(target);
+        }
 
         LockedOut = result.IsLockedOut;
         Failed = !result.IsLockedOut;

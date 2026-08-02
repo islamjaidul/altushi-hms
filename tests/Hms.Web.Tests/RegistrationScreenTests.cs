@@ -33,7 +33,8 @@ public class RegistrationScreenTests
         string? sex = "M", string? ageOrDob = null, string? patientType = "general")
     {
         var http = new DefaultHttpContext();
-        var page = new NewModel(null!, null!, null!, null!)
+        // A real clock, not null: the DOB plausibility guard (spec 0039 WP1) needs "today".
+        var page = new NewModel(null!, null!, null!, null!, TimeProvider.System)
         {
             FullName = fullName!,
             Sex = sex!,

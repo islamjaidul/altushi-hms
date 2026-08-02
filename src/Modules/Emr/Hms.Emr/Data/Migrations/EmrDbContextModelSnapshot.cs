@@ -37,20 +37,24 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("doctor_id");
 
                     b.Property<string>("Dose")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("dose");
 
                     b.Property<string>("DrugName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("drug_name");
 
                     b.Property<string>("Duration")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("duration");
 
                     b.Property<string>("Frequency")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("frequency");
 
                     b.Property<long>("ProductId")
@@ -93,7 +97,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("glucose_tenths");
 
                     b.Property<string>("InsulinRoute")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("insulin_route");
 
                     b.Property<short?>("InsulinUnits")
@@ -105,7 +110,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("recorded_by");
 
                     b.Property<string>("Timing")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("timing");
 
                     b.HasKey("Id")
@@ -114,7 +120,12 @@ namespace Hms.Emr.Data.Migrations
                     b.HasIndex("AdmissionId", "At")
                         .HasDatabaseName("ix_glucose_reading_admission_id_at");
 
-                    b.ToTable("glucose_reading", "emr");
+                    b.ToTable("glucose_reading", "emr", t =>
+                        {
+                            t.HasCheckConstraint("ck_glucose_insulin", "insulin_units IS NULL OR insulin_units BETWEEN 0 AND 200");
+
+                            t.HasCheckConstraint("ck_glucose_value", "glucose_tenths BETWEEN 5 AND 500");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Emr.Data.MarDose", b =>
@@ -151,16 +162,19 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("created_by");
 
                     b.Property<string>("Dose")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("dose");
 
                     b.Property<string>("DrugName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("drug_name");
 
                     b.Property<string>("Route")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("route");
 
                     b.Property<DateTimeOffset>("ScheduledAt")
@@ -169,11 +183,13 @@ namespace Hms.Emr.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<string>("StateReason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("state_reason");
 
                     b.HasKey("Id")
@@ -185,7 +201,14 @@ namespace Hms.Emr.Data.Migrations
                     b.HasIndex("AdmissionId", "ScheduledAt")
                         .HasDatabaseName("ix_mar_dose_admission_id_scheduled_at");
 
-                    b.ToTable("mar_dose", "emr");
+                    b.ToTable("mar_dose", "emr", t =>
+                        {
+                            t.HasCheckConstraint("ck_mar_dose_given", "state <> 'given' OR (administered_at IS NOT NULL AND administered_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_mar_dose_reason", "state NOT IN ('missed','refused') OR state_reason IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_mar_dose_state", "state IN ('scheduled','given','missed','refused')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Emr.Data.Note", b =>
@@ -202,7 +225,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("admission_id");
 
                     b.Property<string>("Advice")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("advice");
 
                     b.Property<long>("BranchId")
@@ -210,7 +234,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("branch_id");
 
                     b.Property<string>("Complaint")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("complaint");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -222,7 +247,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("created_by");
 
                     b.Property<string>("Diagnosis")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("diagnosis");
 
                     b.Property<long>("DoctorId")
@@ -246,7 +272,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("follow_up_on");
 
                     b.Property<string>("OnExamination")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("on_examination");
 
                     b.Property<long>("PatientId")
@@ -255,7 +282,8 @@ namespace Hms.Emr.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<long?>("SupersedesId")
@@ -284,7 +312,11 @@ namespace Hms.Emr.Data.Migrations
 
                     b.ToTable("note", "emr", t =>
                         {
+                            t.HasCheckConstraint("ck_note_finalised", "state NOT IN ('final','superseded') OR (finalised_at IS NOT NULL AND finalised_by IS NOT NULL)");
+
                             t.HasCheckConstraint("ck_note_parent", "num_nonnulls(encounter_id, admission_id) = 1");
+
+                            t.HasCheckConstraint("ck_note_state", "state IN ('draft','final','superseded')");
                         });
                 });
 
@@ -298,24 +330,29 @@ namespace Hms.Emr.Data.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Dose")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("dose");
 
                     b.Property<string>("DrugName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("drug_name");
 
                     b.Property<string>("Duration")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("duration");
 
                     b.Property<string>("Frequency")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("frequency");
 
                     b.Property<string>("Instruction")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("instruction");
 
                     b.Property<long>("NoteId")
@@ -353,15 +390,18 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("active");
 
                     b.Property<string>("Advice")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("advice");
 
                     b.Property<string>("Complaint")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("complaint");
 
                     b.Property<string>("Diagnosis")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("diagnosis");
 
                     b.Property<long>("DoctorId")
@@ -375,11 +415,13 @@ namespace Hms.Emr.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("OnExamination")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("on_examination");
 
                     b.HasKey("Id")
@@ -406,7 +448,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("admission_id");
 
                     b.Property<string>("Belongings")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("belongings");
 
                     b.Property<long>("BranchId")
@@ -414,7 +457,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("branch_id");
 
                     b.Property<string>("Condition")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("condition");
 
                     b.Property<DateTimeOffset>("ReceivedAt")
@@ -426,7 +470,8 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnName("received_by");
 
                     b.Property<string>("ReceivedFrom")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("received_from");
 
                     b.HasKey("Id")
@@ -507,8 +552,39 @@ namespace Hms.Emr.Data.Migrations
 
                     b.ToTable("vitals", "emr", t =>
                         {
+                            t.HasCheckConstraint("ck_vitals_diastolic", "diastolic IS NULL OR diastolic BETWEEN 20 AND 200");
+
                             t.HasCheckConstraint("ck_vitals_parent", "num_nonnulls(encounter_id, admission_id) = 1");
+
+                            t.HasCheckConstraint("ck_vitals_pulse", "pulse IS NULL OR pulse BETWEEN 20 AND 300");
+
+                            t.HasCheckConstraint("ck_vitals_spo2", "sp_o2 IS NULL OR sp_o2 BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("ck_vitals_systolic", "systolic IS NULL OR systolic BETWEEN 40 AND 300");
+
+                            t.HasCheckConstraint("ck_vitals_temperature", "temperature_tenths_c IS NULL OR temperature_tenths_c BETWEEN 250 AND 460");
+
+                            t.HasCheckConstraint("ck_vitals_weight", "weight_tenths_kg IS NULL OR weight_tenths_kg BETWEEN 1 AND 4000");
                         });
+                });
+
+            modelBuilder.Entity("Hms.Emr.Data.Note", b =>
+                {
+                    b.HasOne("Hms.Emr.Data.Note", null)
+                        .WithMany()
+                        .HasForeignKey("SupersedesId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_note_note_supersedes_id");
+                });
+
+            modelBuilder.Entity("Hms.Emr.Data.NoteDrug", b =>
+                {
+                    b.HasOne("Hms.Emr.Data.Note", null)
+                        .WithMany()
+                        .HasForeignKey("NoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_note_drug_note_note_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
 using Hms.Billing;
 using Hms.Billing.Data;
@@ -27,15 +28,15 @@ public class OpdModel(
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     /// <summary>Catalog ids in the cart, carried between round trips as hidden fields.</summary>
     [BindProperty] public List<long> Items { get; set; } = [];
-    [BindProperty] public long DiscountFlat { get; set; }
-    [BindProperty] public long PaidNow { get; set; }
+    [BindProperty, Money] public long DiscountFlat { get; set; }
+    [BindProperty, Money] public long PaidNow { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
     /// <summary>5A-4 [Must]: a second tender on the same invoice — cash + card/mobile.</summary>
-    [BindProperty] public long PaidNow2 { get; set; }
+    [BindProperty, Money] public long PaidNow2 { get; set; }
     [BindProperty] public string Tender2 { get; set; } = "card";
-    [BindProperty] public string? TenderRef2 { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? TenderRef2 { get; set; }
     /// <summary>§5 M4 [M]: discounts carry an operator-stated reason, not a generated one.</summary>
-    [BindProperty] public string? DiscountReason { get; set; }
+    [BindProperty, StringLength(Bounds.Note)] public string? DiscountReason { get; set; }
     /// <summary>Spec 0021: one prepared bill, one invoice — survives a double-click.</summary>
     [BindProperty] public Guid SubmissionToken { get; set; }
 
@@ -180,6 +181,19 @@ public class OpdModel(
         if (Session is null) { Fail("Open your counter before billing."); return Page(); }
         if (PatientId is null or 0) { Fail("Select a patient first."); return Page(); }
         if (Cart.Count == 0 && Unbilled.Count == 0) { Fail("Add at least one service."); return Page(); }
+        // The displayed cart is Items filtered to the sellable catalogue; a mismatch means the
+        // form carried an id that is not sellable today. Refuse rather than bill a subset of
+        // what the operator believes is in the cart (AUD-VAL-05b).
+        if (Cart.Count != Items.Count)
+        {
+            Fail("A service in this cart is not in today's catalogue any more — remove it and add it again.");
+            return Page();
+        }
+        if (!Tenders.IsKnown(Tender) || (PaidNow2 > 0 && !Tenders.IsKnown(Tender2)))
+        {
+            Fail($"That is not a way money can be taken. Use one of: {string.Join(", ", Tenders.All)}.");
+            return Page();
+        }
 
         var gross = Gross;
         var discount = Math.Max(0, Math.Min(gross, DiscountFlat));
@@ -265,6 +279,19 @@ public class OpdModel(
                 foreach (var (amount, mode, reference) in tenders)
                     await billing.CollectAsync(s.Bill, s.Kernel, BranchId, invoice.Id, Session.Id,
                         amount, mode, reference, ActorId, ActorName);
+
+                // WP1.4 (AUD-VAL-04): a save that claims a payment produces a receipt or the
+                // whole transaction fails — asserted here, not only trusted to the binder.
+                var claimed = tenders.Sum(x => x.Amount);
+                if (claimed > 0)
+                {
+                    var receipted = await s.Bill.Receipts
+                        .Where(r => r.InvoiceId == invoice.Id)
+                        .SumAsync(r => (long?)r.Amount) ?? 0;
+                    if (receipted != claimed)
+                        throw new BillingException(
+                            "The payment could not be receipted, so the bill was not saved. Try again.");
+                }
 
                 return invoice.Id;
             });

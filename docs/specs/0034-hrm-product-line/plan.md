@@ -175,6 +175,12 @@ Effective-dated ranges use Postgres **exclusion constraints** (`btree_gist` is a
 **Wave C — money ledgers** (spec 0038) — 16.7, 16.8, 5A-16k–n + PiHR-2
 **Wave D — documents & reports** (spec 0039) — 5A-17a–d, 16.10
 
+> **Correction (2026-08-03, spec 0039):** the spec numbers pre-assigned to Waves B–D above were
+> consumed by other work — 0037 became the HRM save-bug fix, 0038 the full QA audit, 0039 the
+> lifecycle hardening. Waves B–D remain unbuilt (0039's WP3 delivered parts of Wave B's policy
+> configuration) and will take fresh spec numbers when picked up. This note supersedes the three
+> lines above; the wave scopes themselves are unchanged.
+
 ## 6. Reuse — build none of this
 
 | Need | Use |

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
 using Hms.Billing;
 using Hms.Emr;
@@ -26,11 +27,13 @@ public class ConsultModel(
 {
     [BindProperty(SupportsGet = true)] public long EncounterId { get; set; }
 
-    [BindProperty] public string? Complaint { get; set; }
-    [BindProperty] public string? OnExamination { get; set; }
-    [BindProperty] public string? Diagnosis { get; set; }
-    [BindProperty] public string? Advice { get; set; }
-    [BindProperty] public string? FollowUp { get; set; }
+    // AUD-VAL-21a: free clinical text is bounded before storage — a 100 KB paste once stored verbatim.
+    [BindProperty, StringLength(Bounds.Clinical)] public string? Complaint { get; set; }
+    [BindProperty, StringLength(Bounds.Clinical)] public string? OnExamination { get; set; }
+    [BindProperty, StringLength(Bounds.Clinical)] public string? Diagnosis { get; set; }
+    [BindProperty, StringLength(Bounds.Clinical)] public string? Advice { get; set; }
+    /// <summary>A flexible date string ("12 Mar 2026"), never long prose.</summary>
+    [BindProperty, StringLength(Bounds.Code)] public string? FollowUp { get; set; }
 
     [BindProperty] public List<long?> DrugProductId { get; set; } = [];
     [BindProperty] public List<string?> DrugName { get; set; } = [];
@@ -41,7 +44,7 @@ public class ConsultModel(
 
     [BindProperty] public List<long> Tests { get; set; } = [];
     [BindProperty] public long TemplateId { get; set; }
-    [BindProperty] public string? TemplateName { get; set; }
+    [BindProperty, StringLength(Bounds.Name)] public string? TemplateName { get; set; }
 
     public long NoteId { get; private set; }
     public string NoteState { get; private set; } = Hms.Emr.Data.NoteState.Draft;
@@ -143,12 +146,50 @@ public class ConsultModel(
 
     private async Task<IActionResult> SaveThen(bool finalise)
     {
+        var drugs = CollectDrugs();
+        // Drug line text rides in parallel lists, which no annotation can bound — judged here.
+        for (var i = 0; i < drugs.Count; i++)
+        {
+            var d = drugs[i];
+            if (new[] { d.DrugName, d.Dose, d.Frequency, d.Duration, d.Instruction }
+                .Any(t => t?.Length > Bounds.Name))
+            {
+                await LoadAsync();
+                Fail($"Drug line {i + 1}: keep each entry under {Bounds.Name} characters.");
+                return Page();
+            }
+        }
+
         try
         {
             var noteId = await tx.RunAsync(async s =>
             {
+                // AUD-VAL-21b: a prescription line names a pharmacy product — an id the
+                // catalogue does not have must not print as a medicine. Composition-root
+                // existence check across the emr/pharm boundary.
+                var drugIds = drugs.Where(d => d.ProductId is > 0)
+                    .Select(d => d.ProductId!.Value).Distinct().ToList();
+                if (drugIds.Count > 0)
+                {
+                    var knownDrugs = await s.Pharm.Products.AsNoTracking()
+                        .Where(p => drugIds.Contains(p.Id)).CountAsync();
+                    if (knownDrugs != drugIds.Count)
+                        throw new EmrException(
+                            "A medicine on this prescription is not in the pharmacy catalogue — pick it from the picker again.");
+                }
+                // AUD-VAL-21c: same for the test order — the diagnostics catalogue is the master.
+                var testIds = Tests.Where(t => t > 0).Distinct().ToList();
+                if (testIds.Count > 0)
+                {
+                    var knownTests = await s.Adm.TestCatalog.AsNoTracking()
+                        .Where(t => testIds.Contains(t.Id) && t.Active).CountAsync();
+                    if (knownTests != testIds.Count)
+                        throw new EmrException(
+                            "A test on this order is not in the catalogue — pick it from the list again.");
+                }
+
                 var note = await CurrentDraftAsync(s);
-                await emr.SaveDraftAsync(s.Emr, note.Id, Body(), CollectDrugs());
+                await emr.SaveDraftAsync(s.Emr, note.Id, Body(), drugs);
 
                 if (Tests.Count > 0)
                     await EmrOrdering.OrderTestsAsync(s, rates, billing, clock, BranchId,
@@ -168,6 +209,19 @@ public class ConsultModel(
             return Redirect($"/emr/consult/{EncounterId}");
         }
         catch (EmrException e)
+        {
+            await LoadAsync();
+            Fail(e.Message);
+            return Page();
+        }
+        // Ordering tests crosses into billing and rates — their refusals are sentences too.
+        catch (BillingException e)
+        {
+            await LoadAsync();
+            Fail(e.Message);
+            return Page();
+        }
+        catch (RateResolutionException e)
         {
             await LoadAsync();
             Fail(e.Message);

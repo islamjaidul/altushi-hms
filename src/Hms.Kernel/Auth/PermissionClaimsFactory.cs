@@ -36,6 +36,10 @@ public sealed class PermissionClaimsFactory(
             identity.AddClaim(new Claim(PermissionPolicy.ClaimType, $"{p.Module}.{p.Action}"));
 
         identity.AddClaim(new Claim("display_name", user.DisplayName));
+        // WP5 (AUD-ARCH-01): the branch travels with the principal, so every screen and every
+        // query filter resolves it from who is signed in — never from a constant.
+        identity.AddClaim(new Claim(Data.BranchScope.ClaimType,
+            user.BranchId.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         return identity;
     }
 }

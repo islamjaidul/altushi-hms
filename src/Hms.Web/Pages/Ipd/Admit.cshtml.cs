@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
 using Hms.Billing;
 using Hms.Ipd;
@@ -26,9 +27,11 @@ public class AdmitModel(
     [BindProperty] public long PatientId { get; set; }
     [BindProperty] public long? DoctorId { get; set; }
     [BindProperty] public string Source { get; set; } = "direct";
-    [BindProperty] public string? ProvisionalDx { get; set; }
+    /// <summary>AUD-VAL-13b: a 100 KB paste once stored verbatim.</summary>
+    [BindProperty, StringLength(Bounds.Clinical)] public string? ProvisionalDx { get; set; }
     [BindProperty] public long? PackageId { get; set; }
-    [BindProperty] public short ServiceChargePct { get; set; }
+    /// <summary>AUD-VAL-13a: −50% once reached the folio's service-charge math.</summary>
+    [BindProperty, Percent] public short ServiceChargePct { get; set; }
     [BindProperty] public bool ReserveOnly { get; set; }
 
     public IReadOnlyList<BedChoice> FreeBeds { get; private set; } = [];
@@ -84,6 +87,12 @@ public class AdmitModel(
         {
             var admissionId = await tx.RunAsync(async s =>
             {
+                // AUD-VAL-12: the typeahead constrains the browser, not the request — an id
+                // nothing points at must not become an admission. (The bed is checked inside
+                // AdmitAsync, which locks it and refuses an unknown or occupied one.)
+                if (!await s.Reg.Patients.AnyAsync(p => p.Id == PatientId))
+                    throw new IpdException("That patient is not on the register — search and pick them again.");
+
                 await IpdBilling.EnsureNotBlockedAsync(s, PatientId);      // R4
 
                 short svcPct = ServiceChargePct;

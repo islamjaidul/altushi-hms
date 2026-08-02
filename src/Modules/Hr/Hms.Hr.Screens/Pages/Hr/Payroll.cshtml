@@ -115,6 +115,14 @@
                                     <input type="hidden" name="id" value="@r.Id" />
                                     <button type="submit" class="btn-tint">Post to accounts</button>
                                 </form>
+                                if (Model.CanSeeMoney)
+                                {
+                                    <a class="btn-tint" href="/hr/payslips?RunId=@r.Id">Payslips</a>
+                                }
+                            }
+                            else if (r.State == PayrollRunState.Posted && Model.CanSeeMoney)
+                            {
+                                <a class="btn-tint" href="/hr/payslips?RunId=@r.Id">Payslips</a>
                             }
                             else
                             {

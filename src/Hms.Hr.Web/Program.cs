@@ -17,6 +17,17 @@ var builder = WebApplication.CreateBuilder(args);
 var conn = builder.Configuration.GetConnectionString("Hms")
            ?? throw new InvalidOperationException("ConnectionStrings:Hms missing");
 
+// AUD-XCUT-01: cap the pool below the deployed max_connections=40 shared by both SKUs, unless
+// the connection string sets its own. Written back so HrTx and the contexts read the same value.
+if (!conn.Contains("Pool Size", StringComparison.OrdinalIgnoreCase))
+{
+    conn = new Npgsql.NpgsqlConnectionStringBuilder(conn)
+    {
+        MaxPoolSize = builder.Configuration.GetValue("Db:MaxPoolSize", 15),
+    }.ConnectionString;
+    builder.Configuration["ConnectionStrings:Hms"] = conn;
+}
+
 builder.Services.AddDbContext<KernelDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "kernel"))
     .UseSnakeCaseNamingConvention());
@@ -29,7 +40,13 @@ builder.Services.AddDbContext<HrDbContext>(o => o
 
 builder.Services.AddHmsPlatform(builder.Configuration);
 
-builder.Services.AddRazorPages();
+// Spec 0039 WP6 (AUD-XCUT-02): the background worker, next to the JobQueue AddHmsPlatform just
+// registered. This SKU runs the kernel's own recurring work (approval escalation); it ships no
+// notification module, so the SMS drain and daily jobs live only in the ERP host.
+builder.Services.AddHostedService<Hms.Kernel.Jobs.JobWorker>();
+builder.Services.AddSingleton<Hms.Kernel.Jobs.IRecurringJob, Hms.Kernel.Jobs.ApprovalEscalationJob>();
+
+builder.Services.AddRazorPages().AddSessionStateTempDataProvider();   // spec 0039 WP1.3
 builder.Services.AddAntiforgery();
 
 // ADR-0026 choke point 2. Even in a single-module product this matters: it is what makes an expired
@@ -81,6 +98,9 @@ using (var scope = app.Services.CreateScope())
 
         // Refuses to serve an ERP database rather than serving a fraction of one (ADR-0025).
         await HmsPlatform.ClaimDatabaseAsync(kernel, HostKind.Hrm, acceptsAnyExisting: false);
+
+        // WP2.6 (AUD-ARCH-03): hard rule 4's grants for the schemas this SKU serves.
+        await HmsPlatform.ApplyHardRule4GrantsAsync(kernel, ["kernel", "adm", "hr"]);
 
         await HrSeed.RunAsync(sp);
         await HrDemoSeed.RunAsync(sp);

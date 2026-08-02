@@ -134,22 +134,29 @@ public sealed class LisService(TimeProvider clock)
         await lis.SaveChangesAsync(ct);
     }
 
-    /// <summary>Edge 22: amendment keeps v1 immutable; v2 records what it supersedes; approval-gated.</summary>
+    /// <summary>Edge 22: amendment keeps v1 immutable; v2 records what it supersedes; approval-gated.
+    /// <para>Spec 0039 WP4 (AUD-M10-01): the narrative travels with the amendment. It used to be
+    /// dropped, so an amended radiology report — whose findings ARE the narrative — printed an
+    /// empty body. Callers pass the narrative that should appear on v2; a numeric lab test
+    /// passes null exactly as before.</para></summary>
     public async Task<Result> AmendAsync(
         LisDbContext lis, long orderTestId, Dictionary<string, object> newValues,
-        long actorId, long amendApprovalId, CancellationToken ct = default)
+        string? narrative, long actorId, long amendApprovalId, CancellationToken ct = default)
     {
         var latest = await lis.Results.Where(r => r.OrderTestId == orderTestId)
             .OrderByDescending(r => r.Version).FirstOrDefaultAsync(ct)
             ?? throw new LisException("Nothing to amend.");
         if (latest.VerifiedAt is null)
             throw new LisException("Unverified results are edited, not amended.");
+        if (newValues.Count == 0 && string.IsNullOrWhiteSpace(narrative))
+            throw new LisException("An amendment needs a corrected value or corrected findings.");
 
         var amended = new Result
         {
             OrderTestId = orderTestId,
             Version = latest.Version + 1,
             Values = JsonSerializer.Serialize(newValues),
+            Narrative = string.IsNullOrWhiteSpace(narrative) ? null : narrative.Trim(),
             EnteredBy = actorId,
             EnteredAt = clock.GetUtcNow(),
             AmendApprovalId = amendApprovalId,

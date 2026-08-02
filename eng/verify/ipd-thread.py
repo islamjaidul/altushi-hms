@@ -7,8 +7,8 @@ script is dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import (fixture, on_exit, record, release_bed,   # noqa: E402
-                       settle_and_discharge, tag)
+from _harness import (ensure_demo_stock, fixture, on_exit, record,   # noqa: E402
+                       release_bed, settle_and_discharge, tag)
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
 TOKEN_RE = re.compile(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"')
@@ -65,6 +65,10 @@ op = Session("rasel", "Demo#1234")      # billing operator: advances, settlement
 nu = Session("nasrin", "Demo#1234")     # nurse: service posting, indents
 ph = Session("parvin", "Demo#1234")     # pharmacist: indent issue
 sup = Session("shahid", "Demo#1234")    # supervisor: approvals
+
+# Step 6 issues the seeded product from the shared shelf; on a used database the shelf can
+# be empty, which reds the run on inherited state. Replenish through the operator PO path.
+ensure_demo_stock(lambda u: Session(u, "Demo#1234"))
 
 # 1 — a patient of our own -------------------------------------------------
 step(1, "Front desk registers the IPD patient")

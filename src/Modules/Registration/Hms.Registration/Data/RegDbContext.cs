@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -53,6 +54,11 @@ public class PatientMerge
 
 public class RegDbContext(DbContextOptions<RegDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<PatientMerge> Merges => Set<PatientMerge>();
 
@@ -63,20 +69,47 @@ public class RegDbContext(DbContextOptions<RegDbContext> options) : DbContext(op
         {
             // Widened for a months-only age (spec 0032, M1-D1): an infant under one year has no
             // whole year to give, and rounding to "1" or inventing a DOB corrupts the record.
-            e.ToTable("patient", t => t.HasCheckConstraint("ck_identity",
-                "dob is not null or age_years is not null or age_months is not null or unknown_identity"));
+            e.ToTable("patient", t =>
+            {
+                t.HasCheckConstraint("ck_identity",
+                    "dob is not null or age_years is not null or age_months is not null or unknown_identity");
+                // WP2.1 (AUD-VAL-08): 28 patients once carried a DOB of ±infinity — Npgsql maps
+                // DateOnly.Min/MaxValue there, and nothing bounded the value. current_date is
+                // legal in a CHECK; a same-day birth registers, a future one does not.
+                t.HasCheckConstraint("ck_patient_dob",
+                    "dob IS NULL OR (dob >= '1900-01-01' AND dob <= current_date)");
+                t.HasCheckConstraint("ck_patient_age",
+                    "(age_years IS NULL OR age_years BETWEEN 0 AND 130) AND "
+                    + "(age_months IS NULL OR age_months BETWEEN 0 AND 11)");
+            });
             e.HasIndex(x => x.Uhid).IsUnique();
             e.HasIndex(x => x.Phone);
             e.Property(x => x.PhoneDigits)
                 .HasComputedColumnSql(@"regexp_replace(coalesce(phone, ''), '\D', '', 'g')", stored: true);
             e.HasIndex(x => x.PhoneDigits);
             e.Property(x => x.Sex).HasColumnType("char(1)");
+            e.Property(x => x.Uhid).HasMaxLength(40);
+            e.Property(x => x.FullName).HasMaxLength(200);
+            e.Property(x => x.Phone).HasMaxLength(20);
+            e.Property(x => x.Guardian).HasMaxLength(200);
+            e.Property(x => x.Area).HasMaxLength(200);
+            e.Property(x => x.Address).HasMaxLength(500);
+            e.Property(x => x.Nid).HasMaxLength(40);
+            e.Property(x => x.BloodGroup).HasMaxLength(40);
+            e.Property(x => x.PatientType).HasMaxLength(40);
+            e.HasOne<Patient>().WithMany().HasForeignKey(x => x.MergedInto);
         });
         b.Entity<PatientMerge>(e =>
         {
             e.ToTable("patient_merge");
             e.Property(x => x.Repointed).HasColumnType("jsonb");
         });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

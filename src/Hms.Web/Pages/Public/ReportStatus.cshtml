@@ -19,9 +19,9 @@
     <form method="get" class="card">
         <div class="card-body stack" style="gap:10px">
             <label class="field">
-                <span class="field-label">Order number from your money receipt (e.g. LB-00042)</span>
-                <input class="input" name="orderNo" value="@Model.OrderNo" autofocus
-                       placeholder="LB-00042" />
+                <span class="field-label">Report code printed on your test slip</span>
+                <input class="input" name="orderNo" value="@Model.Code" autofocus
+                       placeholder="Report code from the slip" />
             </label>
             <button type="submit" class="btn btn-primary">Check status</button>
         </div>
@@ -30,22 +30,19 @@
     @if (Model.NoMatch)
     {
         <div class="alert" style="margin-top:14px">
-            <span>No report found for that number — please check the receipt or ask at the counter.</span>
+            <span>No report found for that code — please check the test slip or ask at the counter.</span>
         </div>
     }
-    else if (Model.Tests.Count > 0)
+    else if (Model.Status is not null)
     {
         <div class="card" style="margin-top:14px">
-            <div class="card-head">@Model.OrderNo — @Model.MaskedName</div>
+            <div class="card-head">Report status — @Model.MaskedName</div>
             <div class="card-body stack" style="gap:8px;padding-top:0">
-                @foreach (var test in Model.Tests)
-                {
-                    <div class="row" style="gap:10px">
-                        <span>@test.Test</span>
-                        <span class="spacer"></span>
-                        <span class="pill @(test.Status == "In progress" ? "warn" : "good")">@test.Status</span>
-                    </div>
-                }
+                <div class="row" style="gap:10px">
+                    <span>Your order</span>
+                    <span class="spacer"></span>
+                    <span class="pill @(Model.Status == "In progress" ? "warn" : "good")">@Model.Status</span>
+                </div>
                 <div class="card-hint">
                     Ready reports are collected at the delivery counter with your receipt.
                 </div>

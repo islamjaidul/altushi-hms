@@ -33,7 +33,8 @@ namespace Hms.Diagnostics.Data.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("CollectorNote")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("collector_note");
 
                     b.Property<DateTimeOffset>("DeliveredAt")
@@ -54,6 +55,9 @@ namespace Hms.Diagnostics.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_delivery_log");
+
+                    b.HasIndex("TestOrderId")
+                        .HasDatabaseName("ix_delivery_log_test_order_id");
 
                     b.ToTable("delivery_log", "diag");
                 });
@@ -77,7 +81,8 @@ namespace Hms.Diagnostics.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<long>("TestCatalogId")
@@ -91,7 +96,13 @@ namespace Hms.Diagnostics.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_order_test");
 
-                    b.ToTable("order_test", "diag");
+                    b.HasIndex("TestOrderId", "TestCatalogId")
+                        .HasDatabaseName("ix_order_test_test_order_id_test_catalog_id");
+
+                    b.ToTable("order_test", "diag", t =>
+                        {
+                            t.HasCheckConstraint("ck_order_test_state", "state IN ('ordered','cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Diagnostics.Data.TestOrder", b =>
@@ -143,22 +154,67 @@ namespace Hms.Diagnostics.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("promised_at");
 
+                    b.Property<string>("PublicToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("public_token");
+
                     b.Property<long?>("ReferrerId")
                         .HasColumnType("bigint")
                         .HasColumnName("referrer_id");
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.HasKey("Id")
                         .HasName("pk_test_order");
 
+                    b.HasIndex("EncounterId")
+                        .HasDatabaseName("ix_test_order_encounter_id");
+
+                    b.HasIndex("PatientId")
+                        .HasDatabaseName("ix_test_order_patient_id");
+
+                    b.HasIndex("PublicToken")
+                        .IsUnique()
+                        .HasDatabaseName("ix_test_order_public_token");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_test_order_state");
+
+                    b.HasIndex("InvoiceId", "State")
+                        .HasDatabaseName("ix_test_order_invoice_id_state");
+
                     b.ToTable("test_order", "diag", t =>
                         {
                             t.HasCheckConstraint("ck_test_order_parent", "num_nonnulls(encounter_id, folio_id) = 1");
+
+                            t.HasCheckConstraint("ck_test_order_state", "state IN ('ordered','invoiced','in_progress','reported','delivered','cancelled')");
                         });
+                });
+
+            modelBuilder.Entity("Hms.Diagnostics.Data.DeliveryLog", b =>
+                {
+                    b.HasOne("Hms.Diagnostics.Data.TestOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TestOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_delivery_log_test_order_test_order_id");
+                });
+
+            modelBuilder.Entity("Hms.Diagnostics.Data.OrderTest", b =>
+                {
+                    b.HasOne("Hms.Diagnostics.Data.TestOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TestOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_order_test_test_order_test_order_id");
                 });
 #pragma warning restore 612, 618
         }

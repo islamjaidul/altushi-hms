@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -69,6 +70,11 @@ public class Result
 
 public class LisDbContext(DbContextOptions<LisDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Sample> Samples => Set<Sample>();
     public DbSet<SampleTest> SampleTests => Set<SampleTest>();
     public DbSet<LabelPrint> LabelPrints => Set<LabelPrint>();
@@ -76,24 +82,73 @@ public class LisDbContext(DbContextOptions<LisDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Spec 0039 WP2: state CHECKs from SampleState above, state-dependent completeness,
+        // intra-schema FKs, HasMaxLength and the Result xmin token — same posture as
+        // BillDbContext (additive only, NOT VALID in the migration for pre-existing tables).
         b.HasDefaultSchema("lis");
         b.Entity<Sample>(e =>
         {
-            e.ToTable("sample");
+            e.ToTable("sample", t =>
+            {
+                t.HasCheckConstraint("ck_sample_state",
+                    "state IN ('pending_collection','collected','received','rejected',"
+                    + "'resulted','verified','report_ready','delivered')");
+                // LisService stamps these on the transitions: every state past
+                // pending_collection went through collection, every state past collected
+                // went through receipt (rejection happens at receipt), and a rejection
+                // always says why (audit §2).
+                t.HasCheckConstraint("ck_sample_collected",
+                    "state = 'pending_collection' "
+                    + "OR (collected_at IS NOT NULL AND collected_by IS NOT NULL)");
+                t.HasCheckConstraint("ck_sample_received",
+                    "state IN ('pending_collection','collected') "
+                    + "OR (received_at IS NOT NULL AND received_by IS NOT NULL)");
+                t.HasCheckConstraint("ck_sample_rejected",
+                    "state <> 'rejected' OR rejected_reason IS NOT NULL");
+            });
+            e.Property(x => x.Barcode).HasMaxLength(40);
+            e.Property(x => x.SampleType).HasMaxLength(40);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.RejectedReason).HasMaxLength(4000);
+            e.Property(x => x.DisposalNote).HasMaxLength(4000);
             e.HasIndex(x => x.Barcode).IsUnique();     // single identity (edge 27/33)
+            e.HasOne<Sample>().WithMany().HasForeignKey(x => x.RecollectionOf);
         });
         b.Entity<SampleTest>(e =>
         {
             e.ToTable("sample_test");
             e.HasKey(x => new { x.SampleId, x.OrderTestId });
+            // The lab board's join predicate — the PK's prefix is sample_id, unusable here
+            // (audit §5).
+            e.HasIndex(x => x.OrderTestId);
+            e.HasOne<Sample>().WithMany().HasForeignKey(x => x.SampleId);
         });
-        b.Entity<LabelPrint>(e => e.ToTable("label_print"));
+        b.Entity<LabelPrint>(e =>
+        {
+            e.ToTable("label_print");
+            e.HasOne<Sample>().WithMany().HasForeignKey(x => x.SampleId);
+        });
         b.Entity<Result>(e =>
         {
-            e.ToTable("result");
+            // A verified result carries its whole signature or none of it — the e-sign
+            // trio is one write in LisService.VerifyAsync (audit §2).
+            e.ToTable("result", t => t.HasCheckConstraint("ck_result_verified",
+                "verified_at IS NULL OR (verified_by IS NOT NULL "
+                + "AND verifier_role IS NOT NULL AND esign_hash IS NOT NULL)"));
             e.Property(x => x.Values).HasColumnType("jsonb");
+            e.Property(x => x.Narrative).HasMaxLength(10000);
+            e.Property(x => x.VerifierRole).HasMaxLength(40);
+            e.Property(x => x.EsignHash).HasMaxLength(200);          // hex SHA-256 is 64 chars
+            e.Property(x => x.SignatureImageRef).HasMaxLength(200);
             e.HasIndex(x => new { x.OrderTestId, x.Version }).IsUnique();
+            e.Property<uint>("xmin").IsRowVersion();
         });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

@@ -65,8 +65,11 @@ public static class LabBoard
         if (orders.Count == 0) return [];
 
         var orderIds = orders.Select(o => o.Id).ToList();
+        // WP4 (AUD-M9-01): a refunded test must leave the worklist — radiology already filtered
+        // this and the lab did not, so a refunded test could be collected, resulted and
+        // verified. Two modules reading the same rows now apply the same rule.
         var orderTests = await s.Diag.OrderTests.AsNoTracking()
-            .Where(ot => orderIds.Contains(ot.TestOrderId)).ToListAsync(ct);
+            .Where(ot => orderIds.Contains(ot.TestOrderId) && !ot.Refunded).ToListAsync(ct);
         var orderTestIds = orderTests.Select(ot => ot.Id).ToList();
 
         var catalogIds = orderTests.Select(ot => ot.TestCatalogId).Distinct().ToList();

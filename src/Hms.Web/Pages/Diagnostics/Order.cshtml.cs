@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
 using Hms.Billing;
+using Hms.Billing.Data;
 using Hms.Diagnostics;
 using Hms.Lis;
 using Microsoft.AspNetCore.Authorization;
@@ -25,8 +27,8 @@ public class OrderModel(
     [BindProperty(SupportsGet = true)] public long? PatientId { get; set; }
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty] public List<long> Items { get; set; } = [];
-    [BindProperty] public long DiscountFlat { get; set; }
-    [BindProperty] public long PaidNow { get; set; }
+    [BindProperty, Money] public long DiscountFlat { get; set; }
+    [BindProperty, Money] public long PaidNow { get; set; }
     /// <summary>Spec 0021: one prepared order, one invoice — survives a double-click.</summary>
     [BindProperty] public Guid SubmissionToken { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
@@ -125,11 +127,40 @@ public class OrderModel(
         if (Session is null) { Fail("Open your counter before invoicing tests."); return Page(); }
         if (PatientId is null or 0) { Fail("Select a patient first."); return Page(); }
         if (Cart.Count == 0) { Fail("Add at least one test."); return Page(); }
+        // The displayed cart is Items filtered to the priced catalogue; a mismatch means the
+        // form carried a test id that is not sellable today. Refuse rather than invoice a subset
+        // of what the operator believes is in the cart (AUD-VAL-22b).
+        if (Cart.Count != Items.Count)
+        {
+            Fail("A test in this cart is not in today's catalogue any more — remove it and add it again.");
+            return Page();
+        }
+        if (!Tenders.IsKnown(Tender))
+        {
+            Fail($"That is not a way money can be taken. Use one of: {string.Join(", ", Tenders.All)}.");
+            return Page();
+        }
+        // The referrer is who the commission is owed to (§5 M13) — an id no master row carries
+        // would make the referral report unreconcilable (AUD-VAL-22c).
+        if (ReferrerId is { } rid and > 0 && Referrers.All(r => r.Id != rid))
+        {
+            Fail("That referrer is not on the referrer list — pick one from the list.");
+            return Page();
+        }
 
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
         var gross = Gross;
         var discount = Math.Max(0, Math.Min(gross, DiscountFlat));
-        var paid = Math.Max(0, Math.Min(gross - discount, PaidNow));
+        var net = gross - discount;
+        // [Money] already refused negatives; more than the payable is change, and change is
+        // handled at the drawer, not on the invoice (same rule as the OPD counter).
+        if (PaidNow > net)
+        {
+            Fail($"The payment is more than the {Ui.Money(net)} payable. Reduce it — " +
+                 "change is handled at the drawer, not on the invoice.");
+            return Page();
+        }
+        var paid = PaidNow;
         var cart = Cart.ToList();
 
         try
@@ -167,8 +198,19 @@ public class OrderModel(
                 await diagnostics.MarkInvoicedAsync(s.Diag, order.Id, invoice.Id);
 
                 if (paid > 0)
+                {
                     await billing.CollectAsync(s.Bill, s.Kernel, BranchId, invoice.Id, Session.Id,
                         paid, Tender, null, ActorId, ActorName);
+
+                    // WP1.4 (AUD-VAL-22d): a save that claims a payment produces a receipt or
+                    // the whole transaction fails — asserted here, not only trusted to the binder.
+                    var receipted = await s.Bill.Receipts
+                        .Where(r => r.InvoiceId == invoice.Id)
+                        .SumAsync(r => (long?)r.Amount) ?? 0;
+                    if (receipted != paid)
+                        throw new BillingException(
+                            "The payment could not be receipted, so the order was not saved. Try again.");
+                }
 
                 // Payment — in full — is what releases the lab (§9A.2 seam). A part-paid order
                 // raises no tube here; settling the balance later at Due Collection releases it

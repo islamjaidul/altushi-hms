@@ -37,7 +37,8 @@ namespace Hms.Registration.Data.Migrations
                         .HasColumnName("active");
 
                     b.Property<string>("Address")
-                        .HasColumnType("text")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("address");
 
                     b.Property<DateOnly?>("AgeAsOf")
@@ -57,11 +58,13 @@ namespace Hms.Registration.Data.Migrations
                         .HasColumnName("age_years");
 
                     b.Property<string>("Area")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("area");
 
                     b.Property<string>("BloodGroup")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("blood_group");
 
                     b.Property<long>("BranchId")
@@ -82,11 +85,13 @@ namespace Hms.Registration.Data.Migrations
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("full_name");
 
                     b.Property<string>("Guardian")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("guardian");
 
                     b.Property<long?>("MergedInto")
@@ -94,16 +99,19 @@ namespace Hms.Registration.Data.Migrations
                         .HasColumnName("merged_into");
 
                     b.Property<string>("Nid")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("nid");
 
                     b.Property<string>("PatientType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("patient_type");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("phone");
 
                     b.Property<string>("PhoneDigits")
@@ -122,7 +130,8 @@ namespace Hms.Registration.Data.Migrations
 
                     b.Property<string>("Uhid")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("uhid");
 
                     b.Property<bool>("UnknownIdentity")
@@ -131,6 +140,9 @@ namespace Hms.Registration.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_patient");
+
+                    b.HasIndex("MergedInto")
+                        .HasDatabaseName("ix_patient_merged_into");
 
                     b.HasIndex("Phone")
                         .HasDatabaseName("ix_patient_phone");
@@ -145,6 +157,10 @@ namespace Hms.Registration.Data.Migrations
                     b.ToTable("patient", "reg", t =>
                         {
                             t.HasCheckConstraint("ck_identity", "dob is not null or age_years is not null or age_months is not null or unknown_identity");
+
+                            t.HasCheckConstraint("ck_patient_age", "(age_years IS NULL OR age_years BETWEEN 0 AND 130) AND (age_months IS NULL OR age_months BETWEEN 0 AND 11)");
+
+                            t.HasCheckConstraint("ck_patient_dob", "dob IS NULL OR (dob >= '1900-01-01' AND dob <= current_date)");
                         });
                 });
 
@@ -185,6 +201,15 @@ namespace Hms.Registration.Data.Migrations
                         .HasName("pk_patient_merge");
 
                     b.ToTable("patient_merge", "reg");
+                });
+
+            modelBuilder.Entity("Hms.Registration.Data.Patient", b =>
+                {
+                    b.HasOne("Hms.Registration.Data.Patient", null)
+                        .WithMany()
+                        .HasForeignKey("MergedInto")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_patient_patient_merged_into");
                 });
 #pragma warning restore 612, 618
         }

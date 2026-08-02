@@ -54,7 +54,8 @@
     @for (var i = 0; i < Model.Items.Count; i++)
     {
         <input type="hidden" name="Items" value="@Model.Items[i]" />
-        <input type="hidden" name="Qtys" value="@Model.Qtys[i]" />
+        @* Belt to the gate's braces (spec 0039 WP1): a ragged post must never crash the view. *@
+        <input type="hidden" name="Qtys" value="@(i < Model.Qtys.Count ? Model.Qtys[i] : 1)" />
     }
 
     <div class="stack">

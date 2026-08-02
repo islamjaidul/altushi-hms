@@ -5,7 +5,7 @@ description: Run the patient-lifecycle regression suite against an environment a
 
 # QA lifecycle
 
-Runs `docs/qa/patient-lifecycle.md` — 169 cases across the thirteen built modules, driven by all twelve seeded roles — and reports what held.
+Runs `docs/qa/patient-lifecycle.md` — 175 cases across the built modules, driven by all twelve seeded roles — and reports what held. (`hrm-thread.py`, the HRM SKU's 38-case operator thread, runs separately against :5299 and is not part of these tiers.)
 
 ## Invocation
 
@@ -31,7 +31,7 @@ t2 against production is refused unconditionally — it asserts absolute money t
 | Tier | What | Writes |
 |---|---|---|
 | t0 | 12 roles × 64 protected routes, public surfaces, handler-level refusals | no |
-| t1 | the nine lifecycle and per-module threads | its own records |
+| t1 | the ten lifecycle and per-module threads | its own records |
 | t2 | `golden-thread`, `discount-and-dues` | needs a fresh DB |
 
 A t1 run that did not log in as all twelve demo users is **incomplete**, not green.

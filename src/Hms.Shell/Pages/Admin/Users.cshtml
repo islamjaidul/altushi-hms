@@ -28,7 +28,7 @@
         </div>
         <div class="table-wrap">
             <table class="data">
-                <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th class="num">Action</th></tr></thead>
+                <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Branch</th><th>Status</th><th class="num">Action</th></tr></thead>
                 <tbody>
                 @foreach (var u in Model.Users)
                 {
@@ -42,6 +42,20 @@
                                     @foreach (var r in Model.Roles)
                                     {
                                         <option value="@r.Name" selected="@(u.Roles == r.Name)">@r.Name</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn-tint">Set</button>
+                            </form>
+                        </td>
+                        <td>
+                            @* §5 M21 (spec 0039 WP5): where this operator's writes land. Takes
+                               effect mid-shift via the security stamp, like a role change. *@
+                            <form method="post" asp-page-handler="AssignBranch" class="inline-form">
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <select class="select" name="branchId" aria-label="Branch for @u.Username">
+                                    @foreach (var br in Model.Branches)
+                                    {
+                                        <option value="@br.Id" selected="@(u.BranchId == br.Id)">@br.Name</option>
                                     }
                                 </select>
                                 <button type="submit" class="btn-tint">Set</button>

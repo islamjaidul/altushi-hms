@@ -88,5 +88,7 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0035-hrm-platform](0035-hrm-platform/spec.md) | Wave 0 — shared UI library, transaction seam, entitlement enforcement, second host | Done | §5 M16, ADR-0025/0026 | 2026-07-31 |
 | [0036-hrm-operable](0036-hrm-operable/spec.md) | The HRM SKU has to be operable by an administrator — superuser grants, Users and Roles on both hosts, org-master CRUD, employee record, UI defects, 100-person demo seed | Done | §5 M16, §5 M21, §7, §12 | 2026-08-02 |
 | [0037-hrm-silent-writes](0037-hrm-silent-writes/spec.md) | Six HR screens report success and save nothing — the transaction commits without flushing; plus two 500s on ordinary input and the roster's lost week | Done | §5 M16, §5 M21, §7, §11, §12 | 2026-08-02 |
+| [0038-full-qa-audit](0038-full-qa-audit/spec.md) | Full product QA audit — every built module, route by route, PRD-cross-checked, for senior-engineer handoff | Done | §5, §5A, §7, §11, §12, §16 | 2026-08-02 |
+| [0039-lifecycle-hardening](0039-lifecycle-hardening/spec.md) | Close the 0038 findings and the schema gaps behind them — input tier, schema constraints, payroll, tenancy | Done | §5, §5A, §7, §8, §11, §12, §16 | 2026-08-03 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

@@ -16,6 +16,20 @@ var builder = WebApplication.CreateBuilder(args);
 var conn = builder.Configuration.GetConnectionString("Hms")
            ?? throw new InvalidOperationException("ConnectionStrings:Hms missing");
 
+// AUD-XCUT-01: Npgsql's default pool is 100 per process, but the deployed Postgres runs
+// max_connections=40 shared by BOTH SKUs — the ceiling exists only where nobody load-tests.
+// Cap it here unless the connection string says otherwise, and write the capped string back so
+// every reader (DbContexts, HmsTx) sees the same one. 15 + 15 across the two hosts leaves
+// headroom for psql, backup and migrations inside 40.
+if (!conn.Contains("Pool Size", StringComparison.OrdinalIgnoreCase))
+{
+    conn = new Npgsql.NpgsqlConnectionStringBuilder(conn)
+    {
+        MaxPoolSize = builder.Configuration.GetValue("Db:MaxPoolSize", 15),
+    }.ConnectionString;
+    builder.Configuration["ConnectionStrings:Hms"] = conn;
+}
+
 builder.Services.AddDbContext<KernelDbContext>(o => o
     .UseNpgsql(conn, x => x.MigrationsHistoryTable("__ef_migrations", "kernel"))
     .UseSnakeCaseNamingConvention());
@@ -86,7 +100,18 @@ builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProv
 builder.Services.AddAuthorizationBuilder()
     .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
-builder.Services.AddRazorPages();
+// Spec 0039 WP1.3 (AUD-VAL-05): TempData is session-backed, never cookie-backed — one
+// oversized toast must not become header size and lock the operator out with HTTP 431.
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(o =>
+{
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SameSite = SameSiteMode.Lax;
+    o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    o.IdleTimeout = TimeSpan.FromMinutes(
+        builder.Configuration.GetValue("Auth:IdleTimeoutMinutes", 15));
+});
+builder.Services.AddRazorPages().AddSessionStateTempDataProvider();
 builder.Services.AddAntiforgery();
 
 // ADR-0026 choke point 2: a de-entitled module's endpoints refuse, not just its menu entries.
@@ -98,6 +123,9 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<NumberSeriesService>();
 builder.Services.AddSingleton<AuditWriter>();
 builder.Services.AddSingleton<JobQueue>();
+// Spec 0039 WP6 (AUD-XCUT-02): the worker that drains kernel.job and runs the recurring scans.
+builder.Services.AddHostedService<JobWorker>();
+builder.Services.AddSingleton<IRecurringJob, ApprovalEscalationJob>();
 builder.Services.AddSingleton<EntitlementProvider>();
 builder.Services.AddSingleton(new FiscalCalendar(
     builder.Configuration.GetValue("Business:FiscalStartMonth", 7)));       // P1 default July
@@ -137,6 +165,19 @@ builder.Services.AddSingleton<Hms.Radiology.RadiologyService>();
 builder.Services.AddSingleton(Hms.Notifications.SmsOptions.From(
     builder.Configuration["HMS_SMS_MODE"]));                                 // edge 3: simulation default
 builder.Services.AddSingleton<Hms.Notifications.SmsQueue>();
+// Spec 0039 WP6 (AUD-M20-01): the delivery seam and its drain. Simulation unless the deployment
+// sets HMS_SMS_MODE=live AND Sms:GatewayUrl — no vendor, no host literal lives in code.
+builder.Services.AddSingleton(new Hms.Notifications.SmsGatewaySettings(
+    builder.Configuration["Sms:GatewayUrl"],
+    builder.Configuration["Sms:ApiKey"],
+    builder.Configuration["Sms:SenderId"]));
+builder.Services.AddSingleton(sp => Hms.Notifications.SmsGateway.Create(
+    sp.GetRequiredService<Hms.Notifications.SmsOptions>(),
+    sp.GetRequiredService<Hms.Notifications.SmsGatewaySettings>()));
+builder.Services.AddSingleton<IRecurringJob, Hms.Notifications.SmsDispatchJob>();
+builder.Services.AddSingleton<IRecurringJob, DailyJobScheduler>();
+builder.Services.AddSingleton<IJobHandler, DueRemindersHandler>();
+builder.Services.AddSingleton<IJobHandler, EodDigestHandler>();
 builder.Services.AddSingleton(OrgIdentity.From(
     builder.Configuration, "Altushi General Hospital", "Hospital ERP"));
 
@@ -183,6 +224,13 @@ using (var scope = app.Services.CreateScope())
         // the reverse rather than serving a fraction of an ERP database.
         await HmsPlatform.ClaimDatabaseAsync(kdb, HostKind.Erp, acceptsAnyExisting: true);
 
+        // WP2.6 (AUD-ARCH-03): hard rule 4's grants, re-applied after every migration run so
+        // they cover the tables that were just created. Runtime cut-over to hms_app is a
+        // deployment decision (deploy/compose.yml).
+        await HmsPlatform.ApplyHardRule4GrantsAsync(kdb,
+            ["kernel", "adm", "reg", "bill", "diag", "lis", "appt", "notif",
+             "pharm", "ipd", "emr", "ot", "radiology", "hr"]);
+
         await DevSeed.RunAsync(sp);
     }
     finally
@@ -204,6 +252,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Outermost: nothing below this line may surface to an operator as a blank 500 (spec 0039 WP6).
+app.UseMiddleware<Hms.Kernel.Hosting.FaultBoundaryMiddleware>();
+
 // TLS terminates at the front proxy (Caddy); trust its X-Forwarded-* so auth cookies and
 // redirects see the real scheme/host (ADR-0005 topology).
 var fwd = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
@@ -216,7 +267,9 @@ fwd.KnownProxies.Clear();
 app.UseForwardedHeaders(fwd);
 
 app.UseStaticFiles();
+app.UseSession();          // TempData's backing store (spec 0039 WP1.3)
 app.UseAuthentication();
+app.UseMiddleware<Hms.Kernel.Hosting.BranchResolutionMiddleware>();   // branch from the principal (WP5)
 app.UseAuthorization();
 
 // P6 / ADR-0026: past the grace window, reads keep working and writes are refused. Sits after

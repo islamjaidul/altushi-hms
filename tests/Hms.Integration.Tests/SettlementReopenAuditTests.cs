@@ -42,10 +42,10 @@ public class SettlementReopenAuditTests : IAsyncLifetime
     private async Task<long> DraftFolioAsync()
     {
         await using var ipd = CreateIpd();
+        var admission = await IpdSeed.OpenAdmissionAsync(ipd);
         var folio = new Folio
         {
-            BranchId = 1, PatientId = 1,
-            AdmissionId = Random.Shared.NextInt64(1_000_000, 9_000_000),
+            BranchId = 1, PatientId = admission.PatientId, AdmissionId = admission.Id,
         };
         ipd.Folios.Add(folio);
         await ipd.SaveChangesAsync();
@@ -83,10 +83,10 @@ public class SettlementReopenAuditTests : IAsyncLifetime
         // The confirmed-settlement case: once locked there is no reopen, so there must be no
         // audit row either — a refused action that logs looks exactly like one that happened.
         await using var ipd = CreateIpd();
+        var admission = await IpdSeed.OpenAdmissionAsync(ipd);
         var folio = new Folio
         {
-            BranchId = 1, PatientId = 1,
-            AdmissionId = Random.Shared.NextInt64(1_000_000, 9_000_000),
+            BranchId = 1, PatientId = admission.PatientId, AdmissionId = admission.Id,
         };
         ipd.Folios.Add(folio);
         await ipd.SaveChangesAsync();                                // state = open, never drafted

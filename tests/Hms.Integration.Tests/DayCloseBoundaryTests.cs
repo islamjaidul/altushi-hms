@@ -78,8 +78,18 @@ public class DayCloseBoundaryTests : IAsyncLifetime
         return result;
     }
 
-    private static long _counter = 7_700;
-    private static long NextCounter() => Interlocked.Increment(ref _counter);
+    /// <summary>A real bill.counter row — spec 0039's FK means a session's counter must exist.</summary>
+    private static async Task<long> SeedCounterAsync(BillDbContext bill)
+    {
+        var counter = new Counter
+        {
+            BranchId = 1, Kind = "front-desk",
+            Name = $"Night desk {Random.Shared.Next(1_000_000, 9_999_999)}",
+        };
+        bill.Counters.Add(counter);
+        await bill.SaveChangesAsync();
+        return counter.Id;
+    }
 
     [Fact]
     public async Task The_business_day_at_half_past_one_in_the_morning_is_that_morning()
@@ -93,9 +103,9 @@ public class DayCloseBoundaryTests : IAsyncLifetime
     [Fact]
     public async Task A_session_opened_on_the_night_shift_closes_without_an_approval()
     {
-        var counterId = NextCounter();
         var sessionId = await InTxAsync(async (bill, _) =>
         {
+            var counterId = await SeedCounterAsync(bill);
             var session = await Billing().OpenSessionAsync(bill, 1, counterId, 3, 1000);
             return session.Id;
         });
@@ -112,10 +122,10 @@ public class DayCloseBoundaryTests : IAsyncLifetime
     [Fact]
     public async Task A_session_from_yesterday_still_needs_the_carry_close()
     {
-        var counterId = NextCounter();
         _clock.Now = NightShift.AddDays(-1);             // opened the previous business day
         var sessionId = await InTxAsync(async (bill, _) =>
         {
+            var counterId = await SeedCounterAsync(bill);
             var session = await Billing().OpenSessionAsync(bill, 1, counterId, 3, 1000);
             return session.Id;
         });

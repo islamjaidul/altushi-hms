@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -60,17 +61,27 @@ public class Study
 
 public class RadiologyDbContext(DbContextOptions<RadiologyDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Modality> Modalities => Set<Modality>();
     public DbSet<ModalityTest> ModalityTests => Set<ModalityTest>();
     public DbSet<Study> Studies => Set<Study>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Spec 0039 WP2: domain-value CHECKs, the state CHECK from StudyState above,
+        // intra-schema FKs and HasMaxLength — same posture as BillDbContext (additive only,
+        // NOT VALID in the migration for pre-existing tables).
         b.HasDefaultSchema("radiology");
 
         b.Entity<Modality>(e =>
         {
             e.ToTable("modality");
+            e.Property(x => x.Code).HasMaxLength(40);
+            e.Property(x => x.Name).HasMaxLength(200);
             e.HasIndex(x => new { x.BranchId, x.Code }).IsUnique();
         });
 
@@ -80,15 +91,33 @@ public class RadiologyDbContext(DbContextOptions<RadiologyDbContext> options) : 
             // A test belongs to one machine: two machines claiming the same test would put the
             // same patient on two worklists, which is the mismatch US10.1 is about.
             e.HasIndex(x => x.TestCatalogId).IsUnique();
+            e.HasOne<Modality>().WithMany().HasForeignKey(x => x.ModalityId);
         });
 
         b.Entity<Study>(e =>
         {
-            e.ToTable("study");
+            e.ToTable("study", t =>
+            {
+                t.HasCheckConstraint("ck_study_state",
+                    "state IN ('awaiting','done','reported')");
+                t.HasCheckConstraint("ck_study_film_count", "film_count >= 0");
+            });
+            e.Property(x => x.AccessionNo).HasMaxLength(40);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.FilmSize).HasMaxLength(40);
+            e.Property(x => x.TechnicianNote).HasMaxLength(4000);
             e.HasIndex(x => x.OrderTestId).IsUnique();   // idempotency anchor for study creation
             e.HasIndex(x => x.AccessionNo).IsUnique();
             e.HasIndex(x => new { x.ModalityId, x.State });
+            e.HasOne<Modality>().WithMany().HasForeignKey(x => x.ModalityId);
+            // order_test_id points at diag.order_test — cross-schema, so no FK (ADR-0003).
         });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

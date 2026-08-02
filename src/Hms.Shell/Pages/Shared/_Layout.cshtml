@@ -30,6 +30,9 @@
     var fkeys = (string?)ViewData["FKeys"] ?? Hospital.DefaultShortcuts;
     var toast = TempData["Toast"] as string;
     var toastIcon = TempData["ToastIcon"] as string ?? "task_alt";
+    // The input gate's refusal (spec 0039 WP1.1): rendered here so every screen shows the
+    // sentence without each page wiring its own banner for binder-level failures.
+    var gateError = TempData["Error"] as string;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -116,6 +119,13 @@
             </header>
         }
         <main class="content">
+            @if (!string.IsNullOrEmpty(gateError))
+            {
+                <div class="alert bad">
+                    <span class="icon icon-sm" aria-hidden="true">error</span>
+                    <span>@gateError</span>
+                </div>
+            }
             @RenderBody()
         </main>
         <footer class="status-footer">

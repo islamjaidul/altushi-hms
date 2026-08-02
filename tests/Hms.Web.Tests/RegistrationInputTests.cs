@@ -35,6 +35,12 @@ public class RegistrationInputTests
         // Whitespace around a real answer is the operator's, not their mistake.
         { "  45  ",       null,                      (short)45, null,  true  },
         { " 12/03/1980 ", new DateOnly(1980, 3, 12), null,     null,   false },
+        // Spec 0039 WP1 (AUD-VAL-09): a date-shaped string that is NOT a real date must be
+        // refused whole — never silently read as the age "31" or "2026". Without the parser's
+        // whole-input rule these three came back as ages 31, 2026 and 2026.
+        { "31/02/2026",   null,                      null,     null,   false },
+        { "2026-13-45",   null,                      null,     null,   false },
+        { "2026",         null,                      null,     null,   false },
     };
 
     [Theory]

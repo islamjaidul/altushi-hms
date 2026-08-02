@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Emr;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,21 @@ public sealed record VitalsRow(
 public class VitalsModel(HmsTx tx, EmrService emr, TimeProvider clock) : HmsPageModel
 {
     [BindProperty] public long EncounterId { get; set; }
-    [BindProperty] public short? Systolic { get; set; }
-    [BindProperty] public short? Diastolic { get; set; }
-    [BindProperty] public short? Pulse { get; set; }
-    [BindProperty] public decimal? Temperature { get; set; }
-    [BindProperty] public decimal? Weight { get; set; }
-    [BindProperty] public short? SpO2 { get; set; }
+    // AUD-VAL-20: physiological bounds — a blank field is "not taken" ([Range] skips null), but
+    // a filled one must be a reading a human can have. Temperature and weight are stored as
+    // tenths (short), so the °C/kg bounds here also keep the stored tenths in range.
+    [BindProperty, Range(40, 300, ErrorMessage = "Systolic (BP) must be between 40 and 300")]
+    public short? Systolic { get; set; }
+    [BindProperty, Range(20, 200, ErrorMessage = "Diastolic (BP) must be between 20 and 200")]
+    public short? Diastolic { get; set; }
+    [BindProperty, Range(20, 300, ErrorMessage = "Pulse must be between 20 and 300")]
+    public short? Pulse { get; set; }
+    [BindProperty, Range(25.0, 46.0, ErrorMessage = "Temperature is in °C — between 25.0 and 46.0")]
+    public decimal? Temperature { get; set; }
+    [BindProperty, Range(0.0, 500.0, ErrorMessage = "Weight is in kg — between 0 and 500")]
+    public decimal? Weight { get; set; }
+    [BindProperty, Range(0, 100, ErrorMessage = "SpO2 is a percentage — between 0 and 100")]
+    public short? SpO2 { get; set; }
 
     public IReadOnlyList<VitalsRow> Rows { get; private set; } = [];
     public DateOnly Today { get; private set; }
@@ -60,14 +70,23 @@ public class VitalsModel(HmsTx tx, EmrService emr, TimeProvider clock) : HmsPage
     {
         try
         {
-            await tx.RunAsync(async s =>
+            var known = await tx.RunAsync(async s =>
             {
+                // AUD-VAL-20g: an encounter id nothing points at is a stale screen, not a crash.
                 var patientId = await s.Bill.Encounters.AsNoTracking()
-                    .Where(e => e.Id == EncounterId).Select(e => e.PatientId).FirstAsync();
+                    .Where(e => e.Id == EncounterId).Select(e => (long?)e.PatientId).FirstOrDefaultAsync();
+                if (patientId is null) return false;
                 // Tenths, not floats: 37.2 °C has to come back as 37.2 (see EmrDbContext).
-                return await emr.RecordVitalsAsync(s.Emr, BranchId, patientId, EncounterId, null,
+                await emr.RecordVitalsAsync(s.Emr, BranchId, patientId.Value, EncounterId, null,
                     Systolic, Diastolic, Pulse, Tenths(Temperature), Tenths(Weight), SpO2, ActorId);
+                return true;
             });
+            if (!known)
+            {
+                await LoadAsync();
+                Fail("That visit is not on today's list any more — reload the screen and pick the row again.");
+                return Page();
+            }
             Toast("Vitals recorded", "monitoring");
             return Redirect("/emr/vitals");
         }

@@ -57,7 +57,8 @@
                     <div class="label-tile">
                         <div class="who">@Model.PatientName · @Model.Uhid</div>
                         <div class="what">@l.SampleType · @string.Join(" · ", l.Tests)</div>
-                        <div class="barcode" style="height:26px"></div>
+                        @* AUD-M1-01: the label carries a real Code 128 of the sample barcode. *@
+                        <div class="barcode" style="height:26px">@Html.Raw(Barcode128.Svg(l.Barcode))</div>
                         <div class="barcode-text">@l.Barcode</div>
                     </div>
                 }
@@ -68,6 +69,16 @@
             <div class="sheet-words" style="color:var(--muted-1)">
                 No tube labels for this order — the tests are imaging or cardiology studies that
                 take no sample. The patient goes straight to the department.
+            </div>
+        }
+
+        @if (Model.PublicToken.Length > 0)
+        {
+            @* AUD-PHI-01: the public lookup key is this random code, never the LB- number. *@
+            <div class="sheet-words">
+                Check if the report is ready — without waiting at the counter — at the hospital's
+                report-status screen using this code:
+                <b class="barcode-text" style="letter-spacing:.12em">@Model.PublicToken</b>
             </div>
         }
 

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin.Data;
 using Hms.Appointments.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -19,17 +20,18 @@ public sealed record ConsultantRow(long Id, string Name, string Degrees, string?
 [Authorize(Policy = Perm.AdminMastersManage)]
 public class PeopleModel(HmsTx tx) : HmsPageModel
 {
-    [BindProperty] public string? Name { get; set; }
-    [BindProperty] public string? Room { get; set; }
-    [BindProperty] public int MaxSerials { get; set; } = 40;
-    [BindProperty] public string? Code { get; set; }
-    [BindProperty] public string Kind { get; set; } = "doctor";
-    [BindProperty] public string? Area { get; set; }
-    [BindProperty] public string? Phone { get; set; }
-    [BindProperty] public short Commission { get; set; }
-    [BindProperty] public string? Degrees { get; set; }
-    [BindProperty] public string? Bmdc { get; set; }
-    [BindProperty] public string? Departments { get; set; }
+    [BindProperty, StringLength(Bounds.Name)] public string? Name { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? Room { get; set; }
+    [BindProperty, Range(1, 500, ErrorMessage = "Serials per day must be between 1 and 500")]
+    public int MaxSerials { get; set; } = 40;
+    [BindProperty, StringLength(Bounds.Code)] public string? Code { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string Kind { get; set; } = "doctor";
+    [BindProperty, StringLength(Bounds.Name)] public string? Area { get; set; }
+    [BindProperty, StringLength(Bounds.Phone)] public string? Phone { get; set; }
+    [BindProperty, Percent] public short Commission { get; set; }
+    [BindProperty, StringLength(Bounds.Name)] public string? Degrees { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? Bmdc { get; set; }
+    [BindProperty, StringLength(Bounds.Address)] public string? Departments { get; set; }
 
     public IReadOnlyList<DoctorRow> Doctors { get; private set; } = [];
     public IReadOnlyList<ReferrerRow> Referrers { get; private set; } = [];
@@ -66,10 +68,17 @@ public class PeopleModel(HmsTx tx) : HmsPageModel
         if (string.IsNullOrWhiteSpace(Name)) { await LoadAsync(); Fail("Doctor name is required."); return Page(); }
         await tx.RunAsync(async s =>
         {
-            var nextId = (await s.Appt.Schedules.MaxAsync(x => (long?)x.DoctorId) ?? 0) + 1;
+            // WP2.5 (AUD-ARCH-05): the id comes from appt.doctor's identity column, not MAX+1 —
+            // two administrators adding doctors at the same moment get two distinct identities
+            // by construction. The doctor row must exist before the schedule row: the schedule
+            // carries a foreign key to it.
+            var doctor = new Doctor { Name = Name!.Trim() };
+            s.Appt.Doctors.Add(doctor);
+            await s.Appt.SaveChangesAsync();
+
             s.Appt.Schedules.Add(new DoctorSchedule
             {
-                DoctorId = nextId, DoctorName = Name!.Trim(), Room = Room?.Trim(),
+                DoctorId = doctor.Id, DoctorName = doctor.Name, Room = Room?.Trim(),
                 MaxSerials = MaxSerials <= 0 ? 40 : MaxSerials,
                 Weekday = 0, SlotFrom = new TimeOnly(9, 0), SlotTo = new TimeOnly(14, 0),
             });

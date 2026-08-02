@@ -72,9 +72,32 @@ public class TransfersModel(HmsTx tx, StockService stock, TimeProvider clock) : 
 
     public async Task<IActionResult> OnPostIndentAsync()
     {
+        // AUD-VAL-29a: N products and M quantities is a crafted post — refuse, never
+        // zip-and-guess which quantity belonged to which product.
+        if (ProductIds.Count != LineQtys.Count)
+        { await LoadAsync(); Fail("The product lines came back garbled — re-enter them and try again."); return Page(); }
         var lines = ProductIds.Zip(LineQtys, (p, q) => (p, q)).Where(x => x.p > 0 && x.q > 0).ToList();
         if (FromOutletId == 0 || ToOutletId == 0 || FromOutletId == ToOutletId || lines.Count == 0)
         { await LoadAsync(); Fail("Pick two different outlets and at least one product line."); return Page(); }
+        if (lines.Any(x => x.q is < 1 or > 9_999))
+        { await LoadAsync(); Fail("Each line's quantity must be between 1 and 9,999."); return Page(); }
+
+        // AUD-VAL-29d: both ends of the transfer must be real outlets, and every line a real
+        // product — an orphan transfer sits in the queue pointing at nothing.
+        var outletProblem = await tx.RunAsync(async s =>
+        {
+            var outletIds = await s.Pharm.Outlets.AsNoTracking()
+                .Where(o => o.Id == FromOutletId || o.Id == ToOutletId)
+                .Select(o => o.Id).ToListAsync();
+            if (outletIds.Count != 2) return "That outlet is not on the outlet list any more — refresh and pick again.";
+            var wanted = lines.Select(x => x.p).Distinct().ToList();
+            var known = await s.Pharm.Products.AsNoTracking()
+                .Where(p => wanted.Contains(p.Id)).CountAsync();
+            return known == wanted.Count ? null
+                : "A product on this indent is not in the item master — remove it and pick from the list.";
+        });
+        if (outletProblem is not null)
+        { await LoadAsync(); Fail(outletProblem); return Page(); }
 
         await tx.RunAsync(async s =>
         {

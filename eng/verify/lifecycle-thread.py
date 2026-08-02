@@ -7,8 +7,8 @@ import html as htmllib
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.error, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import (case, fixture, on_exit, record, release_bed,   # noqa: E402
-                       settle_and_discharge, tag)
+from _harness import (case, ensure_demo_stock, fixture, on_exit, record,   # noqa: E402
+                       release_bed, settle_and_discharge, tag)
 from _harness import check as case_check, failures as case_failures  # noqa: E402
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
@@ -67,6 +67,10 @@ ph = Session("parvin", "Demo#1234")     # pharmacy
 nu = Session("nasrin", "Demo#1234")     # nurse
 sup = Session("shahid", "Demo#1234")    # supervisor
 md = Session("md", "Demo#1234")         # MD
+
+# Step 6 issues the seeded product from the shared shelf; on a used database the shelf can
+# be empty, which reds the run on inherited state. Replenish through the operator PO path.
+ensure_demo_stock(lambda u: Session(u, "Demo#1234"))
 
 stamp = int(time.time() * 1000) % 100000   # ms: two runs in one second differ
 name = tag(f"Lifecycle {stamp}")

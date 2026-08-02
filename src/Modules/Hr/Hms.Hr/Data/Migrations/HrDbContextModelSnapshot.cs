@@ -2511,6 +2511,66 @@ namespace Hms.Hr.Data.Migrations
 
                     b.ToTable("work_location", "hr");
                 });
+
+            modelBuilder.Entity("Hms.Hr.Data.PayrollComponentLine", b =>
+                {
+                    b.HasOne("Hms.Hr.Data.PayrollLine", null)
+                        .WithMany()
+                        .HasForeignKey("PayrollLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_component_line_payroll_line_payroll_line_id");
+
+                    b.HasOne("Hms.Hr.Data.PayrollRun", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_component_line_payroll_run_run_id");
+                });
+
+            modelBuilder.Entity("Hms.Hr.Data.PayrollLine", b =>
+                {
+                    b.HasOne("Hms.Hr.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_line_employee_employee_id");
+
+                    b.HasOne("Hms.Hr.Data.PayrollRun", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payroll_line_payroll_run_run_id");
+                });
+
+            modelBuilder.Entity("Hms.Hr.Data.Payslip", b =>
+                {
+                    b.HasOne("Hms.Hr.Data.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payslip_employee_employee_id");
+
+                    b.HasOne("Hms.Hr.Data.PayrollLine", null)
+                        .WithMany()
+                        .HasForeignKey("PayrollLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payslip_payroll_line_payroll_line_id");
+                });
+
+            modelBuilder.Entity("Hms.Hr.Data.Punch", b =>
+                {
+                    b.HasOne("Hms.Hr.Data.PunchImportBatch", null)
+                        .WithMany()
+                        .HasForeignKey("ImportBatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_punch_punch_import_batches_import_batch_id");
+                });
 #pragma warning restore 612, 618
         }
     }

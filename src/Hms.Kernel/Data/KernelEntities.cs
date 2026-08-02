@@ -49,6 +49,11 @@ public class ApprovalRequest
     public long? Amount { get; set; }
     /// <summary>jsonb snapshot of the policy row that routed this request.</summary>
     public string? ThresholdSnapshot { get; set; }
+    /// <summary>Spec 0039 WP6 (AUD-XCUT-02): the tier this request has been escalated to.
+    /// Null = still at the base of its chain. Bumped by the background worker when a pending
+    /// request outlives its tier's <see cref="ApprovalPolicy.EscalationMinutes"/> (P4).</summary>
+    public int? EscalatedTier { get; set; }
+    public DateTimeOffset? EscalatedAt { get; set; }
 }
 
 public class ApprovalPolicy

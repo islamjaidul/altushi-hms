@@ -120,7 +120,9 @@ public class DischargeModel(
 
     private async Task<IActionResult> Reshow(string message)
     {
-        await LoadAsync();
+        // AUD-VAL-31a: a posted AdmissionId that does not exist must not render this page —
+        // the view has nothing to show and used to throw a blank 500 doing it.
+        if (!await LoadAsync()) return NotFound();
         Fail(message);
         return Page();
     }

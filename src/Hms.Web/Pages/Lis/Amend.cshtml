@@ -107,6 +107,16 @@
                 </div>
             </div>
 
+            @if (Model.Current.Count == 0 || Model.CurrentNarrative is not null)
+            {
+                <label class="field">
+                    <span class="field-label">Corrected findings</span>
+                    <textarea class="textarea" rows="6" id="Narrative" name="Narrative"
+                              placeholder="The full corrected findings text — this becomes the amended report's body">@(Model.Narrative ?? Model.CurrentNarrative)</textarea>
+                    <span class="help-text">Prefilled with the released findings. Edit what is wrong — the whole text prints as version @(Model.Selected?.Version + 1).</span>
+                </label>
+            }
+
             <label class="field">
                 <span class="field-label">Why is it being corrected? <span class="req">*</span></span>
                 <textarea class="textarea" rows="3" asp-for="Reason"

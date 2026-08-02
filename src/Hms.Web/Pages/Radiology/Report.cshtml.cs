@@ -16,7 +16,9 @@ public sealed record ReportParameter(string Code, string Name, string Unit, stri
 /// versions, e-sign, delivery) applies without a second implementation.
 /// </summary>
 [Authorize(Policy = Perm.RadiologyReportWrite)]
-public class ReportModel(HmsTx tx, RadiologyService radiology, LisService lis) : HmsPageModel
+public class ReportModel(
+    HmsTx tx, RadiologyService radiology, LisService lis,
+    Hms.Notifications.SmsQueue sms, OrgIdentity hospital) : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public long Id { get; set; }
     [BindProperty] public Dictionary<string, string> Values { get; set; } = [];
@@ -125,9 +127,26 @@ public class ReportModel(HmsTx tx, RadiologyService radiology, LisService lis) :
             {
                 var study = await RadiologyService.GetAsync(s.Radiology, Id);
                 await RadiologyReporting.SignAsync(s, lis, study, ActorId, "reporting_consultant");
+
+                // WP4 (AUD-M10-01): ReportReady used to fire only from /lis/verify, so a
+                // radiologist signing on their own screen notified nobody. Same event, same
+                // template, same switch — the patient cannot tell which door the report
+                // left by, and should not have to.
+                var orderTest = await s.Diag.OrderTests.AsNoTracking()
+                    .FirstAsync(t => t.Id == study.OrderTestId);
+                var patient = await s.Reg.Patients.AsNoTracking()
+                    .FirstAsync(p => p.Id == study.PatientId);
+                await SmsSender.SendAsync(s, sms, BranchId,
+                    Hms.Notifications.Data.SmsEvent.ReportReady, patient.Phone,
+                    new Dictionary<string, string?>
+                    {
+                        ["hospital"] = hospital.Name,
+                        ["patient"] = patient.FullName,
+                        ["order"] = "LB-" + orderTest.TestOrderId.ToString("D5"),
+                    });
                 return 0;
             });
-            Toast("Report signed — it is now deliverable", "verified");
+            Toast("Report signed — it is now deliverable, patient notified", "verified");
             return Redirect($"/radiology/print/{Id}");
         }
         catch (Exception e) when (e is RadiologyException or LisException)

@@ -34,7 +34,8 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("AdmissionNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("admission_no");
 
                     b.Property<DateTimeOffset>("AdmittedAt")
@@ -46,7 +47,8 @@ namespace Hms.Ipd.Data.Migrations
                         .HasColumnName("block_approval_id");
 
                     b.Property<string>("BlockedFrom")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("blocked_from");
 
                     b.Property<long>("BranchId")
@@ -54,7 +56,8 @@ namespace Hms.Ipd.Data.Migrations
                         .HasColumnName("branch_id");
 
                     b.Property<string>("ClinicalSummary")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("clinical_summary");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -82,7 +85,8 @@ namespace Hms.Ipd.Data.Migrations
                         .HasColumnName("patient_id");
 
                     b.Property<string>("ProvisionalDx")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("provisional_dx");
 
                     b.Property<short>("ServiceChargePct")
@@ -91,13 +95,21 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("Source")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("source");
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_admission");
@@ -112,7 +124,16 @@ namespace Hms.Ipd.Data.Migrations
                     b.HasIndex("State")
                         .HasDatabaseName("ix_admission_state");
 
-                    b.ToTable("admission", "ipd");
+                    b.ToTable("admission", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_blocked_from", "blocked_from IS NULL OR blocked_from IN ('reserved','admitted','blocked','discharge_initiated','clinically_cleared','financially_settled','discharged','death','absconded')");
+
+                            t.HasCheckConstraint("ck_admission_discharged", "state NOT IN ('discharged','death','absconded') OR discharged_at IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_admission_service_charge_pct", "service_charge_pct BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("ck_admission_state", "state IN ('reserved','admitted','blocked','discharge_initiated','clinically_cleared','financially_settled','discharged','death','absconded')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.AdmissionPackage", b =>
@@ -138,7 +159,8 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<long>("ServiceCatalogId")
@@ -148,7 +170,10 @@ namespace Hms.Ipd.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_admission_package");
 
-                    b.ToTable("admission_package", "ipd");
+                    b.ToTable("admission_package", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_admission_package_pct", "default_service_charge_pct BETWEEN 0 AND 100");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.Bed", b =>
@@ -166,16 +191,19 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("code");
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<string>("StateReason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("state_reason");
 
                     b.Property<long>("TariffServiceId")
@@ -189,11 +217,17 @@ namespace Hms.Ipd.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_bed");
 
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_bed_state");
+
                     b.HasIndex("WardId", "Code")
                         .IsUnique()
                         .HasDatabaseName("ix_bed_ward_id_code");
 
-                    b.ToTable("bed", "ipd");
+                    b.ToTable("bed", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_bed_state", "state IN ('free','reserved','occupied','cleaning','out_of_service')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.BedDay", b =>
@@ -223,6 +257,9 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_bed_day");
+
+                    b.HasIndex("BedId")
+                        .HasDatabaseName("ix_bed_day_bed_id");
 
                     b.HasIndex("AdmissionId", "OnDate")
                         .IsUnique()
@@ -265,6 +302,10 @@ namespace Hms.Ipd.Data.Migrations
                     b.HasIndex("BedId")
                         .HasDatabaseName("ix_bed_stay_bed_id");
 
+                    b.HasIndex(new[] { "AdmissionId" }, "ix_bed_stay_open_admission")
+                        .HasDatabaseName("ix_bed_stay_admission_id1")
+                        .HasFilter("to_at IS NULL");
+
                     b.ToTable("bed_stay", "ipd");
                 });
 
@@ -292,7 +333,8 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("CertNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("cert_no");
 
                     b.Property<DateTimeOffset>("IssuedAt")
@@ -305,7 +347,8 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<int>("PrintCount")
@@ -314,6 +357,9 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_certificate");
+
+                    b.HasIndex("AdmissionId")
+                        .HasDatabaseName("ix_certificate_admission_id");
 
                     b.HasIndex("CertNo")
                         .IsUnique()
@@ -353,8 +399,15 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_folio");
@@ -363,7 +416,14 @@ namespace Hms.Ipd.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_folio_admission_id");
 
-                    b.ToTable("folio", "ipd");
+                    b.ToTable("folio", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_folio_advance", "advance_applied >= 0");
+
+                            t.HasCheckConstraint("ck_folio_locked", "state <> 'locked' OR settlement_invoice_id IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_folio_state", "state IN ('open','blocked','settlement_draft','locked')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.Indent", b =>
@@ -396,7 +456,8 @@ namespace Hms.Ipd.Data.Migrations
                         .HasColumnName("issued_by");
 
                     b.Property<string>("Note")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("note");
 
                     b.Property<DateTimeOffset>("RequestedAt")
@@ -409,16 +470,28 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.HasKey("Id")
                         .HasName("pk_indent");
 
+                    b.HasIndex("AdmissionId")
+                        .HasDatabaseName("ix_indent_admission_id");
+
+                    b.HasIndex("FolioId")
+                        .HasDatabaseName("ix_indent_folio_id");
+
                     b.HasIndex("State")
                         .HasDatabaseName("ix_indent_state");
 
-                    b.ToTable("indent", "ipd");
+                    b.ToTable("indent", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_indent_issued", "state <> 'issued' OR (issued_by IS NOT NULL AND issued_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_indent_state", "state IN ('requested','issued','cancelled')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.IndentItem", b =>
@@ -456,7 +529,10 @@ namespace Hms.Ipd.Data.Migrations
                     b.HasIndex("IndentId")
                         .HasDatabaseName("ix_indent_item_indent_id");
 
-                    b.ToTable("indent_item", "ipd");
+                    b.ToTable("indent_item", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_indent_item_qty", "qty_requested > 0 AND qty_issued BETWEEN 0 AND qty_requested AND qty_returned BETWEEN 0 AND qty_issued");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.Ward", b =>
@@ -478,18 +554,111 @@ namespace Hms.Ipd.Data.Migrations
 
                     b.Property<string>("Class")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("class");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
                         .HasName("pk_ward");
 
                     b.ToTable("ward", "ipd");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.Bed", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Ward", null)
+                        .WithMany()
+                        .HasForeignKey("WardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bed_ward_ward_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.BedDay", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bed_day_admission_admission_id");
+
+                    b.HasOne("Hms.Ipd.Data.Bed", null)
+                        .WithMany()
+                        .HasForeignKey("BedId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bed_day_bed_bed_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.BedStay", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bed_stay_admission_admission_id");
+
+                    b.HasOne("Hms.Ipd.Data.Bed", null)
+                        .WithMany()
+                        .HasForeignKey("BedId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_bed_stay_bed_bed_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.Certificate", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_certificate_admission_admission_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.Folio", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_folio_admission_admission_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.Indent", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_indent_admission_admission_id");
+
+                    b.HasOne("Hms.Ipd.Data.Folio", null)
+                        .WithMany()
+                        .HasForeignKey("FolioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_indent_folio_folio_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.IndentItem", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Indent", null)
+                        .WithMany()
+                        .HasForeignKey("IndentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_indent_item_indent_indent_id");
                 });
 #pragma warning restore 612, 618
         }

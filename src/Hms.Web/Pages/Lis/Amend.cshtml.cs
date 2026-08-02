@@ -26,11 +26,16 @@ public class AmendModel(HmsTx tx, LisService lis, ApprovalEngine approvals) : Hm
 {
     [BindProperty(SupportsGet = true)] public long? OrderTestId { get; set; }
     [BindProperty] public Dictionary<string, string> Values { get; set; } = [];
-    [BindProperty] public string? Reason { get; set; }
+    [BindProperty, System.ComponentModel.DataAnnotations.StringLength(Bounds.Clinical)]
+    public string? Narrative { get; set; }
+    [BindProperty, System.ComponentModel.DataAnnotations.StringLength(Bounds.Note)]
+    public string? Reason { get; set; }
 
     public IReadOnlyList<AmendableTest> Verified { get; private set; } = [];
     public AmendableTest? Selected { get; private set; }
     public IReadOnlyList<AmendValue> Current { get; private set; } = [];
+    /// <summary>Prefills the amendment textarea, so unchanged findings carry to v2 visibly.</summary>
+    public string? CurrentNarrative { get; private set; }
     public IReadOnlyList<ApprovalRequest> ApprovedAmendments { get; private set; } = [];
 
     public async Task OnGetAsync() => await LoadAsync();
@@ -84,6 +89,7 @@ public class AmendModel(HmsTx tx, LisService lis, ApprovalEngine approvals) : Hm
                             stored.TryGetValue(p.Code, out var v) ? v.Value : "");
                     })
                     .ToList();
+                CurrentNarrative = latest.Narrative;
 
                 ApprovedAmendments = await s.Kernel.ApprovalRequests.AsNoTracking()
                     .Where(a => a.Type == "amend" && a.SourceTable == "lis.result"
@@ -141,9 +147,12 @@ public class AmendModel(HmsTx tx, LisService lis, ApprovalEngine approvals) : Hm
                         ref_used = band is null ? "—" : $"{band.Text} ({band.Label})",
                     };
                 }
-                if (values.Count == 0) throw new LisException("Enter at least one corrected value.");
-
-                await lis.AmendAsync(s.Lis, Selected.OrderTestId, values, ActorId, approved!.Id);
+                // WP4 (AUD-M10-01): a narrative-only report — every imaging exam — has no
+                // template parameters, so "at least one corrected value" made it unamendable.
+                // Findings text is a first-class amendment now; the service refuses only when
+                // BOTH are empty.
+                await lis.AmendAsync(s.Lis, Selected.OrderTestId, values, Narrative,
+                    ActorId, approved!.Id);
                 return 0;
             });
         }

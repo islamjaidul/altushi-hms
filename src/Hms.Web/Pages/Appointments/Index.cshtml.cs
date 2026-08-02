@@ -126,11 +126,22 @@ public class IndexModel(
         {
             var (serial, patientName) = await tx.RunAsync(async s =>
             {
-                var row = await appointments.IssueSerialAsync(
-                    s.Appt, BranchId, PatientId!.Value, DoctorId, today, ActorId);
-                var patient = await s.Reg.Patients.SingleAsync(p => p.Id == PatientId.Value);
+                // The dropdown constrains the browser; this constrains the request (P25 /
+                // AUD-VAL-10). A doctor id no schedule knows must never receive a serial, and a
+                // patient id nothing points at must never be told one by SMS.
                 var doctor = await s.Appt.Schedules.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.DoctorId == DoctorId);
+                if (doctor is null)
+                    throw new AppointmentsException(
+                        "That doctor is not on today's schedule — pick a doctor from the list.");
+                var patient = await s.Reg.Patients.AsNoTracking()
+                    .SingleOrDefaultAsync(p => p.Id == PatientId.Value);
+                if (patient is null)
+                    throw new AppointmentsException(
+                        "That patient could not be found — search and pick the patient again.");
+
+                var row = await appointments.IssueSerialAsync(
+                    s.Appt, BranchId, PatientId!.Value, DoctorId, today, ActorId);
 
                 await SmsSender.SendAsync(s, sms, BranchId,
                     Hms.Notifications.Data.SmsEvent.Appointment,
@@ -177,7 +188,12 @@ public class IndexModel(
         }
         catch (AppointmentsException e)
         {
-            Toast(e.Message, "error");
+            // A refused move is a failure the operator must see, not a toast that fades — the
+            // shared alert-bad banner is where every other refusal on this screen lands
+            // (AUD-VAL-11).
+            await LoadAsync();
+            Fail(e.Message);
+            return Page();
         }
         return Redirect("/appointments");
     }

@@ -5,6 +5,11 @@ namespace Hms.Kernel.Data;
 
 public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<NumberSeries> NumberSeries => Set<NumberSeries>();
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
@@ -43,10 +48,20 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
         b.Entity<ApprovalRequest>(e =>
         {
             e.Property(x => x.ThresholdSnapshot).HasColumnType("jsonb");
+            // Spec 0039 WP2: bound the free-text reason (the 100 KB-paste class).
+            e.Property(x => x.Reason).HasMaxLength(4000);
             e.HasIndex(x => new { x.State, x.Type });
             e.ToTable(t => t.HasCheckConstraint("ck_approval_state",
                 "state in ('pending','approved','rejected','expired')"));
         });
+
+        // Spec 0039 WP2 (audit Tier 4 #21): a delegation window must run forward. The overlap
+        // EXCLUDE the audit also suggests is NOT added: `types` is text[] and per-row — an
+        // EXCLUDE on (from_user, tstzrange) alone would forbid two concurrent delegations for
+        // disjoint approval types, which the model allows; text[] has no built-in gist overlap
+        // opclass to include it. Overlap routing stays app-enforced.
+        b.Entity<ApprovalDelegation>(e => e.ToTable("approval_delegation",
+            t => t.HasCheckConstraint("ck_delegation_window", "valid_to > valid_from")));
 
         b.Entity<AuditEvent>(e =>
         {
@@ -73,6 +88,7 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
             e.HasKey(x => x.Key);
             e.Property(x => x.Value).HasColumnType("jsonb");
         });
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

@@ -42,12 +42,14 @@ namespace Hms.Radiology.Data.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("code");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -80,6 +82,9 @@ namespace Hms.Radiology.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_modality_test");
 
+                    b.HasIndex("ModalityId")
+                        .HasDatabaseName("ix_modality_test_modality_id");
+
                     b.HasIndex("TestCatalogId")
                         .IsUnique()
                         .HasDatabaseName("ix_modality_test_test_catalog_id");
@@ -98,7 +103,8 @@ namespace Hms.Radiology.Data.Migrations
 
                     b.Property<string>("AccessionNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("accession_no");
 
                     b.Property<long>("BranchId")
@@ -114,7 +120,8 @@ namespace Hms.Radiology.Data.Migrations
                         .HasColumnName("film_count");
 
                     b.Property<string>("FilmSize")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("film_size");
 
                     b.Property<long>("ModalityId")
@@ -139,11 +146,13 @@ namespace Hms.Radiology.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<string>("TechnicianNote")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("technician_note");
 
                     b.HasKey("Id")
@@ -160,7 +169,32 @@ namespace Hms.Radiology.Data.Migrations
                     b.HasIndex("ModalityId", "State")
                         .HasDatabaseName("ix_study_modality_id_state");
 
-                    b.ToTable("study", "radiology");
+                    b.ToTable("study", "radiology", t =>
+                        {
+                            t.HasCheckConstraint("ck_study_film_count", "film_count >= 0");
+
+                            t.HasCheckConstraint("ck_study_state", "state IN ('awaiting','done','reported')");
+                        });
+                });
+
+            modelBuilder.Entity("Hms.Radiology.Data.ModalityTest", b =>
+                {
+                    b.HasOne("Hms.Radiology.Data.Modality", null)
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_modality_test_modality_modality_id");
+                });
+
+            modelBuilder.Entity("Hms.Radiology.Data.Study", b =>
+                {
+                    b.HasOne("Hms.Radiology.Data.Modality", null)
+                        .WithMany()
+                        .HasForeignKey("ModalityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_study_modality_modality_id");
                 });
 #pragma warning restore 612, 618
         }

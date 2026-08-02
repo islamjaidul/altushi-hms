@@ -109,27 +109,56 @@ public sealed class StockService(AuditWriter audit, TimeProvider clock)
         return allocations;
     }
 
-    /// <summary>Refund restocking: puts refunded quantity back on the exact batches the sale
-    /// took it from, unless the batch has since expired — expired stock goes to quarantine.</summary>
+    /// <summary>
+    /// Refund restocking: puts refunded goods back on the exact batches the sale took them
+    /// from, unless a batch has since expired — expired stock goes to quarantine.
+    /// <para>
+    /// Spec 0039 WP4 (AUD-M11-01): the refunded amount decides HOW MUCH comes back. This used
+    /// to take no quantity at all, so refunding 100 Tk of a 5,000 Tk sale restocked the whole
+    /// sale, marked every line refunded, and the error was permanent because the allocations
+    /// were exhausted. Units are restocked at each allocation's sale-time MRP until the
+    /// refunded money is spent; a part-unit remainder restocks nothing — money smaller than
+    /// one unit's price means no goods came back.
+    /// </para>
+    /// </summary>
     public async Task RestockAsync(
-        PharmDbContext pharm, long branchId, long invoiceId, long actorId, CancellationToken ct = default)
+        PharmDbContext pharm, long branchId, long invoiceId, long refundedAmount, long actorId,
+        CancellationToken ct = default)
     {
+        if (refundedAmount <= 0) return;
         var allocations = await pharm.SaleAllocations
-            .Where(a => a.InvoiceId == invoiceId && a.Qty > a.RefundedQty).ToListAsync(ct);
+            .Where(a => a.InvoiceId == invoiceId && a.Qty > a.RefundedQty)
+            .OrderBy(a => a.Id)
+            .ToListAsync(ct);
+        if (allocations.Count == 0) return;
+
+        // Same discipline as the sale path: lock the batches (ordered, so two refunds of
+        // adjacent invoices cannot ABBA) before touching qty_on_hand.
+        var batchIds = allocations.Select(a => a.BatchId).Distinct().OrderBy(id => id).ToArray();
+        await pharm.Database.SqlQuery<long>($"""
+            SELECT id AS "Value" FROM pharm.batch WHERE id = ANY({batchIds}) ORDER BY id FOR UPDATE
+            """).ToListAsync(ct);
+
         var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var budget = refundedAmount;
 
         foreach (var a in allocations)
         {
-            var back = a.Qty - a.RefundedQty;
+            if (budget <= 0) break;
+            var unit = Math.Max(1, a.UnitMrp);                      // 0-priced unit: count it, cost nothing
+            var affordable = (int)Math.Min(a.Qty - a.RefundedQty, budget / unit);
+            if (affordable <= 0) continue;
+
             var batch = await pharm.Batches.SingleAsync(b => b.Id == a.BatchId, ct);
-            batch.QtyOnHand += back;
+            batch.QtyOnHand += affordable;
             if (batch.Expiry <= today && batch.State == BatchState.InStock)
             {
                 batch.State = BatchState.Quarantined;
                 batch.StateReason = "expired before refund restock";
             }
-            a.RefundedQty = a.Qty;
-            Move(pharm, batch, MoveKind.SaleReturn, back, "bill.invoice", invoiceId, null, actorId);
+            a.RefundedQty += affordable;
+            budget -= affordable * a.UnitMrp;
+            Move(pharm, batch, MoveKind.SaleReturn, affordable, "bill.invoice", invoiceId, null, actorId);
         }
         await pharm.SaveChangesAsync(ct);
     }

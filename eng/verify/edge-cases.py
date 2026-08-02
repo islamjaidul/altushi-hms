@@ -199,9 +199,12 @@ napa = re.search(r'<option value="(\d+)">Napa', folio)
 # was never attempted and the run reported a product failure. Identify OUR indent as the id
 # that appeared after we raised it — the guard `ipd-thread.py` step 6 already carries.
 before = set(re.findall(r'name="IndentId" value="(\d+)"', ph.get("/pharmacy/indents")))
+# 9,000: more than any seeded batch holds, but inside the 1..9,999 entry bound spec 0039's
+# input tier now enforces — the point of this case is the ISSUE-time stock guard, and an ask
+# the request tier already refuses would never reach it.
 nu.post(f"/ipd/folio/{adm}?handler=Indent", {
     "AdmissionId": adm, "ProductIds": [napa.group(1), "0", "0"],
-    "ItemQtys": ["99999", "0", "0"]}, folio)
+    "ItemQtys": ["9000", "0", "0"]}, folio)
 queue = ph.get("/pharmacy/indents")
 mine = sorted(set(re.findall(r'name="IndentId" value="(\d+)"', queue)) - before, key=int)
 indent = fixture(re.match(r"(\d+)", mine[-1]) if mine else None,
@@ -283,9 +286,13 @@ for handler, extra in (("Initiate", {"ClinicalSummary": "edge"}), ("Clear", {}),
 block(adm, "due found mid-settlement")          # the block lands between prepare and confirm
 page = op.get(f"/ipd/discharge/{adm}")
 token = SUBMIT_RE.search(page)
-url, _ = op.post(f"/ipd/discharge/{adm}?handler=Confirm", {
-    "AdmissionId": adm, "DiscountFlat": "0",
-    "SubmissionToken": token.group(1) if token else ""}, page)
+# Post the token only when the page rendered one. The blocked render hides the confirm form,
+# and posting SubmissionToken="" is not what any browser does — since spec 0039 the input
+# gate refuses an unparseable posted value instead of silently binding Guid.Empty.
+confirm_fields = {"AdmissionId": adm, "DiscountFlat": "0"}
+if token:
+    confirm_fields["SubmissionToken"] = token.group(1)
+url, _ = op.post(f"/ipd/discharge/{adm}?handler=Confirm", confirm_fields, page)
 check("/billing/invoice/" in url, "the prepared settlement still confirms while blocked")
 check(collect_everything(name), "the patient pays in full")
 release(adm, "paid in full")

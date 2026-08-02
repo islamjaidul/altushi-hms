@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Billing;
 using Hms.Billing.Data;
 using Hms.Kernel.Approvals;
@@ -29,8 +30,8 @@ public class RefundModel(
 {
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty] public long InvoiceId { get; set; }
-    [BindProperty] public long Amount { get; set; }
-    [BindProperty] public string? Reason { get; set; }
+    [BindProperty, Money] public long Amount { get; set; }
+    [BindProperty, StringLength(Bounds.Note)] public string? Reason { get; set; }
     [BindProperty] public string Action { get; set; } = "refund";
 
     /// <summary>
@@ -124,6 +125,10 @@ public class RefundModel(
     public async Task<IActionResult> OnPostRequestAsync()
     {
         await LoadAsync();
+        // The screen offers exactly two things that can happen to an invoice (AUD-VAL-07g).
+        // Anything else in this field came from outside the form — refuse it by name.
+        if (Action is not ("refund" or "cancel"))
+        { Fail("Choose what is happening — a refund or a cancellation. Nothing else can be done to an invoice."); return Page(); }
         var invoice = Candidates.FirstOrDefault(c => c.InvoiceId == InvoiceId);
         if (invoice is null) { Fail("Find the invoice first."); return Page(); }
         if (string.IsNullOrWhiteSpace(Reason))
@@ -172,6 +177,8 @@ public class RefundModel(
         await LoadAsync();
         var req = Approved.FirstOrDefault(a => a.RequestId == requestId);
         if (req is null) { Fail("That request is no longer awaiting action — refresh."); return Page(); }
+        if (req.Type != "cancel" && tender is not null && !Tenders.IsKnown(tender))
+        { Fail("Choose how the money goes back to the patient."); return Page(); }
 
         var error = await ExecuteAsync(req.InvoiceId, req.Type == "cancel",
             req.Amount ?? 0, req.Reason, req.RequestId, tender ?? Tenders.Cash);
@@ -200,8 +207,11 @@ public class RefundModel(
                         amount, tender, reason, ActorId, ActorName, approvalId);
 
                 // A reversed pharmacy sale is a goods return (§5 M11 [M]): put the stock back
-                // on the exact batches the sale allocated (spec 0016; ADR-0021 #5).
-                await stock.RestockAsync(s.Pharm, BranchId, invoiceId, ActorId);
+                // on the exact batches the sale allocated (spec 0016; ADR-0021 #5). The amount
+                // decides how much comes back — a partial refund restocks proportionally, a
+                // cancellation reverses the whole document (AUD-M11-01).
+                var restockBudget = isCancel ? long.MaxValue : amount;
+                await stock.RestockAsync(s.Pharm, BranchId, invoiceId, restockBudget, ActorId);
                 return 0;
             });
             return null;

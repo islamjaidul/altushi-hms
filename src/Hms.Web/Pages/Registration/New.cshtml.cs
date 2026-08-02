@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Notifications;
 using Hms.Registration;
 using Microsoft.AspNetCore.Authorization;
@@ -13,16 +14,21 @@ namespace Hms.Web.Pages.Registration;
 [Authorize(Policy = Perm.RegistrationCreate)]
 public class NewModel(
     HmsTx tx, RegistrationService registration, SmsQueue sms,
-    OrgIdentity hospital) : HmsPageModel
+    OrgIdentity hospital, TimeProvider clock) : HmsPageModel
 {
-    [BindProperty] public string FullName { get; set; } = "";
+    // Nullable and no [Required] on FullName — BOTH matter: an unconscious emergency case
+    // legitimately posts a blank name with "identity unknown" ticked (edge 25, spec 0032
+    // LC-REG-20), the input gate judges every posted field unconditionally, and a non-nullable
+    // string carries MVC's *implicit* required rule, which would refuse the ER path at the
+    // gate before the handler's conditional rule could allow it. The handler enforces the rule.
+    [BindProperty, StringLength(Bounds.Name)] public string? FullName { get; set; }
     [BindProperty] public string Sex { get; set; } = "M";
-    [BindProperty] public string? AgeOrDob { get; set; }
-    [BindProperty] public string? Phone { get; set; }
-    [BindProperty] public string? Guardian { get; set; }
-    [BindProperty] public string? Area { get; set; }
-    [BindProperty] public string? Address { get; set; }
-    [BindProperty] public string? BloodGroup { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? AgeOrDob { get; set; }
+    [BindProperty, StringLength(Bounds.Phone)] public string? Phone { get; set; }
+    [BindProperty, StringLength(Bounds.Name)] public string? Guardian { get; set; }
+    [BindProperty, StringLength(Bounds.Name)] public string? Area { get; set; }
+    [BindProperty, StringLength(Bounds.Address)] public string? Address { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? BloodGroup { get; set; }
     [BindProperty] public string PatientType { get; set; } = "general";
     [BindProperty] public bool UnknownIdentity { get; set; }
     /// <summary>Set by the "register anyway" button under the duplicate list (edge 23).</summary>
@@ -46,11 +52,14 @@ public class NewModel(
         if (Hms.Kernel.Time.FlexibleDate.TryParse(raw, out var dob))
             return (dob, null, null, false);
 
-        var digits = new string(raw.TakeWhile(char.IsDigit).ToArray());
-        if (digits.Length == 0 || !short.TryParse(digits, out var n)) return (null, null, null, false);
+        // An age is 1–3 digits with at most a unit word after them ("45", "45y", "8 months").
+        // Anything else — above all a date-shaped string that did NOT parse, like "31/02/2026"
+        // or "2026-13-45" — is refused as a whole rather than silently read as the age "31"
+        // (spec 0039 WP1, AUD-VAL-09).
+        var m = System.Text.RegularExpressions.Regex.Match(raw, @"^(\d{1,3})\s*([A-Za-z]*)$");
+        if (!m.Success || !short.TryParse(m.Groups[1].Value, out var n)) return (null, null, null, false);
 
-        var isMonths = raw.Contains("month", StringComparison.OrdinalIgnoreCase)
-                       || raw.EndsWith('m') || raw.EndsWith("mo", StringComparison.OrdinalIgnoreCase);
+        var isMonths = m.Groups[2].Value.StartsWith("m", StringComparison.OrdinalIgnoreCase);
         // An age typed as a round number is an estimate by nature — record it as one (edge 26).
         return isMonths ? (null, null, n, true) : (null, n, null, true);
     }
@@ -94,6 +103,21 @@ public class NewModel(
             return Page();
         }
 
+        // A DOB the product cannot mean: before 1900 Npgsql-adjacent extremes like 0001-01-01
+        // land as ±infinity, and a birth after today is a person not yet born (AUD-VAL-09).
+        var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
+        if (dob is { } d && (d < new DateOnly(1900, 1, 1) || d > today))
+        {
+            Fail("That date of birth cannot be right — it must be between 1900 and today. " +
+                 "Enter an age (e.g. 45) or a date like 12/03/1980.");
+            return Page();
+        }
+        if (years is > 130)
+        {
+            Fail("That age doesn't look right — check it, or enter a date of birth like 12/03/1980.");
+            return Page();
+        }
+
         // Non-blocking duplicate warning: show it once, let the operator confirm (edge 23).
         if (!DuplicatesAcknowledged && !UnknownIdentity)
         {
@@ -119,7 +143,11 @@ public class NewModel(
                 return p;
             });
 
-            Toast($"Registered {patient.FullName} — {patient.Uhid}", "badge");
+            // The name is bounded at 200 above, but the toast is one sentence read at a glance —
+            // keep the interpolated part short even if the bound ever widens (spec 0039 WP1.3).
+            var shownName = patient.FullName.Length <= 60
+                ? patient.FullName : patient.FullName[..60] + "…";
+            Toast($"Registered {shownName} — {patient.Uhid}", "badge");
             return action == "print"
                 ? Redirect($"/registration/{patient.Id}/card")
                 : Redirect($"/registration?q={Uri.EscapeDataString(patient.Uhid)}");

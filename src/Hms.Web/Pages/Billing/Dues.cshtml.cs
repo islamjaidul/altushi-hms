@@ -1,4 +1,5 @@
 using Hms.Billing;
+using Hms.Billing.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,7 @@ public class DuesModel(HmsTx tx, BillingService billing, Hms.Lis.LisService lis,
 {
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty] public long InvoiceId { get; set; }
-    [BindProperty] public long Amount { get; set; }
+    [BindProperty, Money] public long Amount { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
 
     public OpenSession? Session { get; private set; }
@@ -96,6 +97,10 @@ public class DuesModel(HmsTx tx, BillingService billing, Hms.Lis.LisService lis,
         var row = Rows.FirstOrDefault(r => r.InvoiceId == InvoiceId);
         if (row is null) { Fail("That invoice has no outstanding balance any more — refresh."); return Page(); }
         if (Amount <= 0) { Fail("Enter the amount being paid."); return Page(); }
+        // CollectAsync stores the tender string as given — day-close groups the drawer by it,
+        // so an unknown one must never reach a receipt (AUD-VAL-06g).
+        if (!Tenders.IsKnown(Tender))
+        { Fail($"That is not a way money can be taken. Use one of: {string.Join(", ", Tenders.All)}."); return Page(); }
 
         try
         {

@@ -50,7 +50,8 @@ namespace Hms.Admin.Data.Migrations
 
                     b.Property<string>("CatalogKind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("catalog_kind");
 
                     b.Property<long>("Price")
@@ -59,7 +60,8 @@ namespace Hms.Admin.Data.Migrations
 
                     b.Property<string>("Scope")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("scope");
 
                     b.Property<DateOnly>("ValidFrom")
@@ -73,7 +75,17 @@ namespace Hms.Admin.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_rate_version");
 
-                    b.ToTable("rate_version", "adm");
+                    b.HasIndex("CatalogKind", "CatalogId", "Scope", "BranchId", "ValidFrom")
+                        .HasDatabaseName("ix_rate_version_catalog_kind_catalog_id_scope_branch_id_valid_");
+
+                    b.ToTable("rate_version", "adm", t =>
+                        {
+                            t.HasCheckConstraint("ck_rate_version_effective_order", "valid_to IS NULL OR valid_to >= valid_from");
+
+                            t.HasCheckConstraint("ck_rate_version_price", "price >= 0");
+
+                            t.HasCheckConstraint("ck_rate_version_window", "valid_from BETWEEN '2000-01-01' AND '2100-01-01'");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Admin.Data.Referrer", b =>
@@ -90,12 +102,14 @@ namespace Hms.Admin.Data.Migrations
                         .HasColumnName("active");
 
                     b.Property<string>("Area")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("area");
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("code");
 
                     b.Property<short>("CommissionPercent")
@@ -104,16 +118,19 @@ namespace Hms.Admin.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("text")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("phone");
 
                     b.HasKey("Id")
@@ -123,7 +140,10 @@ namespace Hms.Admin.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_referrer_code");
 
-                    b.ToTable("referrer", "adm");
+                    b.ToTable("referrer", "adm", t =>
+                        {
+                            t.HasCheckConstraint("ck_referrer_commission", "commission_percent BETWEEN 0 AND 100");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Admin.Data.ReportingConsultant", b =>
@@ -140,12 +160,14 @@ namespace Hms.Admin.Data.Migrations
                         .HasColumnName("active");
 
                     b.Property<string>("BmdcNo")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("bmdc_no");
 
                     b.Property<string>("Degrees")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("degrees");
 
                     b.PrimitiveCollection<string[]>("Departments")
@@ -155,7 +177,8 @@ namespace Hms.Admin.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -179,22 +202,26 @@ namespace Hms.Admin.Data.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("code");
 
                     b.Property<string>("Dept")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("dept");
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<bool>("Provisional")
@@ -226,17 +253,20 @@ namespace Hms.Admin.Data.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("code");
 
                     b.Property<string>("Dept")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("dept");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<bool>("Provisional")
@@ -263,7 +293,10 @@ namespace Hms.Admin.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_test_catalog_code");
 
-                    b.ToTable("test_catalog", "adm");
+                    b.ToTable("test_catalog", "adm", t =>
+                        {
+                            t.HasCheckConstraint("ck_test_catalog_tat", "tat_minutes >= 0");
+                        });
                 });
 #pragma warning restore 612, 618
         }

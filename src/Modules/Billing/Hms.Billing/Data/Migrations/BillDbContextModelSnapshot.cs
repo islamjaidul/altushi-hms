@@ -46,7 +46,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("CatalogKind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("catalog_kind");
 
                     b.Property<DateTimeOffset>("CreatedAt")
@@ -59,7 +60,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("DescriptionSnapshot")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("description_snapshot");
 
                     b.Property<long?>("DoctorId")
@@ -92,7 +94,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("SourceModule")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("source_module");
 
                     b.Property<long?>("TestOrderId")
@@ -106,8 +109,23 @@ namespace Hms.Billing.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_charge_line");
 
+                    b.HasIndex("EncounterId")
+                        .HasDatabaseName("ix_charge_line_unbilled_encounter")
+                        .HasFilter("invoice_id IS NULL");
+
+                    b.HasIndex("FolioId")
+                        .HasDatabaseName("ix_charge_line_unbilled_folio")
+                        .HasFilter("invoice_id IS NULL");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_charge_line_invoice_id");
+
                     b.ToTable("charge_line", "bill", t =>
                         {
+                            t.HasCheckConstraint("ck_charge_line_money", "unit_price >= 0 AND amount = qty::bigint * unit_price");
+
+                            t.HasCheckConstraint("ck_charge_line_qty", "qty <> 0 AND qty BETWEEN -9999 AND 9999");
+
                             t.HasCheckConstraint("ck_charge_parent", "num_nonnulls(encounter_id, folio_id) = 1");
                         });
                 });
@@ -127,12 +145,14 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("kind");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -196,7 +216,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<long?>("Variance")
@@ -206,7 +227,17 @@ namespace Hms.Billing.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_counter_session");
 
-                    b.ToTable("counter_session", "bill");
+                    b.HasIndex("CounterId")
+                        .HasDatabaseName("ix_counter_session_counter_id");
+
+                    b.ToTable("counter_session", "bill", t =>
+                        {
+                            t.HasCheckConstraint("ck_session_closed_complete", "state <> 'closed' OR (closed_at IS NOT NULL AND counted_cash IS NOT NULL AND expected_cash IS NOT NULL AND variance IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_session_opening_float", "opening_float >= 0");
+
+                            t.HasCheckConstraint("ck_session_state", "state IN ('opened','active','close_pending','closed','reopened')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Billing.Data.DayCloseSummary", b =>
@@ -293,24 +324,25 @@ namespace Hms.Billing.Data.Migrations
             modelBuilder.Entity("Hms.Billing.Data.Due", b =>
                 {
                     b.Property<long>("InvoiceId")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasColumnName("invoice_id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("InvoiceId"));
 
                     b.Property<long>("Balance")
                         .HasColumnType("bigint")
                         .HasColumnName("balance");
 
                     b.Property<string>("LastFollowup")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("last_followup");
 
                     b.HasKey("InvoiceId")
                         .HasName("pk_due");
 
-                    b.ToTable("due", "bill");
+                    b.ToTable("due", "bill", t =>
+                        {
+                            t.HasCheckConstraint("ck_due_balance", "balance >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Billing.Data.Encounter", b =>
@@ -352,18 +384,32 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("type");
 
                     b.HasKey("Id")
                         .HasName("pk_encounter");
 
-                    b.ToTable("encounter", "bill");
+                    b.HasIndex("CounterId")
+                        .HasDatabaseName("ix_encounter_counter_id");
+
+                    b.HasIndex("OnDate", "Type")
+                        .HasDatabaseName("ix_encounter_on_date_type");
+
+                    b.HasIndex("PatientId", "OnDate")
+                        .HasDatabaseName("ix_encounter_patient_id_on_date");
+
+                    b.ToTable("encounter", "bill", t =>
+                        {
+                            t.HasCheckConstraint("ck_encounter_state", "state IN ('open','closed')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Billing.Data.Invoice", b =>
@@ -405,7 +451,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("FiscalYear")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("fiscal_year");
 
                     b.Property<long?>("FolioId")
@@ -418,7 +465,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("InvoiceNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("invoice_no");
 
                     b.Property<long>("Net")
@@ -435,7 +483,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<Guid?>("SubmissionToken")
@@ -447,20 +496,35 @@ namespace Hms.Billing.Data.Migrations
                         .HasColumnName("tax");
 
                     b.Property<string>("TaxCode")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("tax_code");
 
                     b.Property<int>("Version")
-                        .IsConcurrencyToken()
                         .HasColumnType("integer")
                         .HasColumnName("version");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_invoice");
 
+                    b.HasIndex("CounterSessionId")
+                        .HasDatabaseName("ix_invoice_counter_session_id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_invoice_created_at");
+
                     b.HasIndex("InvoiceNo")
                         .IsUnique()
                         .HasDatabaseName("ix_invoice_invoice_no");
+
+                    b.HasIndex("PatientId")
+                        .HasDatabaseName("ix_invoice_patient_id");
 
                     b.HasIndex("SubmissionToken")
                         .IsUnique()
@@ -469,9 +533,13 @@ namespace Hms.Billing.Data.Migrations
 
                     b.ToTable("invoice", "bill", t =>
                         {
+                            t.HasCheckConstraint("ck_invoice_bounds", "gross >= 0 AND tax >= 0 AND discount BETWEEN 0 AND gross");
+
                             t.HasCheckConstraint("ck_invoice_identity", "net = gross - discount + tax + rounding_adj");
 
                             t.HasCheckConstraint("ck_invoice_parent", "num_nonnulls(encounter_id, folio_id) = 1");
+
+                            t.HasCheckConstraint("ck_invoice_state", "state IN ('draft','billed','partially_paid','paid','cancelled','refunded')");
                         });
                 });
 
@@ -494,7 +562,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("DescriptionSnapshot")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("description_snapshot");
 
                     b.Property<long?>("DoctorId")
@@ -524,7 +593,18 @@ namespace Hms.Billing.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_invoice_line");
 
-                    b.ToTable("invoice_line", "bill");
+                    b.HasIndex("ChargeLineId")
+                        .HasDatabaseName("ix_invoice_line_charge_line_id");
+
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_invoice_line_invoice_id");
+
+                    b.ToTable("invoice_line", "bill", t =>
+                        {
+                            t.HasCheckConstraint("ck_invoice_line_money", "unit_price >= 0 AND amount = qty::bigint * unit_price");
+
+                            t.HasCheckConstraint("ck_invoice_line_qty", "qty <> 0 AND qty BETWEEN -9999 AND 9999");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Billing.Data.Receipt", b =>
@@ -570,7 +650,8 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("ReceiptNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("receipt_no");
 
                     b.Property<long?>("RefundOfReceipt")
@@ -579,11 +660,13 @@ namespace Hms.Billing.Data.Migrations
 
                     b.Property<string>("Tender")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("tender");
 
                     b.Property<string>("TenderRef")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("tender_ref");
 
                     b.HasKey("Id")
@@ -595,6 +678,9 @@ namespace Hms.Billing.Data.Migrations
                     b.HasIndex("FolioId")
                         .HasDatabaseName("ix_receipt_folio_id");
 
+                    b.HasIndex("InvoiceId")
+                        .HasDatabaseName("ix_receipt_invoice_id");
+
                     b.HasIndex("ReceiptNo")
                         .IsUnique()
                         .HasDatabaseName("ix_receipt_receipt_no");
@@ -602,7 +688,100 @@ namespace Hms.Billing.Data.Migrations
                     b.ToTable("receipt", "bill", t =>
                         {
                             t.HasCheckConstraint("ck_receipt_parent", "num_nonnulls(invoice_id, folio_id) = 1");
+
+                            t.HasCheckConstraint("ck_receipt_tender", "tender IN ('cash','card','bkash','nagad','corporate')");
                         });
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.ChargeLine", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.Encounter", null)
+                        .WithMany()
+                        .HasForeignKey("EncounterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_charge_line_encounter_encounter_id");
+
+                    b.HasOne("Hms.Billing.Data.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_charge_line_invoices_invoice_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.CounterSession", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.Counter", null)
+                        .WithMany()
+                        .HasForeignKey("CounterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_counter_session_counter_counter_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.DayCloseSummary", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.CounterSession", null)
+                        .WithMany()
+                        .HasForeignKey("CounterSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_day_close_summary_counter_session_counter_session_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.Due", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.Invoice", null)
+                        .WithOne()
+                        .HasForeignKey("Hms.Billing.Data.Due", "InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_due_invoice_invoice_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.Encounter", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.Counter", null)
+                        .WithMany()
+                        .HasForeignKey("CounterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_encounter_counters_counter_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.Invoice", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.CounterSession", null)
+                        .WithMany()
+                        .HasForeignKey("CounterSessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_counter_session_counter_session_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.InvoiceLine", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.ChargeLine", null)
+                        .WithMany()
+                        .HasForeignKey("ChargeLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_line_charge_line_charge_line_id");
+
+                    b.HasOne("Hms.Billing.Data.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_line_invoice_invoice_id");
+                });
+
+            modelBuilder.Entity("Hms.Billing.Data.Receipt", b =>
+                {
+                    b.HasOne("Hms.Billing.Data.Invoice", null)
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_receipt_invoice_invoice_id");
                 });
 #pragma warning restore 612, 618
         }

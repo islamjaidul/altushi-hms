@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -165,6 +166,11 @@ public class ReceiveNote
 
 public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Note> Notes => Set<Note>();
     public DbSet<NoteDrug> NoteDrugs => Set<NoteDrug>();
     public DbSet<Vitals> Vitals => Set<Vitals>();
@@ -176,12 +182,30 @@ public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Spec 0039 WP2: domain-value CHECKs, state CHECKs from the *State constants above,
+        // intra-schema FKs and HasMaxLength — same posture as BillDbContext (additive only,
+        // NOT VALID in the migration for pre-existing tables).
         b.HasDefaultSchema("emr");
 
         b.Entity<Note>(e =>
         {
-            e.ToTable("note", t => t.HasCheckConstraint(
-                "ck_note_parent", "num_nonnulls(encounter_id, admission_id) = 1"));
+            e.ToTable("note", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_note_parent", "num_nonnulls(encounter_id, admission_id) = 1");
+                t.HasCheckConstraint("ck_note_state",
+                    "state IN ('draft','final','superseded')");
+                // A final or superseded note without its finalisation stamp is an unsigned
+                // legal record (audit §2).
+                t.HasCheckConstraint("ck_note_finalised",
+                    "state NOT IN ('final','superseded') "
+                    + "OR (finalised_at IS NOT NULL AND finalised_by IS NOT NULL)");
+            });
+            e.Property(x => x.Complaint).HasMaxLength(10000);
+            e.Property(x => x.OnExamination).HasMaxLength(10000);
+            e.Property(x => x.Diagnosis).HasMaxLength(10000);
+            e.Property(x => x.Advice).HasMaxLength(10000);
+            e.Property(x => x.State).HasMaxLength(40);
             e.HasIndex(x => x.PatientId);
             e.HasIndex(x => x.EncounterId);
             e.HasIndex(x => x.AdmissionId);
@@ -189,18 +213,44 @@ public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(op
             // A finalised note may be corrected once; a second correction chains off the newer
             // one. Uniqueness stops two doctors superseding the same note in parallel.
             e.HasIndex(x => x.SupersedesId).IsUnique().HasFilter("supersedes_id IS NOT NULL");
+            e.HasOne<Note>().WithMany().HasForeignKey(x => x.SupersedesId);
         });
 
         b.Entity<NoteDrug>(e =>
         {
             e.ToTable("note_drug");
+            e.Property(x => x.DrugName).HasMaxLength(200);
+            e.Property(x => x.Dose).HasMaxLength(40);
+            e.Property(x => x.Frequency).HasMaxLength(40);
+            e.Property(x => x.Duration).HasMaxLength(40);
+            e.Property(x => x.Instruction).HasMaxLength(200);
             e.HasIndex(x => x.NoteId);
+            e.HasOne<Note>().WithMany().HasForeignKey(x => x.NoteId);
+            // product_id points at pharm.product — cross-schema, so no FK (ADR-0003).
         });
 
         b.Entity<Vitals>(e =>
         {
-            e.ToTable("vitals", t => t.HasCheckConstraint(
-                "ck_vitals_parent", "num_nonnulls(encounter_id, admission_id) = 1"));
+            e.ToTable("vitals", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_vitals_parent", "num_nonnulls(encounter_id, admission_id) = 1");
+                // The SpO2=999 / BP −1/−9 defect class (audit §1d). All columns nullable —
+                // absent is fine, impossible is not. One constraint per measurement so a
+                // 23514 names the field the operator mistyped.
+                t.HasCheckConstraint("ck_vitals_spo2",
+                    "sp_o2 IS NULL OR sp_o2 BETWEEN 0 AND 100");
+                t.HasCheckConstraint("ck_vitals_pulse",
+                    "pulse IS NULL OR pulse BETWEEN 20 AND 300");
+                t.HasCheckConstraint("ck_vitals_systolic",
+                    "systolic IS NULL OR systolic BETWEEN 40 AND 300");
+                t.HasCheckConstraint("ck_vitals_diastolic",
+                    "diastolic IS NULL OR diastolic BETWEEN 20 AND 200");
+                t.HasCheckConstraint("ck_vitals_temperature",
+                    "temperature_tenths_c IS NULL OR temperature_tenths_c BETWEEN 250 AND 460");
+                t.HasCheckConstraint("ck_vitals_weight",
+                    "weight_tenths_kg IS NULL OR weight_tenths_kg BETWEEN 1 AND 4000");
+            });
             e.HasIndex(x => x.PatientId);
             e.HasIndex(x => x.EncounterId);
         });
@@ -208,6 +258,11 @@ public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(op
         b.Entity<NoteTemplate>(e =>
         {
             e.ToTable("template");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Complaint).HasMaxLength(10000);
+            e.Property(x => x.OnExamination).HasMaxLength(10000);
+            e.Property(x => x.Diagnosis).HasMaxLength(10000);
+            e.Property(x => x.Advice).HasMaxLength(10000);
             e.HasIndex(x => new { x.DoctorId, x.Name }).IsUnique();
             e.Property(x => x.Drugs).HasColumnType("jsonb");
         });
@@ -215,27 +270,64 @@ public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(op
         b.Entity<Favourite>(e =>
         {
             e.ToTable("favourite");
+            e.Property(x => x.DrugName).HasMaxLength(200);
+            e.Property(x => x.Dose).HasMaxLength(40);
+            e.Property(x => x.Frequency).HasMaxLength(40);
+            e.Property(x => x.Duration).HasMaxLength(40);
             e.HasIndex(x => new { x.DoctorId, x.ProductId }).IsUnique();
         });
 
         b.Entity<MarDose>(e =>
         {
-            e.ToTable("mar_dose");
+            e.ToTable("mar_dose", t =>
+            {
+                t.HasCheckConstraint("ck_mar_dose_state",
+                    "state IN ('scheduled','given','missed','refused')");
+                // RecordDose stamps administered_at/by for every outcome and requires a reason
+                // when the dose was not given — the chart is a legal record (audit §2).
+                t.HasCheckConstraint("ck_mar_dose_given",
+                    "state <> 'given' "
+                    + "OR (administered_at IS NOT NULL AND administered_by IS NOT NULL)");
+                t.HasCheckConstraint("ck_mar_dose_reason",
+                    "state NOT IN ('missed','refused') OR state_reason IS NOT NULL");
+            });
+            e.Property(x => x.DrugName).HasMaxLength(200);
+            e.Property(x => x.Dose).HasMaxLength(40);
+            e.Property(x => x.Route).HasMaxLength(40);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.StateReason).HasMaxLength(4000);
             e.HasIndex(x => new { x.AdmissionId, x.ScheduledAt });
             e.HasIndex(x => x.State);
         });
 
         b.Entity<GlucoseReading>(e =>
         {
-            e.ToTable("glucose_reading");
+            e.ToTable("glucose_reading", t =>
+            {
+                t.HasCheckConstraint("ck_glucose_value",
+                    "glucose_tenths BETWEEN 5 AND 500");
+                t.HasCheckConstraint("ck_glucose_insulin",
+                    "insulin_units IS NULL OR insulin_units BETWEEN 0 AND 200");
+            });
+            e.Property(x => x.Timing).HasMaxLength(40);
+            e.Property(x => x.InsulinRoute).HasMaxLength(40);
             e.HasIndex(x => new { x.AdmissionId, x.At });
         });
 
         b.Entity<ReceiveNote>(e =>
         {
             e.ToTable("receive_note");
+            e.Property(x => x.ReceivedFrom).HasMaxLength(200);
+            e.Property(x => x.Condition).HasMaxLength(10000);
+            e.Property(x => x.Belongings).HasMaxLength(4000);
             e.HasIndex(x => x.AdmissionId).IsUnique();   // one handover per admission
         });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

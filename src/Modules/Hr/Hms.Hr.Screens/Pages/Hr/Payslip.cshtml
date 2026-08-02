@@ -1,0 +1,107 @@
+@page "/hr/payslip/{id:long}"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.PayslipModel
+@{
+    var line = Model.Line!;
+    var run = Model.Run!;
+    ViewData["Title"] = "Payslip";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div style="width:640px;max-width:100%">
+        @await Html.PartialAsync("_PrintTools", $"/hr/payslips?RunId={run.Id}")
+    </div>
+
+    <div class="sheet">
+        @await Html.PartialAsync("_Letterhead", new Letterhead(
+            "Payslip",
+            Model.Slip?.PayslipNo ?? run.RunNo,
+            Model.Slip?.IssuedAt ?? run.LockedAt ?? run.GeneratedAt))
+
+        <div class="sheet-info">
+            <div><span class="k">Employee:</span> <b>@line.EmployeeName</b></div>
+            <div><span class="k">Month:</span> @run.Period.ToString("MMMM yyyy")</div>
+            <div><span class="k">Code:</span> @line.EmployeeCode</div>
+            <div><span class="k">Run:</span> @run.RunNo</div>
+            <div><span class="k">Bank:</span> @(Model.Person?.BankName ?? "—")</div>
+            <div><span class="k">Account:</span> @(Model.Person?.BankAccountNo ?? "—")</div>
+            <div><span class="k">Days payable:</span> @(line.PayableDaysBp / 10000m) of @line.PeriodDays</div>
+            <div><span class="k">Overtime:</span> @(line.OvertimeMinutes == 0 ? "—" : $"{line.OvertimeMinutes} min")</div>
+        </div>
+
+        <table class="sheet-table">
+            <thead>
+            <tr><th>Earnings</th><th class="num" style="width:130px">Amount</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var e in Model.Earnings)
+            {
+                <tr>
+                    <td>
+                        @e.ComponentName
+                        @if (!string.IsNullOrEmpty(e.Basis))
+                        {
+                            <span class="text-muted"> — @e.Basis</span>
+                        }
+                    </td>
+                    <td class="num">@Ui.Group(e.AmountTaka)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+
+        @if (Model.Deductions.Count > 0)
+        {
+            <table class="sheet-table">
+                <thead>
+                <tr><th>Deductions</th><th class="num" style="width:130px">Amount</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var d in Model.Deductions)
+                {
+                    <tr>
+                        <td>
+                            @d.ComponentName
+                            @if (!string.IsNullOrEmpty(d.Basis))
+                            {
+                                <span class="text-muted"> — @d.Basis</span>
+                            }
+                        </td>
+                        <td class="num">− @Ui.Group(d.AmountTaka)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+
+        <div class="sheet-totals">
+            <div class="sheet-total-line"><span>Gross earnings</span><span>@Ui.Money(line.GrossEarningsTaka)</span></div>
+            <div class="sheet-total-line"><span>Less: deductions</span><span>− @Ui.Money(line.TotalDeductionsTaka)</span></div>
+            @if (line.CarriedShortfallTaka > 0)
+            {
+                <div class="sheet-total-line">
+                    <span>Minimum-net top-up (carried as advance)</span>
+                    <span>@Ui.Money(line.CarriedShortfallTaka)</span>
+                </div>
+            }
+            <div class="sheet-total-line strong"><span>Net pay</span><span>@Ui.Money(line.NetPayTaka)</span></div>
+        </div>
+
+        <div class="sheet-words">
+            In words: <b>@Ui.Words(line.NetPayTaka)</b>
+        </div>
+
+        @if (!string.IsNullOrEmpty(line.Note))
+        {
+            <div class="sheet-words" style="color:var(--muted-1)">@line.Note</div>
+        }
+
+        <div class="sheet-signs">
+            <div class="sheet-sign">Prepared by</div>
+            <div class="sheet-sign">Employee</div>
+        </div>
+
+        @await Html.PartialAsync("_SheetFooter")
+    </div>
+</div>

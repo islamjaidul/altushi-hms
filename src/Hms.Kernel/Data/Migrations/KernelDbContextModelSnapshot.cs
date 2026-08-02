@@ -56,7 +56,10 @@ namespace Hms.Kernel.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_approval_delegation");
 
-                    b.ToTable("approval_delegation", "kernel");
+                    b.ToTable("approval_delegation", "kernel", t =>
+                        {
+                            t.HasCheckConstraint("ck_delegation_window", "valid_to > valid_from");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Kernel.Data.ApprovalPolicy", b =>
@@ -125,9 +128,18 @@ namespace Hms.Kernel.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("decision_note");
 
+                    b.Property<DateTimeOffset?>("EscalatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("escalated_at");
+
+                    b.Property<int?>("EscalatedTier")
+                        .HasColumnType("integer")
+                        .HasColumnName("escalated_tier");
+
                     b.Property<string>("Reason")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("reason");
 
                     b.Property<DateTimeOffset>("RequestedAt")

@@ -13,6 +13,11 @@ public class AppUser : IdentityUser<long>
     public bool MustUse2fa { get; set; }              // finance-approver/admin/MD roles (ADR-0019)
     public bool Active { get; set; } = true;
     public string? EmployeeRef { get; set; }
+
+    /// <summary>The branch this operator works at (spec 0039 WP5, §5 M21). Issued as the
+    /// <c>branch_id</c> claim at sign-in and revalidated with the security stamp, so a
+    /// reassignment takes effect mid-shift like a permission change does (ADR-0019).</summary>
+    public long BranchId { get; set; } = 1;
 }
 
 public class AppRole : IdentityRole<long>

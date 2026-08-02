@@ -51,6 +51,9 @@ namespace Hms.Lis.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_label_print");
 
+                    b.HasIndex("SampleId")
+                        .HasDatabaseName("ix_label_print_sample_id");
+
                     b.ToTable("label_print", "lis");
                 });
 
@@ -76,11 +79,13 @@ namespace Hms.Lis.Data.Migrations
                         .HasColumnName("entered_by");
 
                     b.Property<string>("EsignHash")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("esign_hash");
 
                     b.Property<string>("Narrative")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("narrative");
 
                     b.Property<long>("OrderTestId")
@@ -88,7 +93,8 @@ namespace Hms.Lis.Data.Migrations
                         .HasColumnName("order_test_id");
 
                     b.Property<string>("SignatureImageRef")
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("signature_image_ref");
 
                     b.Property<int?>("SupersedesVersion")
@@ -109,12 +115,19 @@ namespace Hms.Lis.Data.Migrations
                         .HasColumnName("verified_by");
 
                     b.Property<string>("VerifierRole")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("verifier_role");
 
                     b.Property<int>("Version")
                         .HasColumnType("integer")
                         .HasColumnName("version");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_result");
@@ -123,7 +136,10 @@ namespace Hms.Lis.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_result_order_test_id_version");
 
-                    b.ToTable("result", "lis");
+                    b.ToTable("result", "lis", t =>
+                        {
+                            t.HasCheckConstraint("ck_result_verified", "verified_at IS NULL OR (verified_by IS NOT NULL AND verifier_role IS NOT NULL AND esign_hash IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Lis.Data.Sample", b =>
@@ -137,7 +153,8 @@ namespace Hms.Lis.Data.Migrations
 
                     b.Property<string>("Barcode")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("barcode");
 
                     b.Property<long>("BranchId")
@@ -153,7 +170,8 @@ namespace Hms.Lis.Data.Migrations
                         .HasColumnName("collected_by");
 
                     b.Property<string>("DisposalNote")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("disposal_note");
 
                     b.Property<DateTimeOffset?>("ReceivedAt")
@@ -169,17 +187,20 @@ namespace Hms.Lis.Data.Migrations
                         .HasColumnName("recollection_of");
 
                     b.Property<string>("RejectedReason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("rejected_reason");
 
                     b.Property<string>("SampleType")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("sample_type");
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.HasKey("Id")
@@ -189,7 +210,19 @@ namespace Hms.Lis.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_sample_barcode");
 
-                    b.ToTable("sample", "lis");
+                    b.HasIndex("RecollectionOf")
+                        .HasDatabaseName("ix_sample_recollection_of");
+
+                    b.ToTable("sample", "lis", t =>
+                        {
+                            t.HasCheckConstraint("ck_sample_collected", "state = 'pending_collection' OR (collected_at IS NOT NULL AND collected_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_sample_received", "state IN ('pending_collection','collected') OR (received_at IS NOT NULL AND received_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_sample_rejected", "state <> 'rejected' OR rejected_reason IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_sample_state", "state IN ('pending_collection','collected','received','rejected','resulted','verified','report_ready','delivered')");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Lis.Data.SampleTest", b =>
@@ -205,7 +238,39 @@ namespace Hms.Lis.Data.Migrations
                     b.HasKey("SampleId", "OrderTestId")
                         .HasName("pk_sample_test");
 
+                    b.HasIndex("OrderTestId")
+                        .HasDatabaseName("ix_sample_test_order_test_id");
+
                     b.ToTable("sample_test", "lis");
+                });
+
+            modelBuilder.Entity("Hms.Lis.Data.LabelPrint", b =>
+                {
+                    b.HasOne("Hms.Lis.Data.Sample", null)
+                        .WithMany()
+                        .HasForeignKey("SampleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_label_print_sample_sample_id");
+                });
+
+            modelBuilder.Entity("Hms.Lis.Data.Sample", b =>
+                {
+                    b.HasOne("Hms.Lis.Data.Sample", null)
+                        .WithMany()
+                        .HasForeignKey("RecollectionOf")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_sample_sample_recollection_of");
+                });
+
+            modelBuilder.Entity("Hms.Lis.Data.SampleTest", b =>
+                {
+                    b.HasOne("Hms.Lis.Data.Sample", null)
+                        .WithMany()
+                        .HasForeignKey("SampleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_sample_test_sample_sample_id");
                 });
 #pragma warning restore 612, 618
         }

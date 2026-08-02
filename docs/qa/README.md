@@ -18,7 +18,7 @@ t2 asserts absolute money totals — `golden-thread.py:206` requires the dashboa
 that failure says nothing about the build.
 
 **`--tier all` therefore runs t0 → t2 → t1, not t0 → t1 → t2.** t2 has to meet the fresh ledger
-before the twelve mutating t1 scripts spend it; t0 is read-only and stays first, where a broken
+before the ten mutating t1 scripts spend it; t0 is read-only and stays first, where a broken
 login fails the run in seconds. Until spec 0032 the runner executed the tiers in numeric order,
 which made the documented `--tier all` run red by construction — the runner destroyed the one
 precondition this page tells you to provide. An explicit `--tier t0|t1|t2` is unchanged.

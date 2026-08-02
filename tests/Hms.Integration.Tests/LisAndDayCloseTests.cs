@@ -105,7 +105,7 @@ public class LisAndDayCloseTests : IAsyncLifetime
         Assert.NotNull(verified.EsignHash);
         Assert.Equal("reporting_consultant", verified.VerifierRole);
 
-        var r2 = await _lis.AmendAsync(lis, 301, new() { ["hb"] = new { value = 13.7 } }, 41, 555);
+        var r2 = await _lis.AmendAsync(lis, 301, new() { ["hb"] = new { value = 13.7 } }, null, 41, 555);
         Assert.Equal(2, r2.Version);
         Assert.Equal(1, r2.SupersedesVersion);
         var v1 = await lis.Results.SingleAsync(r => r.OrderTestId == 301 && r.Version == 1);

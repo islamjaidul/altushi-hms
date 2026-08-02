@@ -38,9 +38,16 @@ public class AppointmentQueueTests : IAsyncLifetime
                 o => o.MigrationsHistoryTable("__ef_migrations", "appt")))
         .UseSnakeCaseNamingConvention().Options);
 
-    /// <summary>A doctor and a day nobody else in the suite is queueing against.</summary>
-    private static (long DoctorId, DateOnly OnDate) OwnQueue()
-        => (Random.Shared.NextInt64(1_000_000, 9_000_000), new DateOnly(2026, 8, 1));
+    /// <summary>A doctor and a day nobody else in the suite is queueing against. The doctor is
+    /// a real appt.doctor row — spec 0039's FK ended invented doctor ids.</summary>
+    private async Task<(long DoctorId, DateOnly OnDate)> OwnQueueAsync()
+    {
+        await using var appt = CreateAppt(null);
+        var doctor = new Doctor { Name = $"Dr Test {Random.Shared.Next(1_000_000, 9_999_999)}" };
+        appt.Doctors.Add(doctor);
+        await appt.SaveChangesAsync();
+        return (doctor.Id, new DateOnly(2026, 8, 1));
+    }
 
     // -----------------------------------------------------------------------
     // LC-QUE-05 — the serial after an ended one
@@ -52,7 +59,7 @@ public class AppointmentQueueTests : IAsyncLifetime
         // The two-click repro from the QA sweep: issue 1, cancel 1, issue again. Before the fix
         // the allocator re-proposed 1 (its max query skipped the cancelled row, the unique index
         // did not), collided five times and told the operator the queue was "moving fast".
-        var (doctorId, onDate) = OwnQueue();
+        var (doctorId, onDate) = await OwnQueueAsync();
         await using var appt = CreateAppt(null);
 
         var first = await _svc.IssueSerialAsync(appt, 1, patientId: 11, doctorId, onDate, actorId: 7);
@@ -69,7 +76,7 @@ public class AppointmentQueueTests : IAsyncLifetime
     {
         // The other half of LC-QUE-05, and the reason reuse cannot be the fix: the issue-time SMS
         // has already told patient 21 that they are serial 1.
-        var (doctorId, onDate) = OwnQueue();
+        var (doctorId, onDate) = await OwnQueueAsync();
         await using var appt = CreateAppt(null);
 
         var first = await _svc.IssueSerialAsync(appt, 1, patientId: 21, doctorId, onDate, actorId: 7);
@@ -86,7 +93,7 @@ public class AppointmentQueueTests : IAsyncLifetime
         // Twelve patients through a queue that is cancelled every other time — the shape of a
         // real morning. What must hold is that no number is ever handed out twice, whatever
         // happened to the appointment that first took it.
-        var (doctorId, onDate) = OwnQueue();
+        var (doctorId, onDate) = await OwnQueueAsync();
         await using var appt = CreateAppt(null);
 
         for (var i = 0; i < 12; i++)
@@ -117,7 +124,7 @@ public class AppointmentQueueTests : IAsyncLifetime
         // computed from a count of non-cancelled rows while the allocator maxed over all of them,
         // so one cancellation made the screen and the issue-time SMS name two different serials.
         // Both now come from `AppointmentsService.NextSerialFor`.
-        var (doctorId, onDate) = OwnQueue();
+        var (doctorId, onDate) = await OwnQueueAsync();
         await using var appt = CreateAppt(null);
 
         // An empty doctor-day offers 1.
@@ -162,7 +169,7 @@ public class AppointmentQueueTests : IAsyncLifetime
         // The allocator's retry exists for this, not for cancelled rows. Both callers read the
         // same max, both propose the same number, the unique index refuses one — and the loser
         // must recompute and land on the next free number rather than fail the operator.
-        var (doctorId, onDate) = OwnQueue();
+        var (doctorId, onDate) = await OwnQueueAsync();
 
         await using var connA = new NpgsqlConnection(_pg.ConnectionString);
         await using var connB = new NpgsqlConnection(_pg.ConnectionString);
@@ -183,7 +190,7 @@ public class AppointmentQueueTests : IAsyncLifetime
     {
         // M3-G1: `AdvanceAsync` is a state-guarded UPDATE, so the second click on a stale queue
         // board loses in words instead of overwriting the first (edge 28).
-        var (doctorId, onDate) = OwnQueue();
+        var (doctorId, onDate) = await OwnQueueAsync();
         await using var appt = CreateAppt(null);
 
         var row = await _svc.IssueSerialAsync(appt, 1, 41, doctorId, onDate, 7);

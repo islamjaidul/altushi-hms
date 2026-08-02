@@ -35,6 +35,7 @@ public sealed class DiagnosticsService(IChargePoster chargePoster, TimeProvider 
             PromisedAt = now.AddMinutes(tests.Max(t => t.TatMinutes)),   // TAT promise (§9A.2)
             CreatedAt = now,
             CreatedBy = actorId,
+            PublicToken = PublicToken.New(),   // AUD-PHI-01: the public lookup key, never the id
         };
         diag.Orders.Add(order);
         await diag.SaveChangesAsync(ct);
@@ -81,6 +82,7 @@ public sealed class DiagnosticsService(IChargePoster chargePoster, TimeProvider 
             PromisedAt = now.AddMinutes(tests.Max(t => t.TatMinutes)),
             CreatedAt = now,
             CreatedBy = actorId,
+            PublicToken = PublicToken.New(),   // AUD-PHI-01: the public lookup key, never the id
         };
         diag.Orders.Add(order);
         await diag.SaveChangesAsync(ct);

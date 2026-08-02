@@ -76,8 +76,28 @@ public sealed class AppointmentsService(TimeProvider clock)
         throw new AppointmentsException("Could not allocate a serial — the queue is moving fast, try again.");
     }
 
+    /// <summary>
+    /// The moves the queue board actually offers (spec 0039 WP1, AUD-VAL-11). Both <c>from</c>
+    /// and <c>to</c> arrive as hidden form fields, so without this table the UPDATE below would
+    /// write any string the browser sends — "deleted" included — into the state column.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> LegalMoves = new()
+    {
+        [AppointmentState.Booked] =
+            [AppointmentState.Arrived, AppointmentState.InChamber,
+             AppointmentState.NoShow, AppointmentState.Cancelled],
+        [AppointmentState.Arrived] =
+            [AppointmentState.InChamber, AppointmentState.NoShow, AppointmentState.Cancelled],
+        [AppointmentState.InChamber] = [AppointmentState.Done],
+    };
+
     public async Task AdvanceAsync(ApptDbContext appt, long id, string from, string to, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to) ||
+            !LegalMoves.TryGetValue(from, out var allowed) || !allowed.Contains(to))
+            throw new AppointmentsException(
+                "That is not a move this queue can make — refresh the board and use its buttons.");
+
         var affected = await appt.Database.ExecuteSqlAsync($"""
             UPDATE appt.appointment SET state = {to} WHERE id = {id} AND state = {from}
             """, ct);

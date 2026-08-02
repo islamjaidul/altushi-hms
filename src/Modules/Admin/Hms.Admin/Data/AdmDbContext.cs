@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -82,6 +83,11 @@ public class ReportingConsultant
 
 public class AdmDbContext(DbContextOptions<AdmDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Service> Services => Set<Service>();
     public DbSet<TestCatalogItem> TestCatalog => Set<TestCatalogItem>();
     public DbSet<RateVersion> RateVersions => Set<RateVersion>();
@@ -91,17 +97,65 @@ public class AdmDbContext(DbContextOptions<AdmDbContext> options) : DbContext(op
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.HasDefaultSchema("adm");
-        b.Entity<Service>(e => { e.ToTable("service"); e.HasIndex(x => x.Code).IsUnique(); });
+        b.Entity<Service>(e =>
+        {
+            e.ToTable("service");
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(40);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Dept).HasMaxLength(40);
+            e.Property(x => x.Kind).HasMaxLength(40);
+        });
         b.Entity<TestCatalogItem>(e =>
         {
             e.ToTable("test_catalog");
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Template).HasColumnType("jsonb");
+            e.Property(x => x.Code).HasMaxLength(40);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Dept).HasMaxLength(40);
+            e.ToTable(t => t.HasCheckConstraint("ck_test_catalog_tat", "tat_minutes >= 0"));
         });
-        b.Entity<RateVersion>(e => e.ToTable("rate_version"));
-        b.Entity<Referrer>(e => { e.ToTable("referrer"); e.HasIndex(x => x.Code).IsUnique(); });
-        b.Entity<ReportingConsultant>(e => e.ToTable("reporting_consultant"));
+        b.Entity<RateVersion>(e =>
+        {
+            e.ToTable("rate_version", t =>
+            {
+                // WP2.1 (AUD-VAL-24c): value bounds ALONGSIDE the structural overlap rule. The
+                // GiST exclusion cannot catch valid_from = infinity — infinity overlaps nothing
+                // — and one price was frozen forever exactly that way. The window bound is a
+                // value rule, so it lives here; the overlap rule stays in InitAdm untouched.
+                t.HasCheckConstraint("ck_rate_version_price", "price >= 0");
+                t.HasCheckConstraint("ck_rate_version_window",
+                    "valid_from BETWEEN '2000-01-01' AND '2100-01-01'");
+                t.HasCheckConstraint("ck_rate_version_effective_order",
+                    "valid_to IS NULL OR valid_to >= valid_from");
+            });
+            e.Property(x => x.Scope).HasMaxLength(40);
+            e.Property(x => x.CatalogKind).HasMaxLength(40);
+            // The resolver's exact predicate, btree — the GiST index serves the exclusion
+            // constraint, not the per-item lookup that runs in a loop on every picker render.
+            e.HasIndex(x => new { x.CatalogKind, x.CatalogId, x.Scope, x.BranchId, x.ValidFrom });
+        });
+        b.Entity<Referrer>(e =>
+        {
+            e.ToTable("referrer", t => t.HasCheckConstraint(
+                "ck_referrer_commission", "commission_percent BETWEEN 0 AND 100"));
+            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.Code).HasMaxLength(40);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Kind).HasMaxLength(40);
+            e.Property(x => x.Area).HasMaxLength(200);
+            e.Property(x => x.Phone).HasMaxLength(20);
+        });
+        b.Entity<ReportingConsultant>(e =>
+        {
+            e.ToTable("reporting_consultant");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Degrees).HasMaxLength(200);
+            e.Property(x => x.BmdcNo).HasMaxLength(40);
+        });
         // The GiST exclusion constraint is raw SQL in the InitAdm migration (00 §2).
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 

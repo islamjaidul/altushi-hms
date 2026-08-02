@@ -23,6 +23,10 @@ public static class HrNav
         new(HrModule.Name, "Roster", "/hr/roster", HrPerm.Claim.RosterManage, "calendar_month", Group),
         new(HrModule.Name, "Leave", "/hr/leave", HrPerm.Claim.Read, "event_busy", Group),
         new(HrModule.Name, "Payroll", "/hr/payroll", HrPerm.Claim.PayrollRun, "payments", Group),
+        // The approver's door (AUD-AUZ-01): §12's Accounts Manager / MD hold approve and NOT run,
+        // so maker-checker needs a surface they can reach without the ability to generate.
+        new(HrModule.Name, "Payroll approvals", "/hr/payroll/approvals", HrPerm.Claim.PayrollApprove, "task_alt", Group),
+        new(HrModule.Name, "Payslips", "/hr/payslips", HrPerm.Claim.SalaryRead, "receipt_long", Group),
         new(HrModule.Name, "Org structure", "/hr/masters", HrPerm.Claim.PolicyManage, "factory", Group),
         new(HrModule.Name, "Policies", "/hr/policies", HrPerm.Claim.PolicyManage, "rule", Group),
         new(HrModule.Name, "My Leave", "/hr/me", HrPerm.Claim.LeaveApply, "person", Group),

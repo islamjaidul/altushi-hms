@@ -93,7 +93,17 @@ public class VerifyModel(
     public async Task<IActionResult> OnPostAsync()
     {
         await LoadAsync();
-        if (Selected is null) { Fail("Nothing selected."); return Page(); }
+        if (Selected is null)
+        { Fail("That order is not awaiting verification — pick one from the worklist."); return Page(); }
+
+        // AUD-VAL-26a: the signature block resolves against the reporting-consultant master —
+        // an id nothing points at would sign the printed report with nobody. Only a consultant
+        // this order's departments offer may sign it.
+        if (ConsultantId is { } cid && Consultants.All(c => c.Id != cid))
+        {
+            Fail("That reporting consultant is not on the master list — pick one from the list.");
+            return Page();
+        }
 
         var pending = Tests.Where(t => !t.Verified).ToList();
         if (pending.Count == 0) { Fail("Everything on this order is already verified."); return Page(); }

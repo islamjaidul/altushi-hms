@@ -108,6 +108,47 @@ public sealed class AttendanceService(AuditWriter audit, TimeProvider clock)
     }
 
     /// <summary>
+    /// Derives every day an import batch touched. The set is each accepted punch's Dhaka date,
+    /// plus the previous date wherever the roster says that date's shift crosses midnight — a
+    /// 06:05 out-punch on Wednesday belongs to Tuesday's night shift, and Tuesday must be the row
+    /// that gets it (the <see cref="AttendanceDay.OnDate"/> contract).
+    /// </summary>
+    public async Task<int> DeriveImportedDaysAsync(
+        HrDbContext hr, long branchId, long batchId, CancellationToken ct = default)
+    {
+        var punches = await hr.Punches.AsNoTracking()
+            .Where(p => p.ImportBatchId == batchId)
+            .Select(p => new { p.EmployeeId, p.PunchedAt })
+            .ToListAsync(ct);
+
+        var targets = new SortedSet<(long EmployeeId, DateOnly Date)>(
+            punches.Select(p => (p.EmployeeId, DhakaDate(p.PunchedAt))));
+
+        var previous = targets
+            .Select(t => (t.EmployeeId, Date: t.Date.AddDays(-1)))
+            .Where(t => !targets.Contains(t))
+            .ToList();
+        if (previous.Count > 0)
+        {
+            var employeeIds = previous.Select(x => x.EmployeeId).Distinct().ToList();
+            var dates = previous.Select(x => x.Date).Distinct().ToList();
+            var nightRostered = await hr.RosterEntries.AsNoTracking()
+                .Where(r => employeeIds.Contains(r.EmployeeId) && dates.Contains(r.OnDate) && !r.WeeklyOff)
+                .Join(hr.Shifts.AsNoTracking().Where(s => s.EndsNextDay),
+                      r => r.ShiftId, s => s.Id, (r, s) => new { r.EmployeeId, r.OnDate })
+                .ToListAsync(ct);
+            foreach (var n in nightRostered)
+                if (previous.Contains((n.EmployeeId, n.OnDate)))
+                    targets.Add((n.EmployeeId, n.OnDate));
+        }
+
+        foreach (var (employeeId, date) in targets)
+            await DeriveDayAsync(hr, branchId, employeeId, date, ct);
+
+        return targets.Count;
+    }
+
+    /// <summary>
     /// Derives (or re-derives) one employee's day from punches, the roster and the calendar.
     /// Idempotent by <c>UNIQUE(employee_id, on_date)</c>.
     /// </summary>
@@ -277,4 +318,8 @@ public sealed class AttendanceService(AuditWriter audit, TimeProvider clock)
     /// <summary>Dhaka midnight of a date, as UTC. Asia/Dhaka has no DST, so the offset is constant.</summary>
     private static DateTimeOffset Ui(DateOnly d)
         => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue), TimeSpan.FromHours(6)).ToUniversalTime();
+
+    /// <summary>The Dhaka calendar date a punch landed on.</summary>
+    private static DateOnly DhakaDate(DateTimeOffset at)
+        => DateOnly.FromDateTime(at.ToOffset(TimeSpan.FromHours(6)).DateTime);
 }

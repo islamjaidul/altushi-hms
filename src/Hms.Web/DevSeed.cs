@@ -186,19 +186,26 @@ public static class DevSeed
         var appt = sp.GetRequiredService<ApptDbContext>();
         if (!await appt.Schedules.AnyAsync())
         {
-            var doctors = new (long id, string name, string room, int max)[]
+            var doctors = new (string name, string room, int max)[]
             {
-                (1, "Dr. Kamrul Hasan", "Room 204 — Medicine", 40),
-                (2, "Dr. Nusrat Jahan", "Room 106 — Gynae & Obs", 30),
-                (3, "Dr. Sohel Rana", "Room 301 — Cardiology", 25),
-                (4, "Dr. Ashraf Ali", "Room 112 — Paediatrics", 35),
+                ("Dr. Kamrul Hasan", "Room 204 — Medicine", 40),
+                ("Dr. Nusrat Jahan", "Room 106 — Gynae & Obs", 30),
+                ("Dr. Sohel Rana", "Room 301 — Cardiology", 25),
+                ("Dr. Ashraf Ali", "Room 112 — Paediatrics", 35),
             };
-            foreach (var (id, name, room, max) in doctors)
+            foreach (var (name, room, max) in doctors)
+            {
+                // The master row first (WP2.5): the schedule carries a foreign key to it, and
+                // the id is the identity column's, never a hand-picked constant.
+                var doctor = new Doctor { Name = name };
+                appt.Doctors.Add(doctor);
+                await appt.SaveChangesAsync();
                 appt.Schedules.Add(new DoctorSchedule
                 {
-                    DoctorId = id, DoctorName = name, Room = room, MaxSerials = max,
+                    DoctorId = doctor.Id, DoctorName = name, Room = room, MaxSerials = max,
                     Weekday = 0, SlotFrom = new TimeOnly(9, 0), SlotTo = new TimeOnly(14, 0),
                 });
+            }
             await appt.SaveChangesAsync();
         }
 

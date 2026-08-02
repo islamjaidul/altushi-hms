@@ -16,6 +16,7 @@ public sealed record SampleLabel(string Barcode, string SampleType, IReadOnlyLis
 public class SlipModel(HmsTx tx, TimeProvider clock) : HmsPageModel
 {
     public long OrderId { get; private set; }
+    public string PublicToken { get; private set; } = "";   // AUD-PHI-01: the public lookup code
     public string State { get; private set; } = "";
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset PromisedAt { get; private set; }
@@ -38,6 +39,7 @@ public class SlipModel(HmsTx tx, TimeProvider clock) : HmsPageModel
             if (order is null) return false;
 
             OrderId = order.Id;
+            PublicToken = order.PublicToken;
             State = order.State;
             CreatedAt = order.CreatedAt;
             PromisedAt = order.PromisedAt;

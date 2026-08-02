@@ -37,6 +37,7 @@ Status values: `Proposed` · `Accepted` · `Superseded by NNNN`. Superseded ADRs
 | [0025](0025-two-host-product-line.md) | Two hosts, one codebase: HR & Payroll as a separately deployable product | Accepted | extends 0003/0005/0016; spec 0034 | 2026-07-31 |
 | [0026](0026-entitlement-enforcement-completion.md) | Entitlement enforcement completion: choke point 2 and the expiry ladder | Accepted | completes 0016 (Q12); answers P6 | 2026-07-31 |
 | [0027](0027-payroll-policy-as-configuration.md) | Payroll policy is effective-dated configuration, never code | Accepted | §5 M16, §3.4, rules 3 & 5 | 2026-07-31 |
+| [0028](0028-validation-tier-and-schema-self-defence.md) | Validation tier and schema self-defence — input gate, NOT VALID posture, intra-schema FKs, xmin tokens, fault boundary, hard-rule-4 grants | Accepted | §7, §8 N4/N5, §12, hard rules 4 & 5 | 2026-08-03 |
 
 ## Required coverage
 

@@ -62,22 +62,55 @@ namespace Hms.Appointments.Data.Migrations
 
                     b.Property<string>("Source")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("source");
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.HasKey("Id")
                         .HasName("pk_appointment");
 
+                    b.HasIndex("OnDate")
+                        .HasDatabaseName("ix_appointment_on_date");
+
                     b.HasIndex("DoctorId", "OnDate", "SerialNo")
                         .IsUnique()
                         .HasDatabaseName("ix_appointment_doctor_id_on_date_serial_no");
 
-                    b.ToTable("appointment", "appt");
+                    b.ToTable("appointment", "appt", t =>
+                        {
+                            t.HasCheckConstraint("ck_appointment_state", "state IN ('booked','arrived','in_chamber','done','cancelled','no_show')");
+                        });
+                });
+
+            modelBuilder.Entity("Hms.Appointments.Data.Doctor", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_doctor");
+
+                    b.ToTable("doctor", "appt");
                 });
 
             modelBuilder.Entity("Hms.Appointments.Data.DoctorSchedule", b =>
@@ -95,7 +128,8 @@ namespace Hms.Appointments.Data.Migrations
 
                     b.Property<string>("DoctorName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("doctor_name");
 
                     b.Property<int>("MaxSerials")
@@ -103,7 +137,8 @@ namespace Hms.Appointments.Data.Migrations
                         .HasColumnName("max_serials");
 
                     b.Property<string>("Room")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("room");
 
                     b.Property<TimeOnly>("SlotFrom")
@@ -121,7 +156,33 @@ namespace Hms.Appointments.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_doctor_schedule");
 
-                    b.ToTable("doctor_schedule", "appt");
+                    b.HasIndex("DoctorId")
+                        .HasDatabaseName("ix_doctor_schedule_doctor_id");
+
+                    b.ToTable("doctor_schedule", "appt", t =>
+                        {
+                            t.HasCheckConstraint("ck_schedule_max_serials", "max_serials > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Hms.Appointments.Data.Appointment", b =>
+                {
+                    b.HasOne("Hms.Appointments.Data.Doctor", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_appointment_doctor_doctor_id");
+                });
+
+            modelBuilder.Entity("Hms.Appointments.Data.DoctorSchedule", b =>
+                {
+                    b.HasOne("Hms.Appointments.Data.Doctor", null)
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_doctor_schedule_doctor_doctor_id");
                 });
 #pragma warning restore 612, 618
         }

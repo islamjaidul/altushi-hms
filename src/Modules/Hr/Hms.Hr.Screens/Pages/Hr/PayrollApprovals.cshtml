@@ -1,0 +1,130 @@
+@page "/hr/payroll/approvals"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.PayrollApprovalsModel
+@{
+    ViewData["Title"] = "Payroll approvals";
+    ViewData["Crumb"] = HrNav.Group;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        <h2>Waiting for approval
+            <span class="card-hint">§12: the officer who generates a run cannot be the one who approves it</span>
+        </h2>
+    </div>
+    @if (Model.Waiting.Count == 0)
+    {
+        <div class="empty-state">
+            Nothing is waiting. A run appears here once the HR officer has reviewed its
+            exceptions and sent it for approval.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Month</th>
+                    <th class="num">Staff</th>
+                    @if (Model.CanSeeMoney)
+                    {
+                        <th class="num">Net payable</th>
+                    }
+                    <th class="num">Exceptions</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Waiting)
+                {
+                    <tr>
+                        <td class="tabular">@r.RunNo</td>
+                        <td class="tabular">@r.Period.ToString("MMMM yyyy")</td>
+                        <td class="num tabular">@r.EmployeeCount</td>
+                        @if (Model.CanSeeMoney)
+                        {
+                            <td class="num tabular">@Ui.Money(r.TotalNet)</td>
+                        }
+                        <td class="num tabular">@(r.ExceptionCount == 0 ? "—" : r.ExceptionCount.ToString())</td>
+                        <td>
+                            <form method="post" asp-page-handler="Approve" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <button type="submit" class="btn-tint">Approve</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="card card-clip">
+    <div class="card-head"><h2>Recent runs</h2></div>
+    @if (Model.Recent.Count == 0)
+    {
+        <div class="empty-state">No approved, locked or posted runs yet.</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Run</th>
+                    <th>Month</th>
+                    <th>State</th>
+                    @if (Model.CanSeeMoney)
+                    {
+                        <th class="num">Net payable</th>
+                    }
+                    <th>Reverse</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Recent)
+                {
+                    var status = Ui.Status(r.State);
+                    <tr>
+                        <td class="tabular">@r.RunNo</td>
+                        <td class="tabular">@r.Period.ToString("MMMM yyyy")</td>
+                        <td><span class="pill @status.Css">@status.Word</span></td>
+                        @if (Model.CanSeeMoney)
+                        {
+                            <td class="num tabular">@Ui.Money(r.TotalNet)</td>
+                        }
+                        <td>
+                            @if (r.State is PayrollRunState.Locked or PayrollRunState.Posted)
+                            {
+                                <form method="post" asp-page-handler="Reverse" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <input class="input input-sm" name="reason" required
+                                           placeholder="Reason (required)" autocomplete="off" />
+                                    <button type="submit" class="btn-tint">Reverse</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="card-hint">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

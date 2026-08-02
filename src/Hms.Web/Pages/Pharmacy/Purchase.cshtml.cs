@@ -71,11 +71,42 @@ public class PurchaseModel(
 
     public async Task<IActionResult> OnPostCreateAsync()
     {
-        var lines = ProductIds.Zip(LineQtys, (p, q) => (p, q)).Zip(LineCosts, (x, c) => (x.p, x.q, c))
-            .Where(x => x.p > 0 && x.q > 0)
-            .Select(x => new NewPoLine(x.p, x.q, x.c)).ToList();
+        // Spec 0039 WP1 (AUD-VAL-18): the three lists are parallel rows of one grid. Ragged
+        // lists are a crafted post, not an operator mistake — refuse, never zip-and-guess.
+        if (ProductIds.Count != LineQtys.Count || ProductIds.Count != LineCosts.Count)
+        { await LoadAsync(); Fail("The order lines came back garbled — re-enter them and try again."); return Page(); }
+
+        var lines = new List<NewPoLine>();
+        for (var i = 0; i < ProductIds.Count; i++)
+        {
+            if (ProductIds[i] == 0 && LineQtys[i] <= 0) continue;      // untouched blank row
+            if (ProductIds[i] == 0)
+            { await LoadAsync(); Fail($"Line {i + 1}: pick the product for the quantity you entered."); return Page(); }
+            if (LineQtys[i] is < 1 or > 9_999)
+            { await LoadAsync(); Fail($"Line {i + 1}: the quantity must be between 1 and 9,999."); return Page(); }
+            if (LineCosts[i] is < 0 or > 100_000_000)
+            { await LoadAsync(); Fail($"Line {i + 1}: the unit cost must be a whole-taka amount between 0 and 10,00,00,000."); return Page(); }
+            lines.Add(new NewPoLine(ProductIds[i], LineQtys[i], LineCosts[i]));
+        }
         if (SupplierId == 0 || OutletId == 0 || lines.Count == 0)
         { await LoadAsync(); Fail("Pick a supplier, an outlet and at least one product line."); return Page(); }
+
+        // AUD-VAL-18h: every id on the order must name a row that exists — the dropdown
+        // constrains the browser, not the request.
+        var refused = await tx.RunAsync(async s =>
+        {
+            if (!await s.Pharm.Suppliers.AnyAsync(x => x.Id == SupplierId && x.Active))
+                return "That supplier is not on the supplier list — pick one from the list.";
+            if (!await s.Pharm.Outlets.AnyAsync(x => x.Id == OutletId && x.Active))
+                return "That outlet does not exist — pick one from the list.";
+            var ids = lines.Select(l => l.ProductId).Distinct().ToList();
+            var known = await s.Pharm.Products.AsNoTracking()
+                .Where(p => ids.Contains(p.Id) && p.Active).CountAsync();
+            return known == ids.Count
+                ? null
+                : "A product on this order is not in the catalogue any more — pick it from the list again.";
+        });
+        if (refused is not null) { await LoadAsync(); Fail(refused); return Page(); }
 
         try
         {

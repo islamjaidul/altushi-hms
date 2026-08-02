@@ -1,4 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Billing;
+using Hms.Billing.Data;
 using Hms.Kernel.Approvals;
 using Hms.Pharmacy;
 using Hms.Pharmacy.Data;
@@ -27,18 +29,21 @@ public class PosModel(
     [BindProperty(SupportsGet = true)] public long? PatientId { get; set; }
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
     [BindProperty(SupportsGet = true)] public long? OutletId { get; set; }
+    // Spec 0039 WP1: Items/Qtys are parallel lists and deliberately carry no range annotation —
+    // a [Qty] here would judge the whole collection, not its elements. Elements are validated
+    // in the save handler; an unparseable element is refused by the input gate (Qtys[0]).
     [BindProperty] public List<long> Items { get; set; } = [];
     [BindProperty] public List<int> Qtys { get; set; } = [];
-    [BindProperty] public long DiscountFlat { get; set; }
-    [BindProperty] public string? DiscountReason { get; set; }
+    [BindProperty, Money] public long DiscountFlat { get; set; }
+    [BindProperty, StringLength(Bounds.Note)] public string? DiscountReason { get; set; }
     [BindProperty] public bool StaffSale { get; set; }
-    [BindProperty] public long PaidNow { get; set; }
+    [BindProperty, Money] public long PaidNow { get; set; }
     /// <summary>Spec 0021: one prepared sale, one invoice — survives a double-click.</summary>
     [BindProperty] public Guid SubmissionToken { get; set; }
     [BindProperty] public string Tender { get; set; } = "cash";
-    [BindProperty] public long PaidNow2 { get; set; }
+    [BindProperty, Money] public long PaidNow2 { get; set; }
     [BindProperty] public string Tender2 { get; set; } = "card";
-    [BindProperty] public string? TenderRef2 { get; set; }
+    [BindProperty, StringLength(Bounds.Code)] public string? TenderRef2 { get; set; }
 
     public OpenSession? Session { get; private set; }
     public IReadOnlyList<Outlet> Outlets { get; private set; } = [];
@@ -60,8 +65,29 @@ public class PosModel(
     }
     public async Task<IActionResult> OnPostAsync() { await LoadAsync(); return Page(); }
 
+    /// <summary>Items and Qtys travel as parallel hidden fields; a crafted post can make them
+    /// ragged. A garbled cart is refused and cleared — never guessed at (spec 0039 WP1).</summary>
+    private bool CartShapeOk()
+    {
+        if (Items.Count == Qtys.Count) return true;
+        Items.Clear();
+        Qtys.Clear();
+        Fail("The cart came back garbled, so it has been cleared — add the medicines again.");
+        return false;
+    }
+
     public async Task<IActionResult> OnPostAddAsync(long productId)
     {
+        if (!CartShapeOk()) { await LoadAsync(); return Page(); }
+        // AUD-VAL-17b: an id the catalogue does not have must not ride along in the cart.
+        var known = await tx.RunAsync(s =>
+            s.Pharm.Products.AsNoTracking().AnyAsync(p => p.Id == productId && p.Active));
+        if (!known)
+        {
+            await LoadAsync();
+            Fail("That medicine is not in the catalogue — pick one from the shelf list.");
+            return Page();
+        }
         var idx = Items.IndexOf(productId);
         if (idx >= 0) Qtys[idx] += 1;
         else { Items.Add(productId); Qtys.Add(1); }
@@ -71,6 +97,7 @@ public class PosModel(
 
     public async Task<IActionResult> OnPostRemoveAsync(int index)
     {
+        if (!CartShapeOk()) { await LoadAsync(); return Page(); }
         if (index >= 0 && index < Items.Count) { Items.RemoveAt(index); Qtys.RemoveAt(index); }
         await LoadAsync();
         return Page();
@@ -113,11 +140,14 @@ public class PosModel(
 
             var byId = products.ToDictionary(p => p.Id);
             var priceOf = Shelf.ToDictionary(x => x.ProductId, x => x.Mrp);
+            // AUD-VAL-17c/d/e: no coercion — a quantity below 1 renders as posted and the save
+            // handler refuses it with a sentence. Math.Max(1, ...) here once turned a crafted
+            // qty of 0 into a silent sale of one unit.
             Cart = Items.Zip(Qtys, (id, qty) => (id, qty))
                 .Where(x => byId.ContainsKey(x.id))
                 .Select(x => new PosCartLine(x.id,
                     $"{byId[x.id].Brand} {byId[x.id].Strength} {byId[x.id].Form}",
-                    Math.Max(1, x.qty), priceOf.GetValueOrDefault(x.id)))
+                    x.qty, priceOf.GetValueOrDefault(x.id)))
                 .ToList();
 
             if (PatientId is { } pid and > 0)
@@ -159,11 +189,34 @@ public class PosModel(
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
+        if (!CartShapeOk()) { await LoadAsync(); return Page(); }
         await LoadAsync();
 
         if (Session is null) { Fail("Open your counter before selling."); return Page(); }
         if (OutletId is null) { Fail("No pharmacy outlet configured."); return Page(); }
         if (Cart.Count == 0) { Fail("Add at least one medicine."); return Page(); }
+        // The displayed cart is Items filtered to the known catalogue; a mismatch means the form
+        // carried a product id that does not exist. Refuse rather than sell a subset (AUD-VAL-17b).
+        if (Cart.Count != Items.Count)
+        {
+            Fail("A medicine in this cart is not in the catalogue any more — remove it and add it again.");
+            return Page();
+        }
+        // AUD-VAL-17c..f: each line's quantity is judged here, element by element — a collection
+        // cannot carry a [Qty] annotation, and the gate only refuses unparseable elements.
+        for (var i = 0; i < Qtys.Count; i++)
+        {
+            if (Qtys[i] is < 1 or > 9_999)
+            {
+                Fail($"Line {i + 1}: the quantity must be between 1 and 9,999.");
+                return Page();
+            }
+        }
+        if (!Tenders.IsKnown(Tender) || (PaidNow2 > 0 && !Tenders.IsKnown(Tender2)))
+        {
+            Fail($"That is not a way money can be taken. Use one of: {string.Join(", ", Tenders.All)}.");
+            return Page();
+        }
 
         var gross = Gross;
         var discount = Math.Max(0, Math.Min(gross, DiscountFlat));
@@ -219,10 +272,24 @@ public class PosModel(
                 var patientId = PatientId is > 0
                     ? PatientId.Value
                     : await PharmacySale.EnsureWalkInPatientAsync(s, BranchId, ActorId);
-                return await PharmacySale.SaveAsync(
+                var id = await PharmacySale.SaveAsync(
                     s, billing, stock, clock, BranchId, OutletId!.Value, Session!, patientId,
                     items, discount, approvalId, tenders, ActorId, ActorName, SubmissionToken,
                     StaffSale, audit);
+
+                // WP1.4 (AUD-VAL-17g): a save that claims a payment produces a receipt or the
+                // whole transaction fails — asserted here, not only trusted to the binder.
+                var claimed = tenders.Sum(x => x.Amount);
+                if (claimed > 0)
+                {
+                    var receipted = await s.Bill.Receipts
+                        .Where(r => r.InvoiceId == id)
+                        .SumAsync(r => (long?)r.Amount) ?? 0;
+                    if (receipted != claimed)
+                        throw new BillingException(
+                            "The payment could not be receipted, so the sale was not saved. Try again.");
+                }
+                return id;
             });
             Toast("Sale saved — receipt ready", "receipt_long");
             return Redirect($"/billing/invoice/{invoiceId}");

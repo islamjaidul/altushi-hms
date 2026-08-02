@@ -38,7 +38,8 @@ namespace Hms.Ot.Data.Migrations
 
                     b.Property<string>("BatchNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("batch_no");
 
                     b.Property<long>("CaseId")
@@ -59,7 +60,8 @@ namespace Hms.Ot.Data.Migrations
 
                     b.Property<string>("ProductName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("product_name");
 
                     b.Property<int>("Qty")
@@ -76,7 +78,10 @@ namespace Hms.Ot.Data.Migrations
                     b.HasIndex("CaseId")
                         .HasDatabaseName("ix_case_consumable_case_id");
 
-                    b.ToTable("case_consumable", "ot");
+                    b.ToTable("case_consumable", "ot", t =>
+                        {
+                            t.HasCheckConstraint("ck_case_consumable_qty", "qty > 0 AND unit_price >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ot.Data.CaseTeamMember", b =>
@@ -110,12 +115,14 @@ namespace Hms.Ot.Data.Migrations
 
                     b.Property<string>("PersonName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("person_name");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("role");
 
                     b.HasKey("Id")
@@ -125,7 +132,10 @@ namespace Hms.Ot.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_case_team_case_id_role_person_id");
 
-                    b.ToTable("case_team", "ot");
+                    b.ToTable("case_team", "ot", t =>
+                        {
+                            t.HasCheckConstraint("ck_case_team_amount", "amount_posted >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Hms.Ot.Data.OtCase", b =>
@@ -138,7 +148,8 @@ namespace Hms.Ot.Data.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("AnaesthesiaType")
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("anaesthesia_type");
 
                     b.Property<long>("BranchId")
@@ -146,12 +157,14 @@ namespace Hms.Ot.Data.Migrations
                         .HasColumnName("branch_id");
 
                     b.Property<string>("CancelReason")
-                        .HasColumnType("text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
                         .HasColumnName("cancel_reason");
 
                     b.Property<string>("CaseNo")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("case_no");
 
                     b.Property<DateTimeOffset?>("CompletedAt")
@@ -175,7 +188,8 @@ namespace Hms.Ot.Data.Migrations
                         .HasColumnName("encounter_id");
 
                     b.Property<string>("Findings")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("findings");
 
                     b.Property<DateTimeOffset?>("FinishedAt")
@@ -188,7 +202,8 @@ namespace Hms.Ot.Data.Migrations
 
                     b.Property<string>("OperationName")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("operation_name");
 
                     b.Property<long>("OperationServiceId")
@@ -200,7 +215,8 @@ namespace Hms.Ot.Data.Migrations
                         .HasColumnName("patient_id");
 
                     b.Property<string>("ProcedurePerformed")
-                        .HasColumnType("text")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
                         .HasColumnName("procedure_performed");
 
                     b.Property<DateTimeOffset>("ScheduledFrom")
@@ -217,7 +233,8 @@ namespace Hms.Ot.Data.Migrations
 
                     b.Property<string>("State")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
                         .HasColumnName("state");
 
                     b.Property<long>("TheatreId")
@@ -242,7 +259,15 @@ namespace Hms.Ot.Data.Migrations
 
                     b.ToTable("ot_case", "ot", t =>
                         {
+                            t.HasCheckConstraint("ck_case_cancel_reason", "state NOT IN ('cancelled','postponed') OR cancel_reason IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_case_finished", "state <> 'completed' OR finished_at IS NOT NULL");
+
                             t.HasCheckConstraint("ck_case_parent", "num_nonnulls(folio_id, encounter_id) = 1");
+
+                            t.HasCheckConstraint("ck_case_started", "state NOT IN ('in_theatre','completed') OR started_at IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_case_state", "state IN ('scheduled','patient_ready','in_theatre','completed','cancelled','postponed')");
 
                             t.HasCheckConstraint("ck_case_window", "scheduled_to > scheduled_from");
                         });
@@ -267,7 +292,8 @@ namespace Hms.Ot.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -278,6 +304,36 @@ namespace Hms.Ot.Data.Migrations
                         .HasDatabaseName("ix_theatre_branch_id_name");
 
                     b.ToTable("theatre", "ot");
+                });
+
+            modelBuilder.Entity("Hms.Ot.Data.CaseConsumable", b =>
+                {
+                    b.HasOne("Hms.Ot.Data.OtCase", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_consumable_ot_case_case_id");
+                });
+
+            modelBuilder.Entity("Hms.Ot.Data.CaseTeamMember", b =>
+                {
+                    b.HasOne("Hms.Ot.Data.OtCase", null)
+                        .WithMany()
+                        .HasForeignKey("CaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_case_team_ot_case_case_id");
+                });
+
+            modelBuilder.Entity("Hms.Ot.Data.OtCase", b =>
+                {
+                    b.HasOne("Hms.Ot.Data.Theatre", null)
+                        .WithMany()
+                        .HasForeignKey("TheatreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_ot_case_theatre_theatre_id");
                 });
 #pragma warning restore 612, 618
         }

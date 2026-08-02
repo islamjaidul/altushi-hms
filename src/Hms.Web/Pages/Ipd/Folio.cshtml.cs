@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
 using Hms.Billing;
+using Hms.Billing.Data;
 using Hms.Ipd;
 using Hms.Ipd.Data;
 using Hms.Kernel.Approvals;
@@ -44,14 +46,17 @@ public class FolioModel(
 {
     [BindProperty(SupportsGet = true)] public long AdmissionId { get; set; }
     [BindProperty] public long ServiceId { get; set; }
-    [BindProperty] public int Qty { get; set; } = 1;
+    /// <summary>AUD-VAL-14g: quantity 999999 once posted 29,99,99,700 Tk to a folio.</summary>
+    [BindProperty, Qty] public int Qty { get; set; } = 1;
     [BindProperty] public long? VisitDoctorId { get; set; }
-    [BindProperty] public long AdvanceAmount { get; set; }
+    [BindProperty, Money] public long AdvanceAmount { get; set; }
     [BindProperty] public string AdvanceTender { get; set; } = "cash";
     [BindProperty] public long ToBedId { get; set; }
+    // Parallel lists — element quantities are judged in the indent handler, never by a
+    // collection-level annotation (spec 0039 WP1, AUD-VAL-16).
     [BindProperty] public List<long> ProductIds { get; set; } = [];
     [BindProperty] public List<int> ItemQtys { get; set; } = [];
-    [BindProperty] public string? IndentNote { get; set; }
+    [BindProperty, StringLength(Bounds.Note)] public string? IndentNote { get; set; }
     [BindProperty] public List<long> TestIds { get; set; } = [];
     [BindProperty] public long IndentId { get; set; }
     [BindProperty] public long ReturnProductId { get; set; }
@@ -258,6 +263,10 @@ public class FolioModel(
     {
         if (!CanSettle) return Forbid();
         if (AdvanceAmount <= 0) return await Reshow("The advance must be a positive amount.");
+        // AUD-VAL-15f: "bitcoin" once entered the drawer — a tender the day-close cannot classify.
+        if (!Tenders.IsKnown(AdvanceTender))
+            return await Reshow(
+                $"That is not a way money can be taken. Use one of: {string.Join(", ", Tenders.All)}.");
         try
         {
             await tx.RunAsync(async s =>
@@ -294,12 +303,36 @@ public class FolioModel(
     public async Task<IActionResult> OnPostIndentAsync()
     {
         if (!CanPost) return Forbid();
-        var items = ProductIds.Zip(ItemQtys, (p, q) => (p, q)).Where(x => x.p > 0 && x.q > 0).ToList();
+        // AUD-VAL-16d: N products and M quantities is a crafted post — refuse, never zip-and-guess.
+        if (ProductIds.Count != ItemQtys.Count)
+            return await Reshow("The medicine lines came back garbled — re-enter them and try again.");
+        var items = new List<(long ProductId, int Qty)>();
+        for (var i = 0; i < ProductIds.Count; i++)
+        {
+            if (ProductIds[i] == 0 && ItemQtys[i] <= 0) continue;      // untouched blank row
+            if (ProductIds[i] == 0)
+                return await Reshow($"Line {i + 1}: pick the medicine for the quantity you entered.");
+            if (ItemQtys[i] is < 1 or > 9_999)
+                return await Reshow($"Line {i + 1}: the quantity must be between 1 and 9,999.");
+            items.Add((ProductIds[i], ItemQtys[i]));
+        }
         if (items.Count == 0) return await Reshow("Add at least one medicine line.");
         try
         {
-            await tx.RunAsync(s => folios.CreateIndentAsync(s.Ipd, s.Kernel, BranchId, AdmissionId,
-                items.Select(x => (x.p, x.q)).ToList(), IndentNote, ActorId, ActorName));
+            await tx.RunAsync(async s =>
+            {
+                // AUD-VAL-16c: an indent line names a pharmacy product — an id the pharmacy
+                // catalogue does not have must not reach the issue queue. Cross-module existence
+                // check, at the composition root where both schemas are readable.
+                var ids = items.Select(x => x.ProductId).Distinct().ToList();
+                var known = await s.Pharm.Products.AsNoTracking()
+                    .Where(p => ids.Contains(p.Id) && p.Active).CountAsync();
+                if (known != ids.Count)
+                    throw new IpdException(
+                        "A medicine on this indent is not in the pharmacy catalogue — pick it from the list again.");
+                return await folios.CreateIndentAsync(s.Ipd, s.Kernel, BranchId, AdmissionId,
+                    items, IndentNote, ActorId, ActorName);
+            });
         }
         catch (IpdException e) { return await Reshow(e.Message); }
         Toast("Indent raised — pharmacy will issue it", "receipt_long");

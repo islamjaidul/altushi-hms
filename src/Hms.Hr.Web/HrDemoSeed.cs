@@ -1,3 +1,4 @@
+using System.Text;
 using Hms.Hr;
 using Hms.Hr.Data;
 using Hms.Kernel.Data;
@@ -22,9 +23,13 @@ namespace Hms.Hr.Web;
 /// by an employee-count check, so it cannot reach a real install and cannot double-run.
 /// </para>
 /// <para>
-/// <b>What it does not seed:</b> tax slabs, provident-fund rates and statutory leave entitlements.
-/// ADR-0027 and P26 stand — those are the employer's numbers, and a demo is not a licence to invent
-/// Bangladeshi ones. Pay figures are deliberately round.
+/// <b>On the policy numbers it seeds:</b> the demo employer configures its own absence, overtime,
+/// grace, PF, gratuity and tax-band rules — through the same <see cref="PolicyResolver"/> write
+/// path the Policies screen uses — because a payroll demo whose every rule table is empty pays
+/// full gross to the absent and nothing for overtime, which spec 0038 flagged as AUD-M16-01/02.
+/// These are one fictional employer's round numbers, labelled as such; they assert no NBR slab and
+/// no Labour Act entitlement (ADR-0027 and P26 stand — statutory leave entitlements remain
+/// unseeded). Pay figures are deliberately round.
 /// </para>
 /// </summary>
 public static class HrDemoSeed
@@ -106,6 +111,8 @@ public static class HrDemoSeed
         var tx = sp.GetRequiredService<IHrTx>();
         var employees = sp.GetRequiredService<EmployeeService>();
         var payroll = sp.GetRequiredService<PayrollService>();
+        var attendance = sp.GetRequiredService<AttendanceService>();
+        var policies = sp.GetRequiredService<PolicyResolver>();
         var clock = sp.GetRequiredService<TimeProvider>();
 
         const long branchId = 1;
@@ -127,6 +134,11 @@ public static class HrDemoSeed
 
         await tx.RunAsync(async s =>
         {
+            await SeedPayRulesAsync(s, policies, branchId, today, actorId, actorName);
+        });
+
+        await tx.RunAsync(async s =>
+        {
             await SeedPeopleAsync(s, employees, branchId, today, actorId, actorName);
             await s.Hr.SaveChangesAsync();
         });
@@ -136,6 +148,14 @@ public static class HrDemoSeed
             await SeedAttendanceAsync(s.Hr, branchId, today);
             await SeedLeaveAsync(s.Hr, branchId, today, actorId, actorName, clock);
             await s.Hr.SaveChangesAsync();
+        });
+
+        // Today's attendance arrives the way a live install's does: raw punches through the
+        // import pipeline, then derivation (AUD-M16-08 — this path had never executed against
+        // product input; now every fresh install executes it on first boot).
+        await tx.RunAsync(async s =>
+        {
+            await SeedTodayPunchesAsync(s, attendance, branchId, today, actorId, actorName);
         });
 
         await SeedPayrollAsync(tx, payroll, branchId, today, actorId, actorName);
@@ -237,21 +257,84 @@ public static class HrDemoSeed
                 BranchId = branchId, Code = "LWP", Name = "Leave without pay",
                 Kind = PayComponentKind.Deduction, CalcMethod = PayComponentCalc.Computed,
                 ComputedKind = ComputedComponent.LeaveWithoutPay, DisplayOrder = 70,
+            },
+            new PayComponent
+            {
+                BranchId = branchId, Code = "LATE", Name = "Late arrival deduction",
+                Kind = PayComponentKind.Deduction, CalcMethod = PayComponentCalc.Computed,
+                ComputedKind = ComputedComponent.LateDeduction, DisplayOrder = 80,
+            },
+            new PayComponent
+            {
+                BranchId = branchId, Code = "PF", Name = "Provident fund (employee)",
+                Kind = PayComponentKind.Deduction, CalcMethod = PayComponentCalc.Computed,
+                ComputedKind = ComputedComponent.ProvidentFund, DisplayOrder = 90,
+            },
+            new PayComponent
+            {
+                BranchId = branchId, Code = "TAX", Name = "Income tax",
+                Kind = PayComponentKind.Deduction, CalcMethod = PayComponentCalc.Computed,
+                ComputedKind = ComputedComponent.IncomeTax, DisplayOrder = 100,
+            },
+            new PayComponent
+            {
+                BranchId = branchId, Code = "ARREARS", Name = "Arrears",
+                Kind = PayComponentKind.Earning, CalcMethod = PayComponentCalc.Computed,
+                ComputedKind = ComputedComponent.Arrears, Taxable = true, DisplayOrder = 55,
             });
 
-        // The one policy a run cannot start without. Both numbers are this employer's choice, not a
-        // statute we are asserting: proration over calendar days, and no payslip below zero.
+        // The one policy a run cannot start without. Both numbers are this employer's choice, not
+        // a statute we are asserting: this employer prorates over a fixed 30 days — the common
+        // Bangladeshi payroll convention — and allows no payslip below zero.
         hr.PayrollPolicies.Add(new PayrollPolicy
         {
             BranchId = branchId,
             EffectiveFrom = today.AddYears(-2),
-            DayCountConvention = DayCountConvention.CalendarDays,
+            DayCountConvention = DayCountConvention.Fixed30,
             MinimumNetPayTaka = 0,
             CreatedAt = DateTimeOffset.UtcNow,
             CreatedBy = 1,
         });
 
         await hr.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// The demo employer's own pay rules, written through the same effective-dated service path
+    /// the Policies screen drives. Round fictional numbers — no NBR slab or Labour Act rate is
+    /// asserted (rule 3); an empty-ruled payroll demo would pay the absent in full (AUD-M16-01).
+    /// </summary>
+    private static async Task SeedPayRulesAsync(
+        HrScope s, PolicyResolver policies, long branchId, DateOnly today,
+        long actorId, string actorName)
+    {
+        var from = today.AddYears(-2);
+
+        // One day's pay per absent or unpaid-leave day.
+        await policies.SetDeductionAsync(
+            s.Hr, s.Kernel, branchId, from, 10_000, 10_000, actorId, actorName);
+
+        // 10 minutes' grace, three free lates a month, half a day's pay per excess late.
+        await policies.SetGraceTimeAsync(
+            s.Hr, s.Kernel, branchId, from, 10, 3, 5_000, actorId, actorName);
+
+        // Overtime at 2.0x from the first minute, uncapped, paid rather than banked.
+        await policies.SetOvertimeAsync(
+            s.Hr, s.Kernel, branchId, from, 0, 20_000, 0, false, actorId, actorName);
+
+        // 8% + 8% provident fund after six months' service, no monthly cap.
+        await policies.SetPfAsync(
+            s.Hr, s.Kernel, branchId, from, 800, 800, 6, null, actorId, actorName);
+
+        // 30 days of pay per completed year, after five years.
+        await policies.SetGratuityAsync(
+            s.Hr, s.Kernel, branchId, from, 60, 300_000, actorId, actorName);
+
+        // This employer's monthly withholding bands. Fictional and round, like the salaries.
+        await policies.SetTaxSlabsAsync(
+            s.Hr, s.Kernel, branchId, from,
+            [(30_000, 0), (60_000, 500), (100_000, 1_000), (0, 1_500)],
+            actorId, actorName);
     }
 
     private static async Task SeedPeopleAsync(
@@ -366,11 +449,12 @@ public static class HrDemoSeed
             .ToListAsync();
         var generalShift = await hr.Shifts.FirstAsync(s => s.BranchId == branchId && s.Code == "GEN");
 
-        // From 0, so today is included. /hr/attendance opens on today by design — the exception list
-        // for the day you are standing in — and a seed that stopped at yesterday left the busiest
-        // screen in the product showing an empty state on a database with 9,000 attendance rows.
+        // History starts at yesterday. Today is deliberately NOT written here: it arrives through
+        // the punch import pipeline (SeedTodayPunchesAsync), so the screen the product opens on
+        // shows days the derivation engine actually produced — and the engine has run on every
+        // install, not only in a test (AUD-M16-08).
         foreach (var person in staff)
-        foreach (var offset in Enumerable.Range(0, AttendanceDays))
+        foreach (var offset in Enumerable.Range(1, AttendanceDays - 1))
         {
             var day = today.AddDays(-offset);
             if (day < person.JoinedOn) continue;
@@ -510,9 +594,56 @@ public static class HrDemoSeed
     ];
 
     /// <summary>
+    /// Today's punches, imported through the real pipeline: file rows → <c>ImportAsync</c> →
+    /// per-day derivation. Most people punched in and out, a few punched only once (US16.1's
+    /// exception list stays honest), and a few did not come in at all.
+    /// </summary>
+    private static async Task SeedTodayPunchesAsync(
+        HrScope s, AttendanceService attendance, long branchId, DateOnly today,
+        long actorId, string actorName)
+    {
+        var rng = new Random(SeedValue + 3);
+
+        var staff = await s.Hr.Employees.AsNoTracking()
+            .Where(e => e.BranchId == branchId && e.SeparatedOn == null)
+            .Select(e => e.EmployeeCode)
+            .OrderBy(c => c)
+            .ToListAsync();
+
+        var rows = new StringBuilder("employee_code, punched_at, direction\n");
+        foreach (var code in staff)
+        {
+            var roll = rng.Next(100);
+            if (roll >= 96) continue;                          // absent: no punches at all
+
+            var late = roll is >= 78 and < 90 ? rng.Next(5, 45) : 0;
+            var inAt = today.ToDateTime(new TimeOnly(9, 0)).AddMinutes(late);
+            rows.Append($"{code}, {inAt:dd/MM/yyyy HH:mm}, in\n");
+
+            if (roll is >= 90 and < 96) continue;              // punched in, never out: incomplete
+
+            var outAt = today.ToDateTime(new TimeOnly(18, 0))
+                .AddMinutes(rng.Next(100) < 12 ? rng.Next(1, 5) * 30 : 0);
+            rows.Append($"{code}, {outAt:dd/MM/yyyy HH:mm}, out\n");
+        }
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(rows.ToString()));
+        await attendance.ImportAsync(
+            s.Hr, s.Kernel, branchId, $"demo-punches-{today:yyyyMMdd}.csv",
+            new CsvPunchSource(), stream, actorId, actorName);
+
+        // Punches must be durable before derivation reads them back day by day.
+        await s.Hr.SaveChangesAsync();
+        var batchId = await s.Hr.PunchImportBatches.MaxAsync(b => b.Id);
+        await attendance.DeriveImportedDaysAsync(s.Hr, branchId, batchId);
+    }
+
+    /// <summary>
     /// Last month, run for real: generate → review → approve → lock. The state machine and the
     /// balanced-journal check both execute, so a demo that shows a locked run is showing one the
-    /// product actually produced.
+    /// product actually produced. It stops at Locked — `hrm-thread.py` relies on that being the
+    /// seed's terminal state, and posting (which issues the payslips) is what the thread itself
+    /// drives end to end.
     /// </summary>
     private static async Task SeedPayrollAsync(
         IHrTx tx, PayrollService payroll, long branchId, DateOnly today,

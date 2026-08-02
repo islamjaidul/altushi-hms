@@ -8,6 +8,14 @@
     var status = Ui.Status(p.Status);
 }
 
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
 <div class="row-end" style="margin-bottom:14px">
     <div>
         <a class="btn" href="/hr/employees">
@@ -90,6 +98,62 @@
                     </div>
                 }
             </div>
+
+            @if (Model.CanSetPay && Model.PayForm.Count > 0)
+            {
+                <div class="card">
+                    <div class="card-head">@(Model.PayLines.Count == 0 ? "Set pay" : "Revise pay")</div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="SetPay" asp-route-id="@Model.Person!.Id">
+                            @Html.AntiForgeryToken()
+                            <div class="field-grid cols-3">
+                                @foreach (var c in Model.PayForm)
+                                {
+                                    if (c.CalcMethod == PayComponentCalc.PercentOf)
+                                    {
+                                        <label class="check field">
+                                            <input type="checkbox" name="PayInclude[@c.Id]" value="true"
+                                                   checked="@c.CurrentlyIncluded" />
+                                            <span>@c.Name — @(c.PercentBp / 100)% of base</span>
+                                        </label>
+                                    }
+                                    else
+                                    {
+                                        <label class="field">
+                                            <span class="field-label">@c.Name (৳/month)</span>
+                                            <input class="input num" name="PayAmount[@c.Id]" inputmode="numeric"
+                                                   value="@(c.CurrentAmount == 0 ? "" : c.CurrentAmount)" />
+                                        </label>
+                                    }
+                                }
+                                <label class="field">
+                                    <span class="field-label">Effective from</span>
+                                    <input class="input" name="NewPayFrom" hms-date placeholder="e.g. 01/09/2026" />
+                                </label>
+                                <label class="field">
+                                    <span class="field-label">Reason</span>
+                                    <select class="input" name="PayReason">
+                                        <option value="joining" selected="@(Model.PayLines.Count == 0)">Joining</option>
+                                        <option value="increment">Increment</option>
+                                        <option value="promotion">Promotion</option>
+                                        <option value="revision" selected="@(Model.PayLines.Count > 0)">Revision</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="filter-row" style="margin-top:8px">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="icon icon-sm" aria-hidden="true">payments</span> Save pay
+                                </button>
+                            </div>
+                        </form>
+                        <p class="card-hint">
+                            Whole taka, monthly. Saving opens a new effective-dated structure from
+                            the date you give and closes the current one the day before — historical
+                            payslips keep resolving their historical numbers. The change is audited.
+                        </p>
+                    </div>
+                </div>
+            }
         }
 
         <div class="card card-clip">

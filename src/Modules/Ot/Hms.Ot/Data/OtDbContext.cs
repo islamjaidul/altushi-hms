@@ -1,3 +1,4 @@
+using Hms.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -100,6 +101,11 @@ public class CaseConsumable
 
 public class OtDbContext(DbContextOptions<OtDbContext> options) : DbContext(options)
 {
+
+    /// <summary>The branch this context's queries are isolated to (spec 0039 WP5). Captured
+    /// from the ambient request scope at construction; every entity carrying a BranchId is
+    /// filtered to it structurally — see BranchIsolation.</summary>
+    public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
     public DbSet<Theatre> Theatres => Set<Theatre>();
     public DbSet<OtCase> Cases => Set<OtCase>();
     public DbSet<CaseTeamMember> Team => Set<CaseTeamMember>();
@@ -107,11 +113,15 @@ public class OtDbContext(DbContextOptions<OtDbContext> options) : DbContext(opti
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        // Spec 0039 WP2: domain-value CHECKs, state CHECKs from CaseState above, intra-schema
+        // FKs and HasMaxLength — same posture as BillDbContext (additive only, NOT VALID in
+        // the migration for pre-existing tables).
         b.HasDefaultSchema("ot");
 
         b.Entity<Theatre>(e =>
         {
             e.ToTable("theatre");
+            e.Property(x => x.Name).HasMaxLength(200);
             e.HasIndex(x => new { x.BranchId, x.Name }).IsUnique();
         });
 
@@ -121,25 +131,60 @@ public class OtDbContext(DbContextOptions<OtDbContext> options) : DbContext(opti
             {
                 t.HasCheckConstraint("ck_case_parent", "num_nonnulls(folio_id, encounter_id) = 1");
                 t.HasCheckConstraint("ck_case_window", "scheduled_to > scheduled_from");
+                t.HasCheckConstraint("ck_case_state",
+                    "state IN ('scheduled','patient_ready','in_theatre','completed',"
+                    + "'cancelled','postponed')");
+                // OtService stamps these on the transitions; completion is only reachable
+                // from in_theatre, so a completed case has both timestamps, and both cancel
+                // and postpone demand a reason (audit §2).
+                t.HasCheckConstraint("ck_case_started",
+                    "state NOT IN ('in_theatre','completed') OR started_at IS NOT NULL");
+                t.HasCheckConstraint("ck_case_finished",
+                    "state <> 'completed' OR finished_at IS NOT NULL");
+                t.HasCheckConstraint("ck_case_cancel_reason",
+                    "state NOT IN ('cancelled','postponed') OR cancel_reason IS NOT NULL");
             });
+            e.Property(x => x.CaseNo).HasMaxLength(40);
+            e.Property(x => x.OperationName).HasMaxLength(200);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.AnaesthesiaType).HasMaxLength(40);
+            e.Property(x => x.Findings).HasMaxLength(10000);
+            e.Property(x => x.ProcedurePerformed).HasMaxLength(10000);
+            e.Property(x => x.CancelReason).HasMaxLength(4000);
             e.HasIndex(x => x.CaseNo).IsUnique();
             e.HasIndex(x => new { x.TheatreId, x.ScheduledFrom });
             e.HasIndex(x => x.State);
             e.HasIndex(x => x.PatientId);
+            e.HasOne<Theatre>().WithMany().HasForeignKey(x => x.TheatreId);
         });
 
         b.Entity<CaseTeamMember>(e =>
         {
-            e.ToTable("case_team");
+            e.ToTable("case_team", t => t.HasCheckConstraint(
+                "ck_case_team_amount", "amount_posted >= 0"));
+            e.Property(x => x.Role).HasMaxLength(40);
+            e.Property(x => x.PersonName).HasMaxLength(200);
             // One person holds one role on a case; the same surgeon cannot be billed twice for it.
             e.HasIndex(x => new { x.CaseId, x.Role, x.PersonId }).IsUnique();
+            e.HasOne<OtCase>().WithMany().HasForeignKey(x => x.CaseId);
         });
 
         b.Entity<CaseConsumable>(e =>
         {
-            e.ToTable("case_consumable");
+            e.ToTable("case_consumable", t => t.HasCheckConstraint(
+                "ck_case_consumable_qty", "qty > 0 AND unit_price >= 0"));
+            e.Property(x => x.ProductName).HasMaxLength(200);
+            e.Property(x => x.BatchNo).HasMaxLength(40);
             e.HasIndex(x => x.CaseId);
+            e.HasOne<OtCase>().WithMany().HasForeignKey(x => x.CaseId);
+            // product_id points at pharm.product — cross-schema, so no FK (ADR-0003).
         });
+        // Hard rule 4: the schema must never delete on its own. Every relationship this model
+        // declares refuses a parent delete instead of cascading it — corrections are reversals,
+        // and a cascade is a delete machine (spec 0039 WP2, ADR-0028).
+        foreach (var fk in b.Model.GetEntityTypes().SelectMany(t => t.GetForeignKeys()))
+            fk.DeleteBehavior = DeleteBehavior.Restrict;
+        b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }
 
