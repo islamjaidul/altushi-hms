@@ -1,0 +1,7 @@
+@{
+    // Denied and Logout moved here from src/Hms.Web/Pages during the shell extraction, which
+    // silently took them out of reach of the host's _ViewStart — an RCL does not inherit it. They
+    // rendered unstyled from that moment. Login opts out again with Layout = null; it carries its
+    // own <html> because a sign-in screen has no sidebar to sit in.
+    Layout = "_Layout";
+}

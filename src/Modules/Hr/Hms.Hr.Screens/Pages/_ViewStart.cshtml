@@ -1,0 +1,7 @@
+@{
+    // A razor class library does NOT inherit the host's _ViewStart: the lookup walks the view's own
+    // path, and these pages live under the RCL, not under src/Hms.Web/Pages. Without this file
+    // Layout stays null and every HR screen renders as a bare fragment — no <html>, no stylesheet,
+    // no sidebar — which is exactly how they shipped.
+    Layout = "_Layout";
+}
