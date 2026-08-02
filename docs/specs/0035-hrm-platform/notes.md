@@ -251,3 +251,34 @@ real characters and surrounding spaces are unaffected, which is what "never trim
 Live matrix, all eight cases (blank/blank, no username, no password on a real account, whitespace
 only, wrong password, unknown user, username with spaces, valid) verified against
 `hrm.specshipper.com` after deployment — not inferred from the tests.
+
+### Post-deploy fix: every RCL page rendered without a layout
+
+A razor class library does not inherit the host's `_ViewStart.cshtml` — the lookup walks the view's
+own path, and RCL pages do not live under `src/Hms.Web/Pages`. Neither `Hms.Hr.Screens` nor
+`Hms.Shell` had one, so all nine HR screens plus `/denied` and `/logout` returned bare fragments:
+no `<html>`, no stylesheet, no sidebar, Material Symbols ligatures showing as literal text.
+
+`Denied` and `Logout` are a **regression introduced by this spec**: they worked under
+`src/Hms.Web/Pages` and stopped the moment the shell extraction moved them into the RCL. The ERP
+has not been rebuilt, so it never reached that deployment — but it would have on the next one.
+
+**The verification failure is the part worth keeping.** Every check in the table above passed over
+this: the responses were 200, the markup was correct, permissions and entitlements were enforced.
+None of those facts says anything about whether a layout wrapped the output.
+
+And one of them was actively misread. "sidebar | HR links only" in the ADR-0026 table was produced
+by grepping `/hr` for links and finding only `/hr`. The real reason was that **there was no sidebar
+at all** — absence of the shell was recorded as evidence of the entitlement filter. A broken page
+cannot corroborate a claim. Re-verified properly once the layout rendered: the sidebar exists and
+contains exactly the eight HR routes and nothing else.
+
+`RazorLayoutTests` now asserts every routable page reaches a layout, and names all nine screens on
+the tree without the fix. Post-fix, all nine screens and `/denied` carry `<html>`, the versioned
+stylesheet, the sidebar and the icon font.
+
+Two other defects the same screenshot surfaced: `OrgIdentity.Monogram` defaulted to the literal
+"A" (Altushi's initial, on every customer's login), and **nothing in the product used
+`asp-append-version`**, so shipped CSS never reached a browser holding a cached copy — a fix could
+be correct, deployed, and invisible. Both fixed; `check-ui-tokens` now fails an unversioned asset
+reference.
