@@ -366,8 +366,11 @@ public static class HrDemoSeed
             .ToListAsync();
         var generalShift = await hr.Shifts.FirstAsync(s => s.BranchId == branchId && s.Code == "GEN");
 
+        // From 0, so today is included. /hr/attendance opens on today by design — the exception list
+        // for the day you are standing in — and a seed that stopped at yesterday left the busiest
+        // screen in the product showing an empty state on a database with 9,000 attendance rows.
         foreach (var person in staff)
-        foreach (var offset in Enumerable.Range(1, AttendanceDays))
+        foreach (var offset in Enumerable.Range(0, AttendanceDays))
         {
             var day = today.AddDays(-offset);
             if (day < person.JoinedOn) continue;
