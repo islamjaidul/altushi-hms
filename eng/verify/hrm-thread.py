@@ -8,15 +8,28 @@ case drives a control the way an operator drives it — fill the form on the pag
 page's own antiforgery token — and then goes *back to a rendered screen* to prove the change is
 there. A write that returns 302 and persists nothing fails here.
 
-Tier t2: it creates masters, employees, users and payroll runs, so it wants a fresh database.
+Tier t1: every assertion is either about a record this run created or a relative change ("the
+count moved from N to N+1"), so a dirty database is fine and it survives being run twice (0029).
+It does assume the demo seed's fixtures are present — a hundred employees, leave waiting at each
+state of the §11 chain, one locked run — which is what both the local seed and the demo deployment
+have. It is not fresh-database-only, so it can be pointed at the deployment.
+
+What a run against a shared target leaves behind, listed in its manifest: one employee, one of
+each of the six masters, a login named for the run id, a `QA Probe Role`, and one payroll run walked to
+Posted on the first month that had none. All of it is findable and none of it is deletable —
+hard rule 4 applies to a QA run too.
 
     BASE_URL=http://localhost:5299 python3 eng/verify/hrm-thread.py
+
+    BASE_URL=https://hrm.example.com HMS_QA_ENV=vm HMS_QA_CONFIRM=hrm.example.com \
+        python3 eng/verify/hrm-thread.py
 """
 import re
 import sys
 import urllib.error
 
-from _harness import (BASE, DEV_PASSWORD, Session, case, check, grant_cells, guard, report, step)
+from _harness import (BASE, DEV_PASSWORD, RUN_ID, Session, case, check, grant_cells, guard,
+                      record, report, step)
 
 # ---------------------------------------------------------------------------
 # The HRM cast. Its own seed (HrSeed.Roles), not the ERP's — _harness.CAST is the hospital's.
@@ -45,6 +58,10 @@ SCREENS = [
 MASTER_TABS = ["units", "designations", "grades", "shifts", "leave-types", "components"]
 
 NAV_LINK = 'class="nav-item'
+
+# Unique per run, so a second run against the same database creates a second account instead of
+# colliding with the first — and so the login this run resets the password on is its own (0029).
+PROBE_USER = "qa" + re.sub(r"[^0-9a-z]", "", RUN_ID.lower())[-8:]
 
 _ADMIN = None    # the signed-in admin, for helpers that need to re-read a screen
 
@@ -116,7 +133,7 @@ def post_raw(s, path, fields, page):
 
 # ===========================================================================
 def main() -> int:
-    guard("t2")
+    guard("t1")
     global _ADMIN
     admin = _ADMIN = Session("admin")
 
@@ -238,6 +255,7 @@ def main() -> int:
     after = int(re.search(r"(\d+) on record", admin.get("/hr/employees")).group(1))
     check(after == before + 1, f"the count moved {before} → {after}")
     new_id = re.search(r'href="/hr/employees/(\d+)">QA Probe Kamal', listing)
+    record("employee", new_id.group(1) if new_id else "?")
     check(new_id is not None, "the new employee's name links to a record")
     if new_id:
         check(status_of(admin, f"/hr/employees/{new_id.group(1)}") == 200,
@@ -270,6 +288,7 @@ def main() -> int:
         listing = admin.get(f"/hr/masters?tab={tab}")
         check(extra["Name"] in listing, f"{tab}: {extra['Name']!r} was created and is listed")
         made[tab] = extra["Name"]
+        record(f"master:{tab}", extra["Name"])
 
     case("HRM-MST-03", "A new shift and unit reach the screens that consume them", admin)
     check("QA Cutting Floor" in admin.get("/hr/employees/new"),
@@ -281,10 +300,19 @@ def main() -> int:
           "the new leave type is reported by /hr/policies (R6)")
 
     case("HRM-MST-04", "Masters refuse what they should refuse", admin)
+    # The duplicate-code case creates its own row with a code it chose, rather than reading one an
+    # earlier case happened to leave: a second run finds that row renamed, and a case that quietly
+    # tests nothing is worse than one that fails (0029).
+    dup = "QADUP" + RUN_ID[-5:].upper()
+    post_raw(admin, "/hr/masters?handler=Create",
+             {"Tab": "units", "Name": "QA Duplicate Probe", "Code": dup},
+             admin.get("/hr/masters?tab=units"))
+    check(dup in admin.get("/hr/masters?tab=units"), f"a unit exists on code {dup} to collide with")
+    record("master:units", "QA Duplicate Probe")
+
     checks = [
         ("units", {"Name": ""}, "a blank name"),
-        ("units", {"Name": "Clash", "Code": made_code("units", "QA Cutting Floor")},
-         "a duplicate code"),
+        ("units", {"Name": "Clash", "Code": dup}, "a duplicate code"),
         ("shifts", {"Name": "QA Broken", "StartsAt": "", "EndsAt": ""}, "a shift with no times"),
         ("shifts", {"Name": "QA Broken2", "StartsAt": "25:00", "EndsAt": "04:00"},
          "a start time of 25:00"),
@@ -526,14 +554,19 @@ def main() -> int:
         check(alert(body) is not None, f"{label} is refused with a message: {alert(body)!r}")
 
     case("HRM-PAY-03", "A run walks §11 and each state is what the screen offers", admin)
-    url, body = post_raw(admin, "/hr/payroll?handler=Generate", {"Period": "01/08/2026"},
+    # Spec 0029's rule: a verify script has to survive being run twice. Pick a month this
+    # deployment has no run for, rather than a fixed one that a second run would collide with.
+    period = free_period(admin)
+    check(period is not None, f"found a payroll month with no run yet: {period}")
+    url, body = post_raw(admin, "/hr/payroll?handler=Generate", {"Period": period},
                        admin.get("/hr/payroll"))
-    check(not crashed(url), "generating August is not a 500")
+    check(not crashed(url), f"generating {period} is not a 500")
     pay = admin.get("/hr/payroll")
     run = re.search(r'(PR-\d{4}-\d{2}-\d{4})[\s\S]{0,600}?(Generated|Draft)', pay)
     check(run is not None, f"a new run is Generated: {run and run.group(1)}")
+    record("payroll_run", run.group(1) if run else period)
 
-    url, body = post_raw(admin, "/hr/payroll?handler=Generate", {"Period": "01/08/2026"}, pay)
+    url, body = post_raw(admin, "/hr/payroll?handler=Generate", {"Period": period}, pay)
     check(not crashed(url), "generating the same month twice is not a 500")
     check(alert(body) is not None, f"a duplicate period is refused: {alert(body)!r}")
 
@@ -570,12 +603,13 @@ def main() -> int:
     check("handler=Create" in users, "the create-user form is on the screen")
     role = re.search(r'name="RoleName"[\s\S]{0,600}?<option value="([^"]+)"', users).group(1)
     url, body = post_raw(admin, "/admin/users?handler=Create",
-                       {"Username": "qaprobe", "DisplayName": "QA Probe",
+                       {"Username": PROBE_USER, "DisplayName": "QA Probe",
                         "Password": "Demo#1234", "RoleName": role}, users)
     check(not crashed(url), "creating a user is not a 500")
-    check("qaprobe" in admin.get("/admin/users"), "the new user is listed (persisted)")
+    check(PROBE_USER in admin.get("/admin/users"), "the new user is listed (persisted)")
+    record("user", PROBE_USER)
     try:
-        probe = Session("qaprobe")
+        probe = Session(PROBE_USER)
         check("/hr" in probe.get("/hr")[:200] or status_of(probe, "/hr") == 200,
               "the new user can sign in and reach the product")
     except Exception as e:
@@ -586,11 +620,11 @@ def main() -> int:
     for fields, label in [
             ({"Username": "", "DisplayName": "X", "Password": "Demo#1234", "RoleName": role},
              "a blank username"),
-            ({"Username": "qaprobe", "DisplayName": "X", "Password": "Demo#1234",
+            ({"Username": PROBE_USER, "DisplayName": "X", "Password": "Demo#1234",
               "RoleName": role}, "a username that is taken"),
-            ({"Username": "qaprobe2", "DisplayName": "X", "Password": "x", "RoleName": role},
+            ({"Username": PROBE_USER + "b", "DisplayName": "X", "Password": "x", "RoleName": role},
              "a one-character password"),
-            ({"Username": "qaprobe3", "DisplayName": "X", "Password": "Demo#1234",
+            ({"Username": PROBE_USER + "c", "DisplayName": "X", "Password": "Demo#1234",
               "RoleName": "No Such Role"}, "a role that does not exist")]:
         url, body = post_raw(admin, "/admin/users?handler=Create", fields, users)
         check(not crashed(url), f"{label} is not a 500")
@@ -603,14 +637,14 @@ def main() -> int:
     check(uid is not None, "the reset control is on a user row")
     # Reset the probe's own password so no seeded login is disturbed.
     probe_row = re.search(
-        r'qaprobe[\s\S]{0,3000}?handler=ResetPassword"[\s\S]{0,200}?name="id" value="(\d+)"', users)
+        PROBE_USER + r'[\s\S]{0,3000}?handler=ResetPassword"[\s\S]{0,200}?name="id" value="(\d+)"', users)
     if probe_row:
         pid = probe_row.group(1)
         url, body = post_raw(admin, "/admin/users?handler=ResetPassword",
                            {"id": pid, "newPassword": "QaProbe#2026"}, users)
         check(not crashed(url), "resetting a password is not a 500")
         try:
-            Session("qaprobe", "QaProbe#2026")
+            Session(PROBE_USER, "QaProbe#2026")
             check(True, "the new password signs in")
         except Exception as e:
             check(False, f"the reset password does not sign in: {e}")
@@ -621,17 +655,17 @@ def main() -> int:
     case("HRM-USR-04", "Deactivate, and the account stops working", admin)
     users = admin.get("/admin/users")
     probe_row = re.search(
-        r'qaprobe[\s\S]{0,3000}?handler=Toggle"[\s\S]{0,200}?name="id" value="(\d+)"', users)
+        PROBE_USER + r'[\s\S]{0,3000}?handler=Toggle"[\s\S]{0,200}?name="id" value="(\d+)"', users)
     check(probe_row is not None, "the probe user has a deactivate control")
     if probe_row:
         pid = probe_row.group(1)
-        check(signs_in("qaprobe", "QaProbe#2026"), "the probe signs in before being deactivated")
+        check(signs_in(PROBE_USER, "QaProbe#2026"), "the probe signs in before being deactivated")
         url, body = post_raw(admin, "/admin/users?handler=Toggle", {"id": pid}, users)
         check(not crashed(url), "deactivating is not a 500")
-        check(not signs_in("qaprobe", "QaProbe#2026"),
+        check(not signs_in(PROBE_USER, "QaProbe#2026"),
               "a deactivated account is refused at the login screen")
         post_raw(admin, "/admin/users?handler=Toggle", {"id": pid}, admin.get("/admin/users"))
-        check(signs_in("qaprobe", "QaProbe#2026"), "reactivating lets it back in")
+        check(signs_in(PROBE_USER, "QaProbe#2026"), "reactivating lets it back in")
 
     case("HRM-USR-05", "Create a role and move a permission on it", admin)
     users = admin.get("/admin/users")
@@ -642,6 +676,7 @@ def main() -> int:
     check(not crashed(url), "creating a role is not a 500")
     users = admin.get("/admin/users")
     check("QA Probe Role" in users, "the new role is on the matrix (persisted)")
+    record("role", "QA Probe Role")
 
     url, body = post_raw(admin, "/admin/users?handler=CreateRole",
                        {"NewRoleName": "QA Probe Role", "CopyFromRole": ""}, users)
@@ -761,14 +796,32 @@ def row_id(html, name):
     return m.group(1) if m else None
 
 
-def made_code(tab, name):
-    """The code the product issued for a master, read back off its own screen."""
-    import urllib.request
-    html = _ADMIN.get(f"/hr/masters?tab={tab}")
-    # The code sits in the row's id-cell, ahead of the rename form that carries the name.
-    m = re.search(r'<td class="id-cell">([A-Z0-9]+)</td>[\s\S]{0,900}?value="'
-                  + re.escape(name) + r'"', html)
-    return m.group(1) if m else "NOSUCHCODE"
+MONTHS = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"]
+
+
+def free_period(s):
+    """A month with no payroll run on it yet, as `dd/mm/yyyy` — so a second run is not a collision.
+
+    The screen prints its runs' periods as "August 2026", which is the only place a deployment's
+    used months can be read without a new endpoint.
+    """
+    taken = set(re.findall(r"([A-Z][a-z]+ \d{4})", rows_html(s.get("/hr/payroll"))))
+    year, month = 2026, 8
+    for _ in range(48):
+        label = f"{MONTHS[month - 1]} {year}"
+        if label not in taken:
+            return f"01/{month:02d}/{year}"
+        month += 1
+        if month > 12:
+            month, year = 1, year + 1
+    return None
+
+
+def rows_html(html):
+    body = re.search(r"<tbody>([\s\S]*?)</tbody>", html)
+    return body.group(1) if body else ""
+
 
 
 def urlq(s):
