@@ -27,6 +27,12 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
     /// </summary>
     public bool FocusPassword => UsernameError is null && PasswordError is not null;
 
+    // The exact words both tiers say. The page renders these into data-msg-* attributes and
+    // login.js reads them from there, so the instant message and the one that survives a
+    // round trip cannot drift apart (spec 0040 rule 2) — there is only this one copy.
+    public const string UsernameRequired = "Enter your username.";
+    public const string PasswordRequired = "Enter your password.";
+
     /// <summary>
     /// Field-level validation, kept pure so it can be tested without standing up a
     /// <see cref="SignInManager{T}"/>. Null means the field is fine.
@@ -38,8 +44,35 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
     /// their account genuinely has.
     /// </remarks>
     public static (string? Username, string? Password) Validate(string? username, string? password)
-        => (string.IsNullOrWhiteSpace(username) ? "Enter your username." : null,
-            string.IsNullOrEmpty(password) ? "Enter your password." : null);
+        => (string.IsNullOrWhiteSpace(username) ? UsernameRequired : null,
+            string.IsNullOrEmpty(password) ? PasswordRequired : null);
+
+    /// <summary>
+    /// Where a successful sign-in lands, given the <c>returnUrl</c> that came in on the query
+    /// string. Pure — <paramref name="isLocal"/> is the framework's own
+    /// <c>IUrlHelper.IsLocalUrl</c> verdict, so the security-critical half is not
+    /// re-implemented here and this half stays testable without HTTP.
+    /// </summary>
+    /// <remarks>
+    /// Three things get sent to the dashboard instead of honoured:
+    /// a URL that is not local (a pasted link must never bounce an operator off this product —
+    /// and it must *degrade*, not throw: <c>LocalRedirect</c> raises, which the fault boundary
+    /// renders as a 500 where the dashboard was the right answer);
+    /// the auth pages themselves (landing a freshly signed-in operator on "access denied" is
+    /// not a loop, just wrong — AUD-PHI-02); and nothing at all.
+    /// The path is compared before <c>?</c> and <c>#</c> and matched whole, so a real page
+    /// called <c>/loginhelp</c> is not swallowed by a prefix test.
+    /// </remarks>
+    public static string SafeReturnUrl(string? returnUrl, bool isLocal)
+    {
+        if (!isLocal || string.IsNullOrWhiteSpace(returnUrl)) return "/";
+        var path = returnUrl.Split('?', '#')[0].TrimEnd('/');
+        return path.Equals("/login", StringComparison.OrdinalIgnoreCase)
+               || path.Equals("/denied", StringComparison.OrdinalIgnoreCase)
+               || path.Equals("/logout", StringComparison.OrdinalIgnoreCase)
+            ? "/"
+            : returnUrl;
+    }
 
     public void OnGet() { }
 
@@ -64,16 +97,7 @@ public class LoginModel(SignInManager<AppUser> signIn) : PageModel
             isPersistent: false, lockoutOnFailure: true);
 
         if (result.Succeeded)
-        {
-            // AUD-PHI-02: a returnUrl pointing back at the denial (or login) page would land a
-            // freshly signed-in operator on "access denied" — not a loop, just wrong. Home is
-            // the right destination when the remembered URL is one of the auth pages themselves.
-            var target = returnUrl ?? "/";
-            if (target.StartsWith("/denied", StringComparison.OrdinalIgnoreCase) ||
-                target.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
-                target = "/";
-            return LocalRedirect(target);
-        }
+            return Redirect(SafeReturnUrl(returnUrl, Url.IsLocalUrl(returnUrl)));
 
         LockedOut = result.IsLockedOut;
         Failed = !result.IsLockedOut;

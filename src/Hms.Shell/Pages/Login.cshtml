@@ -1,5 +1,6 @@
 @page "/login"
 @model Hms.Shell.Pages.LoginModel
+@using Hms.Shell.Pages
 @inject OrgIdentity Org
 @{
     ViewData["Title"] = "Sign in";
@@ -27,7 +28,14 @@
             <div class="aside-note">Use the account your administrator issued you.</div>
         </aside>
 
-        <form method="post" class="login-card">
+        @* novalidate: the browser's own bubble refuses to submit the form, which meant neither
+           tier of OUR validation was ever reached — the operator got the browser's wording, in
+           the browser's language, gone by the next keystroke (spec 0040). The inputs keep
+           `required` for the accessibility semantics; only the browser's UI is suppressed. *@
+        <form method="post" class="login-card" novalidate
+              data-login-form
+              data-msg-username="@LoginModel.UsernameRequired"
+              data-msg-password="@LoginModel.PasswordRequired">
             <h2>Sign in</h2>
             <p class="sub">Enter your username and password to continue.</p>
 
@@ -46,17 +54,19 @@
                 </div>
             }
 
+            @* Each error element is always in the DOM — empty and hidden when there is nothing
+               to say — so the script and the server fill the SAME element. aria-live means it
+               is announced when it appears, not merely drawn. *@
             <label class="field">
                 <span class="field-label">Username <span class="req">*</span></span>
-                @* `required` gives instant browser-native feedback with no script and no CDN — the
-                   server-side check behind it stays authoritative. *@
                 <input class="input @(Model.UsernameError is null ? null : "input-invalid")"
                        asp-for="Username" required maxlength="64" autocomplete="username"
+                       aria-describedby="username-error"
+                       aria-invalid="@(Model.UsernameError is null ? "false" : "true")"
                        autofocus="@(Model.FocusPassword ? null : "autofocus")" />
-                @if (Model.UsernameError is not null)
-                {
-                    <div class="help-text bad">@Model.UsernameError</div>
-                }
+                <div class="help-text bad" id="username-error" data-error-for="Username"
+                     role="alert" aria-live="polite"
+                     hidden="@(Model.UsernameError is null ? "hidden" : null)">@Model.UsernameError</div>
             </label>
             <label class="field">
                 <span class="field-label">Password <span class="req">*</span></span>
@@ -64,11 +74,12 @@
                    existing password and turn a correct credential into a failed sign-in. *@
                 <input class="input @(Model.PasswordError is null ? null : "input-invalid")"
                        asp-for="Password" type="password" required autocomplete="current-password"
+                       aria-describedby="password-error"
+                       aria-invalid="@(Model.PasswordError is null ? "false" : "true")"
                        autofocus="@(Model.FocusPassword ? "autofocus" : null)" />
-                @if (Model.PasswordError is not null)
-                {
-                    <div class="help-text bad">@Model.PasswordError</div>
-                }
+                <div class="help-text bad" id="password-error" data-error-for="Password"
+                     role="alert" aria-live="polite"
+                     hidden="@(Model.PasswordError is null ? "hidden" : null)">@Model.PasswordError</div>
             </label>
             <button type="submit" class="btn btn-primary btn-block btn-cta">
                 <span class="icon icon-sm" aria-hidden="true">lock</span> Sign in
@@ -76,5 +87,9 @@
         </form>
     </div>
 </div>
+@* Local and vendored — no CDN (§8 N2: the product must render with the network unplugged).
+   Progressive enhancement only: with scripting off the form posts and the server refuses it
+   with the same words, which is what keeps this page honest. *@
+<script src="/_content/Hms.Shell/js/login.js" asp-append-version="true"></script>
 </body>
 </html>

@@ -111,6 +111,11 @@
                     </span>
                     <form method="post" action="/logout">
                         @Html.AntiForgeryToken()
+                        @* Sign-out remembers the screen, so signing back in returns the operator
+                           to the work they were interrupted in (spec 0040). Validated server-side
+                           before it is honoured — LoginModel.SafeReturnUrl. *@
+                        <input type="hidden" name="returnUrl"
+                               value="@(Context.Request.Path + Context.Request.QueryString)" />
                         <button type="submit" class="btn-icon" title="Sign out" aria-label="Sign out">
                             <span class="icon icon-sm" aria-hidden="true">logout</span>
                         </button>

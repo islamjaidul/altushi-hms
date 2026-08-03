@@ -60,6 +60,17 @@ public class LoginValidationTests
     }
 
     [Fact]
+    public void The_messages_come_from_the_shared_constants()
+    {
+        // Spec 0040 rule 2: the page renders these same constants into data-msg-* for login.js,
+        // so the instant client message and the one that survives a round trip are one string.
+        // Inlining a literal back into Validate would let the two tiers drift silently apart.
+        var (u, p) = LoginModel.Validate(null, null);
+        Assert.Equal(LoginModel.UsernameRequired, u);
+        Assert.Equal(LoginModel.PasswordRequired, p);
+    }
+
+    [Fact]
     public void A_filled_form_passes()
     {
         var (u, p) = LoginModel.Validate("farid", "Demo#1234");
