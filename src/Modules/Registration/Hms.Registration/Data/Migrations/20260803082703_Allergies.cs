@@ -1,0 +1,31 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Hms.Registration.Data.Migrations
+{
+    /// <inheritdoc />
+    public partial class Allergies : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<string>(
+                name: "allergies",
+                schema: "reg",
+                table: "patient",
+                type: "character varying(4000)",
+                maxLength: 4000,
+                nullable: true);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "allergies",
+                schema: "reg",
+                table: "patient");
+        }
+    }
+}

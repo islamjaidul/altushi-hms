@@ -27,6 +27,13 @@ public static class DoseState
     public const string Refused = "refused";
 }
 
+public static class TaskState
+{
+    public const string Open = "open";
+    public const string Done = "done";
+    public const string Cancelled = "cancelled";
+}
+
 /// <summary>
 /// One consultation. Outdoor notes hang off a bill.encounter (the visit the counter opened);
 /// indoor notes hang off an ipd.admission. Exactly one, enforced by check constraint.
@@ -125,6 +132,9 @@ public class MarDose
     public long Id { get; set; }
     public long BranchId { get; set; }
     public long AdmissionId { get; set; }
+    /// <summary>The prescription line this dose was generated from (spec 0041). Null for a
+    /// hand-scheduled dose — both kinds coexist on one chart.</summary>
+    public long? NoteDrugId { get; set; }
     public required string DrugName { get; set; }
     public string? Dose { get; set; }
     public string? Route { get; set; }
@@ -149,6 +159,27 @@ public class GlucoseReading
     public short? InsulinUnits { get; set; }
     public string? InsulinRoute { get; set; }
     public long RecordedBy { get; set; }
+}
+
+/// <summary>
+/// R5 (spec 0041) nursing care task: turn the patient, remove cannula, pre-op prep. A clinical
+/// to-do with an owner and an audit trail — closed or cancelled with a reason, never deleted.
+/// </summary>
+public class CareTask
+{
+    public long Id { get; set; }
+    public long BranchId { get; set; }
+    public long AdmissionId { get; set; }           // ipd.admission — cross-schema, no FK (ADR-0003)
+    public required string Title { get; set; }
+    public string? Details { get; set; }
+    public string? Kind { get; set; }               // e.g. positioning, hygiene, pre-op
+    public DateTimeOffset? DueAt { get; set; }
+    public string State { get; set; } = TaskState.Open;
+    public string? StateReason { get; set; }        // why cancelled
+    public DateTimeOffset CreatedAt { get; set; }
+    public long CreatedBy { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public long? CompletedBy { get; set; }
 }
 
 /// <summary>5A-7 patient receive note: the handover record when a patient reaches the ward.</summary>
@@ -177,6 +208,7 @@ public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(op
     public DbSet<NoteTemplate> Templates => Set<NoteTemplate>();
     public DbSet<Favourite> Favourites => Set<Favourite>();
     public DbSet<MarDose> MarDoses => Set<MarDose>();
+    public DbSet<CareTask> CareTasks => Set<CareTask>();
     public DbSet<GlucoseReading> GlucoseReadings => Set<GlucoseReading>();
     public DbSet<ReceiveNote> ReceiveNotes => Set<ReceiveNote>();
 
@@ -297,6 +329,35 @@ public class EmrDbContext(DbContextOptions<EmrDbContext> options) : DbContext(op
             e.Property(x => x.State).HasMaxLength(40);
             e.Property(x => x.StateReason).HasMaxLength(4000);
             e.HasIndex(x => new { x.AdmissionId, x.ScheduledAt });
+            e.HasIndex(x => x.State);
+            // Spec 0041: a generated dose remembers its prescription line, and one line can
+            // schedule one dose per instant — the unique index is what makes regeneration
+            // idempotent even under two concurrent Generate clicks.
+            e.HasOne<NoteDrug>().WithMany().HasForeignKey(x => x.NoteDrugId);
+            e.HasIndex(x => new { x.NoteDrugId, x.ScheduledAt })
+                .IsUnique().HasFilter("note_drug_id IS NOT NULL");
+        });
+
+        b.Entity<CareTask>(e =>
+        {
+            e.ToTable("care_task", t =>
+            {
+                t.HasCheckConstraint("ck_care_task_state",
+                    "state IN ('open','done','cancelled')");
+                // A closed task without its closing stamp, or a cancellation without a reason,
+                // is an unattributable clinical record (audit §2, same posture as mar_dose).
+                t.HasCheckConstraint("ck_care_task_done",
+                    "state <> 'done' "
+                    + "OR (completed_at IS NOT NULL AND completed_by IS NOT NULL)");
+                t.HasCheckConstraint("ck_care_task_cancelled",
+                    "state <> 'cancelled' OR state_reason IS NOT NULL");
+            });
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Details).HasMaxLength(4000);
+            e.Property(x => x.Kind).HasMaxLength(40);
+            e.Property(x => x.State).HasMaxLength(40);
+            e.Property(x => x.StateReason).HasMaxLength(4000);
+            e.HasIndex(x => new { x.AdmissionId, x.State });
             e.HasIndex(x => x.State);
         });
 

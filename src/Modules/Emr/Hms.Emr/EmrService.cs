@@ -17,6 +17,13 @@ public sealed record NoteBody(
     DateOnly? FollowUpOn);
 
 /// <summary>
+/// What generating a medicine chart from a prescription did: how many doses were scheduled, and
+/// which drug lines the parser would not guess at. The nurse needs both numbers — the second is
+/// her list of lines still to schedule by hand (spec 0041).
+/// </summary>
+public sealed record ScheduleResult(int Inserted, IReadOnlyList<string> Unreadable);
+
+/// <summary>
 /// §5 M5. The clinical record's own rules and nothing else: what is written, when it becomes
 /// immutable, and how a mistake is corrected. Ordering tests spans Diagnostics and Billing and
 /// therefore lives at the composition root, not here (ADR-0003).
@@ -265,17 +272,154 @@ public sealed class EmrService(AuditWriter audit, TimeProvider clock)
             throw new EmrException("Say why the dose was not given — the chart is a legal record.");
 
         var now = clock.GetUtcNow();
+        // branch_id is part of the guard (spec 0042 F9): raw SQL bypasses the branch query
+        // filter, and dose ids are sequential since bulk generation — without this predicate a
+        // caller in another branch could record this branch's dose.
         var affected = await emr.Database.ExecuteSqlAsync($"""
             UPDATE emr.mar_dose
             SET state = {outcome}, state_reason = {reason}, administered_at = {now},
                 administered_by = {actorId}
-            WHERE id = {doseId} AND state = 'scheduled'
+            WHERE id = {doseId} AND state = 'scheduled' AND branch_id = {branchId}
             """, ct);
         if (affected == 0)
             throw new EmrException("This dose is already recorded — reload the chart.");
 
         audit.Append(kernel, branchId, actorId, actorName, $"emr.mar.{outcome}", "emr.mar_dose",
             doseId, after: new { outcome, reason }, tier: 2);
+        await kernel.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Spec 0041 (US5.5): builds the Medicine Chart from the signed indoor prescription instead
+    /// of thirty hand-typed dose rows.
+    ///
+    /// Two properties matter more than the arithmetic. It is <b>idempotent</b> — a second press
+    /// of Generate, or two nurses pressing it at once, adds nothing, because an instant already
+    /// scheduled for a prescription line is skipped and the partial unique index on
+    /// (note_drug_id, scheduled_at) is the backstop under a real race. And it <b>never guesses</b>:
+    /// a frequency <see cref="MarSchedule"/> does not recognise is returned to the caller as an
+    /// unreadable line, not approximated into a drug time.
+    /// </summary>
+    public async Task<ScheduleResult> GenerateScheduleAsync(
+        EmrDbContext emr, KernelDbContext kernel, long branchId, long admissionId, long noteId,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        var note = await GetAsync(emr, noteId, ct);
+        // The note id arrives from the request; it identifies a row, it does not prove the row
+        // belongs to the chart that is open (security-guardrails §2).
+        if (note.AdmissionId != admissionId)
+            throw new EmrException("That prescription belongs to another admission.");
+        if (note.State != NoteState.Final)
+            throw new EmrException(
+                "Sign the prescription before generating the medicine chart — a draft can still change.");
+
+        var lines = await emr.NoteDrugs.AsNoTracking()
+            .Where(d => d.NoteId == noteId).OrderBy(d => d.Ordinal).ToListAsync(ct);
+        var lineIds = lines.Select(l => l.Id).ToList();
+        var already = (await emr.MarDoses.AsNoTracking()
+                .Where(d => d.NoteDrugId != null && lineIds.Contains(d.NoteDrugId.Value))
+                .Select(d => new { d.NoteDrugId, d.ScheduledAt }).ToListAsync(ct))
+            .Select(x => (Line: x.NoteDrugId!.Value, x.ScheduledAt)).ToHashSet();
+
+        var now = clock.GetUtcNow();
+        var (today, timeNow) = MarSchedule.InDhaka(now);
+        var unreadable = new List<string>();
+        var inserted = 0;
+
+        foreach (var line in lines)
+        {
+            if (!MarSchedule.TryExpand(line.Frequency, line.Duration, today, timeNow,
+                    out var slots, out _))
+            {
+                unreadable.Add(line.DrugName);
+                continue;
+            }
+
+            foreach (var (day, time) in slots)
+            {
+                var at = MarSchedule.ToUtc(day, time);
+                if (!already.Add((line.Id, at))) continue;      // already scheduled — no duplicate
+                emr.MarDoses.Add(new MarDose
+                {
+                    BranchId = branchId, AdmissionId = admissionId, NoteDrugId = line.Id,
+                    DrugName = line.DrugName, Dose = line.Dose, ScheduledAt = at,
+                    CreatedAt = now, CreatedBy = actorId,
+                });
+                inserted++;
+            }
+        }
+
+        if (inserted > 0) await emr.SaveChangesAsync(ct);
+        audit.Append(kernel, branchId, actorId, actorName, "emr.mar.generated", "emr.note", noteId,
+            after: new { admissionId, inserted, unreadable }, tier: 1);
+        await kernel.SaveChangesAsync(ct);
+        return new ScheduleResult(inserted, unreadable);
+    }
+
+    // ---- R5 care tasks (spec 0041) -------------------------------------------
+
+    public async Task<CareTask> CreateTaskAsync(
+        EmrDbContext emr, KernelDbContext kernel, long branchId, long admissionId, string? title,
+        string? details, string? kind, DateTimeOffset? dueAt, long actorId, string actorName,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new EmrException("Give the task a short title — that is what the next shift reads.");
+
+        var task = new CareTask
+        {
+            BranchId = branchId, AdmissionId = admissionId, Title = title.Trim(),
+            Details = Trim(details), Kind = Trim(kind), DueAt = dueAt,
+            CreatedAt = clock.GetUtcNow(), CreatedBy = actorId,
+        };
+        emr.CareTasks.Add(task);
+        await emr.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "emr.task.created", "emr.care_task",
+            task.Id, after: new { admissionId, task.Title, dueAt }, tier: 1);
+        await kernel.SaveChangesAsync(ct);
+        return task;
+    }
+
+    /// <summary>
+    /// Closing a task is single-shot and attributable — the same state-guarded shape as
+    /// administering a dose, for the same reason: two nurses, two screens, one task.
+    /// </summary>
+    public async Task CompleteTaskAsync(
+        EmrDbContext emr, KernelDbContext kernel, long branchId, long taskId,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        var now = clock.GetUtcNow();
+        var affected = await emr.Database.ExecuteSqlAsync($"""
+            UPDATE emr.care_task
+            SET state = 'done', completed_at = {now}, completed_by = {actorId}
+            WHERE id = {taskId} AND state = 'open' AND branch_id = {branchId}
+            """, ct);
+        if (affected == 0)
+            throw new EmrException("This task is already closed — reload the list.");
+
+        audit.Append(kernel, branchId, actorId, actorName, "emr.task.done", "emr.care_task",
+            taskId, after: new { state = TaskState.Done }, tier: 1);
+        await kernel.SaveChangesAsync(ct);
+    }
+
+    public async Task CancelTaskAsync(
+        EmrDbContext emr, KernelDbContext kernel, long branchId, long taskId, string? reason,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new EmrException("Say why the task is being cancelled — it stays on the record.");
+
+        var affected = await emr.Database.ExecuteSqlAsync($"""
+            UPDATE emr.care_task
+            SET state = 'cancelled', state_reason = {reason.Trim()}
+            WHERE id = {taskId} AND state = 'open' AND branch_id = {branchId}
+            """, ct);
+        if (affected == 0)
+            throw new EmrException("This task is already closed — reload the list.");
+
+        audit.Append(kernel, branchId, actorId, actorName, "emr.task.cancelled", "emr.care_task",
+            taskId, after: new { reason }, tier: 1);
         await kernel.SaveChangesAsync(ct);
     }
 

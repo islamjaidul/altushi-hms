@@ -280,7 +280,19 @@ the core duty, be refused the adjacent one. Twelve roles across sixty-four prote
 | LC-NUR-03 | **A recorded dose cannot be recorded twice** | control removed after administration | `nasrin` | `auto` emr-thread 7 |
 | LC-NUR-04 | Glucose reading charted | value on the diabetic chart | `nasrin` | `auto` emr-thread 7 |
 | LC-NUR-05 | Shift handover recorded | receive note stored | `nasrin` | `auto` emr-thread 7 |
-| LC-NUR-06 | A missed dose is visible as missed | not silently absent | `nasrin` | `gap` |
+| LC-NUR-06 | A missed dose is visible as missed | overdue badge before it is actioned; the reason and the nurse's name after | `nasrin` | `auto` nursing-thread 4 |
+| LC-NUR-07 | Admitted patient appears on the nursing station | bed, banner, and nothing due before anything is prescribed | `nasrin` | `auto` nursing-thread 1 |
+| LC-NUR-08 | Consultant writes and signs an indoor prescription | signed, not left a draft; both medicines on it | `chowdhury` | `auto` nursing-thread 2 |
+| LC-NUR-09 | **Medicine chart generated from the prescription** | 1+0+1 × 3 days = six doses at the ward slots; a PRN line is left for hand scheduling; a second Generate adds nothing | `nasrin` | `auto` nursing-thread 3 · `xunit` MarScheduleTests |
+| LC-NUR-10 | Care task raised, worked and attributable | overdue when late; closing names the nurse; closing twice refused; cancelling needs a reason | `nasrin` | `auto` nursing-thread 5 |
+| LC-NUR-11 | Ward duty assigned, duplicated, ended | duplicate refused; ending needs a reason and clears today's roster | `nasrin` | `auto` nursing-thread 6 |
+| LC-NUR-12 | Nursing screens refused to adjacent jobs | billing and front desk denied at the handler, not just the menu | `rasel` | `auto` nursing-thread 7 |
+| LC-NUR-13 | Station roster panel reads either way | lists the published roster, or says plainly there is none | `nasrin` | `auto` nursing-thread 8 |
+| LC-NUR-14 | **Signing an indoor prescription records the consultant visit and its folio charge** | one visit + one rate-plan charge per doctor per day, however many notes are signed; a blocked folio records the visit without the charge | `chowdhury` | `auto` nursing-thread 10 · `xunit` WardMoneySeamTests |
+| LC-NUR-15 | Open ward work survives a terminal exit | clearance names the open doses/tasks; the closed admission's chart opens read-only; open items close with a reason; new work is refused | `nasrin` | `auto` nursing-thread 13 · `xunit` WardMoneySeamTests |
+| LC-NUR-16 | Allergy entered at registration reaches every ward screen | red flag on station, chart, and the prescribing screen; absence of a recorded allergy is never shown as "no known allergies" | `nasrin` | `auto` nursing-thread 9 |
+| LC-NUR-17 | An indent is raised from the prescription's formulary lines | product-picked lines prefill the indent; free-text lines are named for manual entry, never guessed | `nasrin` | `auto` nursing-thread 11 |
+| LC-NUR-18 | The diagnostics counter routes an inpatient's test to the folio | banner names the admission; charges post to the folio with no outdoor invoice and no cash taken; a bill-blocked patient is refused | `rasel` | `auto` nursing-thread 12 · `xunit` WardMoneySeamTests |
 
 ---
 
@@ -413,8 +425,11 @@ credited with, and nothing at all looks for a false gap.
 | LC-DX-07 | Order cancelled after payment. | **Medium** |
 | LC-BIL-15 | Carry-close approval for a session spanning midnight. | **Medium** |
 | LC-EMR-07 | Draft resume and template reuse were **never gaps** — `EmrTests.Draft_is_resumed_not_duplicated` and `.A_template_applies_its_drug_lines` (spec 0032). Only `AddFavouriteAsync`, the *favourite* half, has no test. | **Low** |
-| LC-NUR-06 | A missed dose being visible as missed. | **Medium** |
 | LC-XCUT-08 | SMS queue and resend. | **Medium** |
+| — (0042 audit) | The ward publishes nothing outward: no ward/bed on the pharmacy issue queue (the porter has no destination), none on the LIS board (phlebotomy rounds are unroutable), and `ot.ot_case` carries no `AdmissionId` (the ward cannot see its patient is booked for theatre). | **Medium** |
+| — (0042 audit) | Nurse-side charging: `CareTask` has no service/qty/charge fields, so the person who turns the oxygen on cannot charge it — ward services are typed later at the folio from memory. | **Medium** |
+| — (0042 audit) | The `TestOrderPaid` outbox rows are written durably and consumed by nothing; all cross-department awareness is poll-the-queue (no notification to pharmacy or pathology when an indent/order is raised). | **Low** |
+| — (0042 audit) | The receive note is unreachable from the admit flow and nothing nags for it; `DutyAssignment.EmployeeId` is validated only by the page, not the service; `MarDose` carries no `ProductId`, so doses-given can never reconcile against units-issued; the diagnostics-counter folio path dedupes double-submits by a one-minute repeat window rather than a submission token. | **Low** |
 | LC-ROLE-13 | Sidebar equals permissions ∩ entitlements per role (`NavComposer`). | **Medium** |
 | LC-QUE-03 / LC-QUE-04 | No session today; session full. **LC-QUE-04 is not merely untested** — `MaxSerials` is displayed and never enforced, and US3.1's AC requires *"capacity limit enforced with waitlist option"*, so this is an unmet [M] acceptance criterion routed to the PM (spec 0032, M3-R1). LC-QUE-05 was closed by `AppointmentQueueTests`. | **Medium** |
 | LC-BIL-18 | Whole-taka-only asserted structurally but not end to end. | **Low** |

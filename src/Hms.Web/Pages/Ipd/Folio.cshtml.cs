@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
 using Hms.Billing;
 using Hms.Billing.Data;
+using Hms.Emr.Data;
 using Hms.Ipd;
 using Hms.Ipd.Data;
 using Hms.Kernel.Approvals;
@@ -26,6 +27,9 @@ public sealed record IndentItemRow(
     /// <summary>What is still returnable at discharge (0016 deferral #11 path).</summary>
     public bool Returnable => Issued > Returned;
 }
+
+/// <summary>A signed indoor prescription the indent card can prefill from (spec 0042).</summary>
+public sealed record RxNoteChoice(long Id, DateTimeOffset At, int OnFormulary, int FreeText);
 
 public sealed record IndentRow(
     long Id, string State, DateTimeOffset RequestedAt, IReadOnlyList<IndentItemRow> Items);
@@ -59,6 +63,7 @@ public class FolioModel(
     [BindProperty, StringLength(Bounds.Note)] public string? IndentNote { get; set; }
     [BindProperty] public List<long> TestIds { get; set; } = [];
     [BindProperty] public long IndentId { get; set; }
+    [BindProperty] public long RxNoteId { get; set; }
     [BindProperty] public long ReturnProductId { get; set; }
     [BindProperty] public int ReturnQty { get; set; }
     [BindProperty] public string? Reason { get; set; }
@@ -71,6 +76,7 @@ public class FolioModel(
     public IReadOnlyList<AdvanceRow> Advances { get; private set; } = [];
     public IReadOnlyList<StayRow> Stays { get; private set; } = [];
     public IReadOnlyList<IndentRow> Indents { get; private set; } = [];
+    public IReadOnlyList<RxNoteChoice> RxNotes { get; private set; } = [];
     public IReadOnlyList<CatalogItem> Services { get; private set; } = [];
     public IReadOnlyList<DoctorChoice> Doctors { get; private set; } = [];
     public IReadOnlyList<ProductChoice> Products { get; private set; } = [];
@@ -172,6 +178,22 @@ public class FolioModel(
                         .Select(x => new IndentItemRow(x.ProductId,
                             productNames.GetValueOrDefault(x.ProductId, "—"),
                             x.QtyRequested, x.QtyIssued, x.QtyReturned)).ToList())).ToList();
+
+                // Spec 0042: signed indoor prescriptions whose lines carry a formulary product —
+                // what "raise indent from prescription" can actually resolve to stock. Cross
+                // context (emr → pharm) joined here, in memory, like everything else on this page.
+                var signedNotes = await s.Emr.Notes.AsNoTracking()
+                    .Where(n => n.AdmissionId == AdmissionId && n.State == NoteState.Final)
+                    .OrderByDescending(n => n.Id).Take(5)
+                    .Select(n => new { n.Id, n.FinalisedAt, n.CreatedAt }).ToListAsync();
+                var signedIds = signedNotes.Select(n => n.Id).ToList();
+                var rxDrugs = await s.Emr.NoteDrugs.AsNoTracking()
+                    .Where(d => signedIds.Contains(d.NoteId)).ToListAsync();
+                RxNotes = signedNotes
+                    .Select(n => new RxNoteChoice(n.Id, n.FinalisedAt ?? n.CreatedAt,
+                        rxDrugs.Count(d => d.NoteId == n.Id && d.ProductId != null),
+                        rxDrugs.Count(d => d.NoteId == n.Id && d.ProductId == null)))
+                    .Where(n => n.OnFormulary > 0).ToList();
             }
 
             // Pickers (only when the viewer can act — §7 U7: absent, not disabled).
@@ -339,6 +361,46 @@ public class FolioModel(
         return Redirect($"/ipd/folio/{AdmissionId}");
     }
 
+    /// <summary>
+    /// Spec 0042: turn a signed indoor prescription into a ward indent. Only lines that carry a
+    /// formulary product resolve — free-text lines are named back to the operator for manual
+    /// entry, never guessed at. Quantity defaults to 1 per line (the pharmacist issues against
+    /// the prescription's own dose text); the operator can always edit the raised indent's
+    /// follow-up manually.
+    /// </summary>
+    public async Task<IActionResult> OnPostIndentFromRxAsync()
+    {
+        if (!CanPost) return Forbid();
+        List<string> skipped = [];
+        try
+        {
+            await tx.RunAsync(async s =>
+            {
+                var note = await s.Emr.Notes.AsNoTracking()
+                    .FirstOrDefaultAsync(n => n.Id == RxNoteId && n.AdmissionId == AdmissionId
+                                              && n.State == NoteState.Final)
+                    ?? throw new IpdException("That prescription is not on this admission — reload.");
+                var drugs = await s.Emr.NoteDrugs.AsNoTracking()
+                    .Where(d => d.NoteId == note.Id).OrderBy(d => d.Ordinal).ToListAsync();
+                skipped = drugs.Where(d => d.ProductId is null).Select(d => d.DrugName).ToList();
+                var items = drugs.Where(d => d.ProductId is not null)
+                    .GroupBy(d => d.ProductId!.Value)
+                    .Select(g => (ProductId: g.Key, Qty: g.Count())).ToList();
+                if (items.Count == 0)
+                    throw new IpdException(
+                        "No line on that prescription names a formulary product — enter the indent manually.");
+                return await folios.CreateIndentAsync(s.Ipd, s.Kernel, BranchId, AdmissionId,
+                    items, $"From prescription #{note.Id}", ActorId, ActorName);
+            });
+        }
+        catch (IpdException e) { return await Reshow(e.Message); }
+        Toast(skipped.Count > 0
+                ? $"Indent raised from the prescription · add manually: {string.Join(", ", skipped)}"
+                : "Indent raised from the prescription — pharmacy will issue it",
+            "receipt_long");
+        return Redirect($"/ipd/folio/{AdmissionId}");
+    }
+
     public async Task<IActionResult> OnPostOrderTestsAsync()
     {
         if (!CanPost && !CanSettle) return Forbid();
@@ -400,20 +462,55 @@ public class FolioModel(
     public async Task<IActionResult> OnPostDeathAsync()
     {
         if (!CanManage) return Forbid();
-        try { await tx.RunAsync(s => ipd.RecordDeathAsync(s.Ipd, s.Kernel, AdmissionId, ActorId, ActorName)); }
+        int openWork;
+        try
+        {
+            openWork = await tx.RunAsync(async s =>
+            {
+                await ipd.RecordDeathAsync(s.Ipd, s.Kernel, AdmissionId, ActorId, ActorName);
+                return await OpenWardWorkAsync(s, AdmissionId);
+            });
+        }
         catch (IpdException e) { return await Reshow(e.Message); }
-        Toast("Death recorded — issue the certificate from the certificates screen", "verified");
+        // Death is unannounced — the ward is guaranteed to hold open work at this instant
+        // (spec 0042 F8). Say so now, while someone is looking.
+        Toast(openWork > 0
+                ? $"Death recorded — {openWork} open dose(s)/task(s) remain on the chart; "
+                  + "close them with a reason"
+                : "Death recorded — issue the certificate from the certificates screen",
+            "verified");
         return Redirect($"/ipd/folio/{AdmissionId}");
     }
 
     public async Task<IActionResult> OnPostAbscondedAsync()
     {
         if (!CanManage) return Forbid();
-        try { await tx.RunAsync(s => ipd.RecordAbscondedAsync(s.Ipd, s.Kernel, AdmissionId, ActorId, ActorName)); }
+        int openWork;
+        try
+        {
+            openWork = await tx.RunAsync(async s =>
+            {
+                await ipd.RecordAbscondedAsync(s.Ipd, s.Kernel, AdmissionId, ActorId, ActorName);
+                return await OpenWardWorkAsync(s, AdmissionId);
+            });
+        }
         catch (IpdException e) { return await Reshow(e.Message); }
-        Toast("Marked absconded — dues stay on record for follow-up", "warning");
+        Toast(openWork > 0
+                ? $"Marked absconded — {openWork} open dose(s)/task(s) remain on the chart; "
+                  + "close them with a reason"
+                : "Marked absconded — dues stay on record for follow-up",
+            "warning");
         return Redirect($"/ipd/folio/{AdmissionId}");
     }
+
+    /// <summary>Open clinical items still hanging on this admission (spec 0042 F8).</summary>
+    private static async Task<int> OpenWardWorkAsync(TxScope s, long admissionId)
+        => await s.Emr.MarDoses.AsNoTracking()
+               .CountAsync(d => d.AdmissionId == admissionId
+                                && d.State == Hms.Emr.Data.DoseState.Scheduled)
+           + await s.Emr.CareTasks.AsNoTracking()
+               .CountAsync(t => t.AdmissionId == admissionId
+                                && t.State == Hms.Emr.Data.TaskState.Open);
 
     private static Task<long?> FindLatePostApprovalAsync(TxScope s, long folioId)
         => s.Kernel.ApprovalRequests.AsNoTracking()

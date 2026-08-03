@@ -91,5 +91,7 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0038-full-qa-audit](0038-full-qa-audit/spec.md) | Full product QA audit — every built module, route by route, PRD-cross-checked, for senior-engineer handoff | Done | §5, §5A, §7, §11, §12, §16 | 2026-08-02 |
 | [0039-lifecycle-hardening](0039-lifecycle-hardening/spec.md) | Close the 0038 findings and the schema gaps behind them — input tier, schema constraints, payroll, tenancy | Done | §5, §5A, §7, §8, §11, §12, §16 | 2026-08-03 |
 | [0040-login-validation-and-return-url](0040-login-validation-and-return-url/spec.md) | Login validation the operator can see (the browser was refusing the submit), and sign-out that remembers the screen | Done | §7, §12, §8 N2 | 2026-08-03 |
+| [0041-nursing-station](0041-nursing-station/spec.md) | R5 Nursing Station — ward monitor, MAR from prescription + overdue visibility (LC-NUR-06), care tasks, ward duty assignment, indoor prescribing | Done | §5 M5/M6/M16, §5A-7, §5A.2 R5, §7, §12 | 2026-08-03 |
+| [0042-nursing-cross-module-hardening](0042-nursing-cross-module-hardening/spec.md) | Cross-module audit closure: consultant-visit entry+charge, diagnostics-counter folio branch, terminal-exit orphans, branch/state write guards, allergy surface, Rx→pharmacy link, money-seam tests | Done | §5 M6, §5 M5, §11, §12 | 2026-08-03 |
 
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

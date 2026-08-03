@@ -17,8 +17,8 @@ public static class EmrRecord
         string? Diagnosis, string? Advice, string State, long? SupersedesId,
         IReadOnlyList<string> Drugs);
 
-    public sealed record AdmissionRow(string AdmissionNo, string State, DateTimeOffset AdmittedAt,
-        DateTimeOffset? DischargedAt);
+    public sealed record AdmissionRow(long Id, string AdmissionNo, string State,
+        DateTimeOffset AdmittedAt, DateTimeOffset? DischargedAt);
 
     /// <summary>
     /// Verified results only. An unverified result is a working number inside the lab, not a
@@ -98,6 +98,6 @@ public static class EmrRecord
         => (await s.Ipd.Admissions.AsNoTracking()
                 .Where(a => a.PatientId == patientId)
                 .OrderByDescending(a => a.Id).Take(10).ToListAsync(ct))
-            .Select(a => new AdmissionRow(a.AdmissionNo, a.State, a.AdmittedAt, a.DischargedAt))
+            .Select(a => new AdmissionRow(a.Id, a.AdmissionNo, a.State, a.AdmittedAt, a.DischargedAt))
             .ToList();
 }

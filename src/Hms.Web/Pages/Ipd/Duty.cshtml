@@ -1,0 +1,132 @@
+@page "/ipd/duty"
+@model Hms.Web.Pages.Ipd.DutyModel
+@{
+    ViewData["Title"] = "Ward Duty";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<form method="get" class="card">
+    <div class="card-head">
+        Duty for @Ui.DateLong(Model.OnDate)
+        <span class="spacer"></span>
+        <a class="btn-tint" href="/ipd/station">Nursing station</a>
+    </div>
+    <div class="card-body">
+        <div class="filter-row">
+            <label class="field">
+                <span class="field-label">Date</span>
+                <input class="input" name="on" hms-date value="@Model.OnDate.ToString("yyyy-MM-dd")" />
+            </label>
+            <button type="submit" class="btn btn-primary">Show</button>
+        </div>
+    </div>
+</form>
+
+@foreach (var ward in Model.Wards)
+{
+    <div class="card card-clip">
+        <div class="card-head">@ward.Name</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Shift</th><th>On duty</th><th class="num"></th></tr></thead>
+                <tbody>
+                @foreach (var cell in ward.Shifts)
+                {
+                    <tr>
+                        <td><b>@Ui.Humanize(cell.Shift)</b></td>
+                        <td>
+                            @if (cell.Staff.Count == 0)
+                            {
+                                <span class="text-muted">nobody assigned</span>
+                            }
+                            @foreach (var d in cell.Staff)
+                            {
+                                <form method="post" asp-page-handler="End" class="inline-form">
+                                    <span class="pill info">@d.StaffName · @Ui.Humanize(d.StaffRole)</span>
+                                    <input type="hidden" name="AssignmentId" value="@d.Id" />
+                                    <input type="hidden" name="On" value="@Model.OnDate.ToString("yyyy-MM-dd")" />
+                                    <input class="input input-sm" name="Reason" placeholder="reason to end" style="width:130px" />
+                                    <button type="submit" class="btn-tint">End</button>
+                                </form>
+                            }
+                        </td>
+                        <td class="num"></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (Model.Wards.Count == 0)
+{
+    <div class="card"><div class="card-body empty">No wards are set up yet.</div></div>
+}
+else
+{
+    <form method="post" asp-page-handler="Assign" class="card">
+        <div class="card-head">
+            Assign someone
+            <span class="spacer"></span>
+            <span class="card-hint">pick a staff record, or just type the name</span>
+        </div>
+        <div class="card-body">
+            <input type="hidden" name="On" value="@Model.OnDate.ToString("yyyy-MM-dd")" />
+            <div class="field-grid cols-5">
+                <label class="field">
+                    <span class="field-label">Ward <span class="req">*</span></span>
+                    <select class="input" name="WardId">
+                        @foreach (var w in Model.Wards)
+                        {
+                            <option value="@w.Id">@w.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Shift <span class="req">*</span></span>
+                    <select class="input" name="ShiftLabel">
+                        @foreach (var sh in Hms.Web.Pages.Ipd.DutyModel.Shifts)
+                        {
+                            <option value="@sh">@Ui.Humanize(sh)</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Role <span class="req">*</span></span>
+                    <select class="input" name="StaffRole">
+                        @foreach (var r in Hms.Web.Pages.Ipd.DutyModel.Roles)
+                        {
+                            <option value="@r">@Ui.Humanize(r)</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Staff on file</span>
+                    <select class="input" name="EmployeeId">
+                        <option value="">— type a name instead —</option>
+                        @foreach (var e in Model.Staff)
+                        {
+                            <option value="@e.Id">@e.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="field">
+                    <span class="field-label">Or name</span>
+                    <input class="input" name="StaffName" autocomplete="off" placeholder="Salma Khatun" />
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-cta" style="margin-top:12px">
+                <span class="icon icon-sm" aria-hidden="true">group</span> Assign
+            </button>
+        </div>
+    </form>
+}

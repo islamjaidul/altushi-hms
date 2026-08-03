@@ -1,0 +1,19 @@
+@model Hms.Web.PatientBanner
+@* The clinical identity strip (spec 0042). The allergy pill is deliberately loud and the
+   absence of a recorded allergy deliberately quiet: null means "nobody asked", not "no known
+   allergies", and rendering reassurance we do not have would be a clinical lie. *@
+<span class="card-hint">@Model.Uhid@(Model.AgeSex is null ? "" : $" · {Model.AgeSex}")</span>
+@if (Model.BloodGroup is not null)
+{
+    <span class="pill">@Model.BloodGroup</span>
+}
+@if (Model.Allergies is not null)
+{
+    <span class="pill bad">
+        <span class="icon icon-sm" aria-hidden="true">warning</span> Allergy: @Model.Allergies
+    </span>
+}
+@if (Model.Diagnosis is not null)
+{
+    <span class="card-hint">· @Model.Diagnosis</span>
+}

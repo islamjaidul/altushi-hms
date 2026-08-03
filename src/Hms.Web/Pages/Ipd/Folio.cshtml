@@ -161,6 +161,24 @@
                     </tbody>
                 </table>
             </div>
+            @if (Model.CanPost && Model.RxNotes.Count > 0)
+            {
+                <div class="card-body" style="padding-top:0">
+                    @* Spec 0042: the ward's medicines start on the prescription — stop re-typing
+                       them. Only formulary-picked lines resolve; free-text lines are named back. *@
+                    @foreach (var rx in Model.RxNotes)
+                    {
+                        <form method="post" asp-page-handler="IndentFromRx" class="inline-form">
+                            <input type="hidden" name="RxNoteId" value="@rx.Id" />
+                            <span class="pill">
+                                Rx @Ui.DateTimeShort(rx.At) · @rx.OnFormulary medicine(s)
+                                @(rx.FreeText > 0 ? $"+ {rx.FreeText} off-formulary" : "")
+                            </span>
+                            <button type="submit" class="btn-tint">Raise indent from prescription</button>
+                        </form>
+                    }
+                </div>
+            }
         </div>
 
         <div class="card">

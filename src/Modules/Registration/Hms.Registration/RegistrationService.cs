@@ -12,7 +12,7 @@ public sealed record RegisterPatientCommand(
     long BranchId, string FullName, char Sex, DateOnly? Dob, short? AgeYears, short? AgeMonths,
     bool AgeEstimated, string? Phone, string? Guardian, string? Area, string? Address,
     string? BloodGroup, string? PatientType,
-    bool UnknownIdentity, long ActorId, string ActorName);
+    bool UnknownIdentity, long ActorId, string ActorName, string? Allergies = null);
 
 /// <summary>
 /// §9A.2 module 1. UHID issuance + patient insert + audit are one transaction (G19).
@@ -78,6 +78,7 @@ public sealed class RegistrationService(NumberSeriesService numbers, AuditWriter
             Area = cmd.Area,
             Address = cmd.Address,
             BloodGroup = string.IsNullOrWhiteSpace(cmd.BloodGroup) ? null : cmd.BloodGroup.Trim(),
+            Allergies = string.IsNullOrWhiteSpace(cmd.Allergies) ? null : cmd.Allergies.Trim(),
             PatientType = string.IsNullOrWhiteSpace(cmd.PatientType) ? "general" : cmd.PatientType.Trim(),
             UnknownIdentity = cmd.UnknownIdentity,
             CreatedAt = clock.GetUtcNow(),

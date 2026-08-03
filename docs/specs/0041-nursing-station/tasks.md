@@ -1,0 +1,23 @@
+# 0041 — Tasks
+
+- [x] Spec artifacts + README index row
+- [x] PRD: §5A.2 R5 row, US5.5 / US6.5 / US6.6, changelog v1.2 (03 Aug 2026)
+- [x] Schema: `MarDose.NoteDrugId` + partial unique `(note_drug_id, scheduled_at)`; `CareTask` with state/done/cancelled CHECKs; migration `NursingStation` (EmrDbContext, FK added `NOT VALID`)
+- [x] Schema: `DutyAssignment` + partial unique `WHERE active`; shift/role vocabulary CHECKs; migration `DutyAssignment` (IpdDbContext)
+- [x] CI: EmrDbContext + IpdDbContext added to the additive-migration gate
+- [x] Tests first: `MarScheduleTests.cs` — 40 cases (dialects, duration clamp, day-1 truncation, overdue boundary)
+- [x] Tests: `NursingStationTests.cs` — 21 cases (generation idempotency + audit + wrong-admission refusal, task single-shot, duty partial-unique, DB CHECK floor)
+- [x] Logic: `MarSchedule.cs` pure parser + `IsOverdue` + Dhaka conversion
+- [x] Logic: `EmrService.GenerateScheduleAsync` / `CreateTaskAsync` / `CompleteTaskAsync` / `CancelTaskAsync`
+- [x] Logic: `IpdService.AssignDutyAsync` / `EndDutyAsync`
+- [x] Page: `/ipd/station` — read-only ward monitor, in-memory cross-context join
+- [x] Page: `/emr/tasks` — care tasks with overdue tint and attributable history
+- [x] Page: `/ipd/duty` — ward × shift grid, HR picker plus free-typed name
+- [x] Page: `/emr/indoor` — **added**: indoor prescribing had no screen, see `notes.md` §1
+- [x] Page: `/emr/charts` — Generate strip, Overdue badge (LC-NUR-06), plus the 0039 input-tier attributes it never got
+- [x] Perm.cs (`EmrTaskManage`, `IpdDutyManage`), ModuleNav (4 entries), DevSeed (Nurse claims + `SeedNursingHrAsync`), role-journeys.py (ROLE_GRANTS + 4 ROUTES)
+- [x] `eng/verify/nursing-thread.py` (8 cases) + registered in `lifecycle-suite.py` t1
+- [x] `docs/qa/patient-lifecycle.md`: LC-NUR-06 → `auto`; LC-NUR-07…13 added; gap register updated
+- [x] Verification: 488 unit/integration tests, 7 guards, nursing-thread ×2, role-journeys, full t1 suite — all green (`notes.md` §5)
+- [x] Close-out: Status Done, deviations in `notes.md`
+- [ ] **Deploy** — deferred with the rest of the ERP image (stale since 2026-07-29); rides the next rebuild

@@ -1,0 +1,187 @@
+@page "/ipd/station/{WardId:long?}"
+@model Hms.Web.Pages.Ipd.StationModel
+@{
+    ViewData["Title"] = "Nursing Station";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        Ward monitor
+        <span class="pill @(Model.TotalOverdue > 0 ? "bad" : "good")">
+            @Model.TotalOverdue overdue
+        </span>
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.TotalPatients patient(s) in view</span>
+    </div>
+    <div class="card-body">
+        <div class="chip-row">
+            <a class="chip-toggle" href="/ipd/station">All wards</a>
+            @foreach (var w in Model.AllWards)
+            {
+                <a class="chip-toggle" href="/ipd/station/@w.Id">@w.Name</a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        @foreach (var ward in Model.Wards)
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    @ward.Name
+                    <span class="pill">@ward.Class.ToUpperInvariant()</span>
+                    <span class="spacer"></span>
+                    <span class="card-hint">@ward.Patients.Count occupied</span>
+                </div>
+
+                @if (ward.Duty.Count > 0)
+                {
+                    <div class="card-body" style="padding-bottom:0">
+                        <div class="chip-row">
+                            @foreach (var d in ward.Duty)
+                            {
+                                <span class="pill info">
+                                    @Ui.Humanize(d.ShiftLabel) · @d.StaffName (@Ui.Humanize(d.StaffRole))
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Bed</th><th>Patient</th><th>Latest vitals</th>
+                            <th>Medicines</th><th>Care tasks</th><th class="num"></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var p in ward.Patients)
+                        {
+                            <tr>
+                                <td class="id-cell">@p.Bed</td>
+                                <td>
+                                    <b>@p.Patient</b>
+                                    @if (p.Allergies is not null)
+                                    {
+                                        <span class="pill bad">
+                                            <span class="icon icon-sm" aria-hidden="true">warning</span> @p.Allergies
+                                        </span>
+                                    }
+                                    <div class="card-hint">
+                                        @p.AdmissionNo @(p.AgeSex is null ? "" : $"· {p.AgeSex}")
+                                        @(p.Diagnosis is null ? "" : $"· {p.Diagnosis}")
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (p.Vitals is null)
+                                    {
+                                        <span class="text-muted">not taken today</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@p.Vitals</span>
+                                        <div class="card-hint">@Ui.Time(p.VitalsAt!.Value)</div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (p.OverdueDoses > 0)
+                                    {
+                                        <span class="pill bad">@p.OverdueDoses overdue</span>
+                                    }
+                                    else if (p.DueDoses > 0)
+                                    {
+                                        <span class="pill warn">@p.DueDoses due</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">nothing scheduled</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (p.OverdueTasks > 0)
+                                    {
+                                        <span class="pill bad">@p.OverdueTasks late</span>
+                                    }
+                                    else if (p.OpenTasks > 0)
+                                    {
+                                        <span class="pill warn">@p.OpenTasks open</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">none</span>
+                                    }
+                                    @if (p.PendingIndents > 0)
+                                    {
+                                        <span class="pill info">@p.PendingIndents indent(s)</span>
+                                    }
+                                </td>
+                                <td class="num">
+                                    <a class="btn-tint" href="/emr/charts/@p.AdmissionId">Chart</a>
+                                    <a class="btn-tint" href="/emr/tasks/@p.AdmissionId">Tasks</a>
+                                    <a class="btn-tint" href="/ipd/folio/@p.AdmissionId">Folio</a>
+                                </td>
+                            </tr>
+                        }
+                        @if (ward.Patients.Count == 0)
+                        {
+                            <tr><td colspan="6" class="empty">No patients in this ward.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        @if (Model.Wards.Count == 0)
+        {
+            <div class="card">
+                <div class="card-body empty">No wards are set up yet.</div>
+            </div>
+        }
+    </div>
+
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                On duty today
+                <span class="spacer"></span>
+                <a class="btn-tint" href="/ipd/duty">Assign</a>
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead><tr><th>Shift</th><th>Staff</th><th>Hours</th></tr></thead>
+                    <tbody>
+                    @foreach (var r in Model.Roster)
+                    {
+                        <tr>
+                            <td>@r.Shift</td>
+                            <td>@r.Employee</td>
+                            <td class="card-hint">@r.Hours</td>
+                        </tr>
+                    }
+                    @if (Model.Roster.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="3" class="empty">
+                                No roster published for today — ward duty is recorded on Ward Duty.
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

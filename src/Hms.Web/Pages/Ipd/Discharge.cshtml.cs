@@ -50,6 +50,11 @@ public class DischargeModel(
     public bool CanSettle => Can("ipd.settle");
     public bool CanManage => Can("ipd.manage");
 
+    /// <summary>Spec 0042 F8: open ward items surfaced at the gate — informational, never a
+    /// money block. The nurse closes them with a reason; a machine closes nothing.</summary>
+    public int OpenDoses { get; private set; }
+    public int OpenTasks { get; private set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
         SubmissionToken = Submission.NewToken();
@@ -68,6 +73,11 @@ public class DischargeModel(
             PatientName = await s.Reg.Patients.AsNoTracking()
                 .Where(p => p.Id == Admission.PatientId).Select(p => p.FullName).FirstOrDefaultAsync();
             Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+
+            OpenDoses = await s.Emr.MarDoses.AsNoTracking().CountAsync(d =>
+                d.AdmissionId == AdmissionId && d.State == Hms.Emr.Data.DoseState.Scheduled);
+            OpenTasks = await s.Emr.CareTasks.AsNoTracking().CountAsync(t =>
+                t.AdmissionId == AdmissionId && t.State == Hms.Emr.Data.TaskState.Open);
 
             if (Folio is not null)
             {

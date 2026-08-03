@@ -368,6 +368,149 @@ namespace Hms.Ipd.Data.Migrations
                     b.ToTable("certificate", "ipd");
                 });
 
+            modelBuilder.Entity("Hms.Ipd.Data.ConsultantVisit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AdmissionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("admission_id");
+
+                    b.Property<long>("BranchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("branch_id");
+
+                    b.Property<long?>("ChargeLineId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("charge_line_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_by");
+
+                    b.Property<long>("DoctorId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<long?>("NoteId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("note_id");
+
+                    b.Property<DateOnly>("OnDate")
+                        .HasColumnType("date")
+                        .HasColumnName("on_date");
+
+                    b.HasKey("Id")
+                        .HasName("pk_consultant_visit");
+
+                    b.HasIndex("DoctorId", "OnDate")
+                        .HasDatabaseName("ix_consultant_visit_doctor_id_on_date");
+
+                    b.HasIndex("AdmissionId", "DoctorId", "OnDate")
+                        .IsUnique()
+                        .HasDatabaseName("ix_consultant_visit_admission_id_doctor_id_on_date");
+
+                    b.ToTable("consultant_visit", "ipd");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.DutyAssignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<long>("BranchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("branch_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_by");
+
+                    b.Property<long?>("EmployeeId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("employee_id");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<long?>("EndedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ended_by");
+
+                    b.Property<string>("EndedReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("ended_reason");
+
+                    b.Property<DateOnly>("OnDate")
+                        .HasColumnType("date")
+                        .HasColumnName("on_date");
+
+                    b.Property<string>("ShiftLabel")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("shift_label");
+
+                    b.Property<string>("StaffName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("staff_name");
+
+                    b.Property<string>("StaffRole")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("staff_role");
+
+                    b.Property<long>("WardId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ward_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_duty_assignment");
+
+                    b.HasIndex("OnDate", "WardId")
+                        .HasDatabaseName("ix_duty_assignment_on_date_ward_id");
+
+                    b.HasIndex("WardId", "OnDate", "ShiftLabel", "StaffName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_duty_assignment_ward_id_on_date_shift_label_staff_name")
+                        .HasFilter("active");
+
+                    b.ToTable("duty_assignment", "ipd", t =>
+                        {
+                            t.HasCheckConstraint("ck_duty_ended", "active OR (ended_reason IS NOT NULL AND ended_at IS NOT NULL AND ended_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_duty_role", "staff_role IN ('nurse','ward-boy','aya')");
+
+                            t.HasCheckConstraint("ck_duty_shift", "shift_label IN ('morning','evening','night')");
+                        });
+                });
+
             modelBuilder.Entity("Hms.Ipd.Data.Folio", b =>
                 {
                     b.Property<long>("Id")
@@ -622,6 +765,26 @@ namespace Hms.Ipd.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_certificate_admission_admission_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.ConsultantVisit", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Admission", null)
+                        .WithMany()
+                        .HasForeignKey("AdmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_consultant_visit_admission_admission_id");
+                });
+
+            modelBuilder.Entity("Hms.Ipd.Data.DutyAssignment", b =>
+                {
+                    b.HasOne("Hms.Ipd.Data.Ward", null)
+                        .WithMany()
+                        .HasForeignKey("WardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_duty_assignment_ward_ward_id");
                 });
 
             modelBuilder.Entity("Hms.Ipd.Data.Folio", b =>

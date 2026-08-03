@@ -1,0 +1,197 @@
+@page "/emr/tasks/{AdmissionId:long?}"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.TasksModel
+@{
+    ViewData["Title"] = "Care Tasks";
+    ViewData["Crumb"] = "Clinical";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.AdmissionId is null)
+{
+    <div class="card card-clip">
+        <div class="card-head">
+            Patients in the ward
+            <span class="spacer"></span>
+            <span class="card-hint">R5 · nursing care tasks</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Admission</th><th>Patient</th><th>Bed</th><th class="num"></th></tr></thead>
+                <tbody>
+                @foreach (var w in Model.Ward)
+                {
+                    <tr>
+                        <td class="id-cell">@w.AdmissionNo</td>
+                        <td>@w.Patient</td>
+                        <td>@w.Bed</td>
+                        <td class="num"><a class="btn-tint" href="/emr/tasks/@w.AdmissionId">Open tasks</a></td>
+                    </tr>
+                }
+                @if (Model.Ward.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">No patients in the ward.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-head">
+            @Model.PatientName
+            <span class="card-hint" style="margin-left:8px">@Model.AdmissionNo</span>
+            @if (Model.Banner is not null)
+            {
+                <partial name="_PatientBanner" model="Model.Banner" />
+            }
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/emr/charts/@Model.AdmissionId">Nursing charts</a>
+            <a class="btn-tint" href="/emr/tasks">Back to ward</a>
+        </div>
+    </div>
+
+    @if (Model.ReadOnly)
+    {
+        <div class="alert">
+            <span class="icon icon-sm" aria-hidden="true">history</span>
+            <span>This admission is closed — open tasks can still be completed or cancelled
+                with a reason; nothing new can be added.</span>
+        </div>
+    }
+
+    <div class="card card-clip">
+        <div class="card-head">
+            Open tasks
+            <span class="spacer"></span>
+            <span class="card-hint">closed with a name and a time; cancelled with a reason</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th>Task</th><th>Due</th><th>Raised by</th><th class="num"></th></tr>
+                </thead>
+                <tbody>
+                @foreach (var t in Model.Open)
+                {
+                    <tr>
+                        <td>
+                            <b>@t.Title</b>
+                            @if (Model.IsLate(t))
+                            {
+                                <span class="pill bad">Overdue</span>
+                            }
+                            @if (t.Details is not null)
+                            {
+                                <div class="card-hint">@t.Details</div>
+                            }
+                        </td>
+                        <td>@(t.DueAt is null ? "this shift" : Ui.DateTimeShort(t.DueAt.Value))</td>
+                        <td class="card-hint">
+                            @(Model.Nurses.ContainsKey(t.CreatedBy) ? Model.Nurses[t.CreatedBy] : "—")
+                        </td>
+                        <td class="num">
+                            <form method="post" asp-page-handler="Done" class="inline-form">
+                                <input type="hidden" name="TaskId" value="@t.Id" />
+                                <button type="submit" class="btn-tint">Done</button>
+                            </form>
+                            <form method="post" asp-page-handler="Cancel" class="inline-form">
+                                <input type="hidden" name="TaskId" value="@t.Id" />
+                                <input class="input input-sm" name="Reason" placeholder="reason" style="width:140px" />
+                                <button type="submit" class="btn-tint">Cancel</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Open.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">Nothing open for this patient.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (!Model.ReadOnly)
+    {
+    <form method="post" asp-page-handler="Create" class="card">
+        <div class="card-head">Add a task</div>
+        <div class="card-body">
+            <div class="field-grid cols-5">
+                <label class="field span-2">
+                    <span class="field-label">Task <span class="req">*</span></span>
+                    <input class="input" name="Title" autocomplete="off" data-advance
+                           placeholder="turn the patient" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Kind</span>
+                    <input class="input" name="Kind" placeholder="positioning" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Due date</span>
+                    <input class="input" name="DueDate" hms-date placeholder="today" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Due time</span>
+                    <input class="input" name="DueTime" placeholder="HH:mm" />
+                </label>
+                <label class="field span-3">
+                    <span class="field-label">Details</span>
+                    <input class="input" name="Details" placeholder="left side, head up 30°" />
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-cta" style="margin-top:12px">
+                <span class="icon icon-sm" aria-hidden="true">task_alt</span> Add task
+            </button>
+        </div>
+    </form>
+    }
+
+    <div class="card card-clip">
+        <div class="card-head">
+            Closed and cancelled
+            <span class="spacer"></span>
+            <span class="card-hint">nothing is deleted — a dropped task keeps its reason</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Task</th><th>Outcome</th><th>When</th><th>By</th></tr></thead>
+                <tbody>
+                @foreach (var t in Model.History)
+                {
+                    <tr>
+                        <td>@t.Title</td>
+                        <td>
+                            <span class="pill @(t.State == TaskState.Done ? "good" : "")">
+                                @Ui.Humanize(t.State)
+                            </span>
+                            @if (t.StateReason is not null)
+                            {
+                                <div class="card-hint">@t.StateReason</div>
+                            }
+                        </td>
+                        <td>@(t.CompletedAt is null ? "—" : Ui.DateTimeShort(t.CompletedAt.Value))</td>
+                        <td class="card-hint">
+                            @(t.CompletedBy is not null && Model.Nurses.ContainsKey(t.CompletedBy.Value)
+                                ? Model.Nurses[t.CompletedBy.Value] : "—")
+                        </td>
+                    </tr>
+                }
+                @if (Model.History.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">Nothing closed yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

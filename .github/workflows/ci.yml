@@ -70,12 +70,22 @@ jobs:
           dotnet ef migrations script --idempotent --no-build -c Release \
             --project src/Modules/Notifications/Hms.Notifications --startup-project src/Hms.Web \
             --context NotifDbContext -o notif.sql
+          # emr and ipd carry the clinical record (MAR, care tasks, admissions, duty) — both
+          # widened by spec 0041 and previously outside the gate.
+          dotnet ef migrations script --idempotent --no-build -c Release \
+            --project src/Modules/Emr/Hms.Emr --startup-project src/Hms.Web \
+            --context EmrDbContext -o emr.sql
+          dotnet ef migrations script --idempotent --no-build -c Release \
+            --project src/Modules/Ipd/Hms.Ipd --startup-project src/Hms.Web \
+            --context IpdDbContext -o ipd.sql
           sh eng/check-additive-migrations.sh kernel.sql
           sh eng/check-additive-migrations.sh auth.sql
           sh eng/check-additive-migrations.sh reg.sql
           sh eng/check-additive-migrations.sh hr.sql
           sh eng/check-additive-migrations.sh diag.sql
           sh eng/check-additive-migrations.sh notif.sql
+          sh eng/check-additive-migrations.sh emr.sql
+          sh eng/check-additive-migrations.sh ipd.sql
       - name: Image build
         run: docker build -f deploy/app.Dockerfile -t hms-app:ci .
 

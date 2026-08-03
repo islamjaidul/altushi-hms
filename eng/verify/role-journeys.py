@@ -45,7 +45,8 @@ ROLE_GRANTS = {
         "billing.session.close", "admin.approvals.decide", "ipd.read"],
     "Nurse": [
         "registration.read", "ipd.read", "ipd.service.post",
-        "emr.read", "emr.vitals.record", "emr.chart.record"],
+        "emr.read", "emr.vitals.record", "emr.chart.record",
+        "emr.task.manage", "ipd.duty.manage"],
     "OPD Consultant": [
         "registration.read", "emr.read", "emr.note.write", "diagnostics.order.create",
         "lis.worklist.read", "ipd.read", "ot.read"],
@@ -99,8 +100,10 @@ ROUTES = {
     "/emr/charts": "emr.chart.record",
     "/emr/consult/1": "emr.note.write",
     "/emr/history": "emr.read",
+    "/emr/indoor": "emr.note.write",
     "/emr/prescription/1": "emr.read",
     "/emr/queue": "emr.read",
+    "/emr/tasks": "emr.task.manage",
     # M16 HR & Payroll (spec 0036). These screens ship in a razor class library so the same build
     # serves the standalone HRM SKU (ADR-0025); the traceability guard now scans every Pages root,
     # so they must be listed here like any other module's.
@@ -126,9 +129,11 @@ ROUTES = {
     "/ipd/board": "ipd.read",
     "/ipd/certificates": "ipd.settle",
     "/ipd/discharge/1": "ipd.read",
+    "/ipd/duty": "ipd.duty.manage",
     "/ipd/folio/1": "ipd.read",
     "/ipd/indents": "ipd.service.post",
     "/ipd/reports": "ipd.read",
+    "/ipd/station": "ipd.read",
     "/lis/amend": "lis.result.verify",
     "/lis/board": "lis.worklist.read",
     "/lis/report/1": "lis.worklist.read",

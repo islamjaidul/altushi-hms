@@ -57,6 +57,11 @@ namespace Hms.Registration.Data.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("age_years");
 
+                    b.Property<string>("Allergies")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("allergies");
+
                     b.Property<string>("Area")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")

@@ -32,6 +32,13 @@ public class Patient
     public string? Address { get; set; }
     public string? Nid { get; set; }
     public string? BloodGroup { get; set; }
+    /// <summary>
+    /// Spec 0042 (§5 M5 [C] "allergy &amp; alert flags on every clinical screen"). Free text —
+    /// "penicillin, NSAIDs" — because a coded allergy master is a later refinement and a red
+    /// banner that says the words is the safety payload. Null means "none recorded", which the
+    /// screens must render differently from "no known allergies"; nobody asserted absence.
+    /// </summary>
+    public string? Allergies { get; set; }
     public string PatientType { get; set; } = "general";
     public bool UnknownIdentity { get; set; }          // edge 25
     public bool Provisional { get; set; }              // edge 11
@@ -96,6 +103,7 @@ public class RegDbContext(DbContextOptions<RegDbContext> options) : DbContext(op
             e.Property(x => x.Address).HasMaxLength(500);
             e.Property(x => x.Nid).HasMaxLength(40);
             e.Property(x => x.BloodGroup).HasMaxLength(40);
+            e.Property(x => x.Allergies).HasMaxLength(4000);
             e.Property(x => x.PatientType).HasMaxLength(40);
             e.HasOne<Patient>().WithMany().HasForeignKey(x => x.MergedInto);
         });

@@ -29,6 +29,9 @@ public class NewModel(
     [BindProperty, StringLength(Bounds.Name)] public string? Area { get; set; }
     [BindProperty, StringLength(Bounds.Address)] public string? Address { get; set; }
     [BindProperty, StringLength(Bounds.Code)] public string? BloodGroup { get; set; }
+    /// <summary>Spec 0042 (§5 M5 "alert flags"): free text, rendered as a red banner on every
+    /// clinical screen. Blank means "not asked", which the screens show differently from none.</summary>
+    [BindProperty, StringLength(Bounds.Note)] public string? Allergies { get; set; }
     [BindProperty] public string PatientType { get; set; } = "general";
     [BindProperty] public bool UnknownIdentity { get; set; }
     /// <summary>Set by the "register anyway" button under the duplicate list (edge 23).</summary>
@@ -133,7 +136,7 @@ public class NewModel(
                 var p = await registration.RegisterAsync(s.Reg, s.Kernel, new RegisterPatientCommand(
                     BranchId, FullName, Sex.FirstOrDefault('M'), dob, years, months, estimated,
                     phone, Guardian, Area, Address, BloodGroup, PatientType,
-                    UnknownIdentity, ActorId, ActorName));
+                    UnknownIdentity, ActorId, ActorName, Allergies));
 
                 // The welcome SMS commits with the patient, or not at all (§9A.2 module 8).
                 await SmsSender.SendAsync(s, sms, BranchId, Hms.Notifications.Data.SmsEvent.Registration,

@@ -1,6 +1,7 @@
 using Hms.Admin;
 using Hms.Billing;
 using Hms.Diagnostics;
+using Hms.Emr;
 using Hms.Emr.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,8 +29,12 @@ public static class EmrOrdering
         long branchId, Note note, IReadOnlyList<long> testCatalogIds, long doctorId,
         CancellationToken ct = default)
     {
+        // EmrException, not InvalidOperationException (spec 0042): nothing maps the latter, so
+        // if a UI path ever reached this it surfaced as a 500 instead of a sentence.
         if (note.EncounterId is not { } encounterId)
-            throw new InvalidOperationException("Indoor orders post to the folio, not to a visit.");
+            throw new EmrException(
+                "This is an indoor prescription — order the tests from the patient's folio, "
+                + "where they post to the running bill.");
 
         var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
         var tests = new List<OrderedTest>();

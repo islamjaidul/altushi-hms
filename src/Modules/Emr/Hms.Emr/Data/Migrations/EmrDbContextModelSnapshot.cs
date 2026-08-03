@@ -23,6 +23,89 @@ namespace Hms.Emr.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Hms.Emr.Data.CareTask", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AdmissionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("admission_id");
+
+                    b.Property<long>("BranchId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("branch_id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<long?>("CompletedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("completed_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("details");
+
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("state");
+
+                    b.Property<string>("StateReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("state_reason");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_care_task");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_care_task_state");
+
+                    b.HasIndex("AdmissionId", "State")
+                        .HasDatabaseName("ix_care_task_admission_id_state");
+
+                    b.ToTable("care_task", "emr", t =>
+                        {
+                            t.HasCheckConstraint("ck_care_task_cancelled", "state <> 'cancelled' OR state_reason IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_care_task_done", "state <> 'done' OR (completed_at IS NOT NULL AND completed_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_care_task_state", "state IN ('open','done','cancelled')");
+                        });
+                });
+
             modelBuilder.Entity("Hms.Emr.Data.Favourite", b =>
                 {
                     b.Property<long>("Id")
@@ -172,6 +255,10 @@ namespace Hms.Emr.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("drug_name");
 
+                    b.Property<long?>("NoteDrugId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("note_drug_id");
+
                     b.Property<string>("Route")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
@@ -200,6 +287,11 @@ namespace Hms.Emr.Data.Migrations
 
                     b.HasIndex("AdmissionId", "ScheduledAt")
                         .HasDatabaseName("ix_mar_dose_admission_id_scheduled_at");
+
+                    b.HasIndex("NoteDrugId", "ScheduledAt")
+                        .IsUnique()
+                        .HasDatabaseName("ix_mar_dose_note_drug_id_scheduled_at")
+                        .HasFilter("note_drug_id IS NOT NULL");
 
                     b.ToTable("mar_dose", "emr", t =>
                         {
@@ -566,6 +658,15 @@ namespace Hms.Emr.Data.Migrations
 
                             t.HasCheckConstraint("ck_vitals_weight", "weight_tenths_kg IS NULL OR weight_tenths_kg BETWEEN 1 AND 4000");
                         });
+                });
+
+            modelBuilder.Entity("Hms.Emr.Data.MarDose", b =>
+                {
+                    b.HasOne("Hms.Emr.Data.NoteDrug", null)
+                        .WithMany()
+                        .HasForeignKey("NoteDrugId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_mar_dose_note_drug_note_drug_id");
                 });
 
             modelBuilder.Entity("Hms.Emr.Data.Note", b =>

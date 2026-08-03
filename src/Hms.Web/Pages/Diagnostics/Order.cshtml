@@ -29,6 +29,14 @@
     }
 
     <div class="stack">
+        @if (Model.AdmittedAs is { } admitted)
+        {
+            <div class="alert warn">
+                <span class="icon icon-sm" aria-hidden="true">warning</span>
+                <span>Admitted patient — @admitted.AdmissionNo, bed @admitted.Bed. Tests post to
+                    the running folio and settle at discharge; take no cash here.</span>
+            </div>
+        }
         <div class="card card-body">
             <div class="field-grid cols-3">
                 <label class="field typeahead-host">

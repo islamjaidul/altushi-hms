@@ -142,7 +142,7 @@ else
             <div class="card-head">Admissions</div>
             <div class="table-wrap">
                 <table class="data">
-                    <thead><tr><th>Admission</th><th>Admitted</th><th>Discharged</th><th>State</th></tr></thead>
+                    <thead><tr><th>Admission</th><th>Admitted</th><th>Discharged</th><th>State</th><th class="num"></th></tr></thead>
                     <tbody>
                     @foreach (var a in Model.Admissions)
                     {
@@ -152,6 +152,9 @@ else
                             <td>@Ui.DateTimeShort(a.AdmittedAt)</td>
                             <td>@(a.DischargedAt is null ? "—" : Ui.DateTimeShort(a.DischargedAt.Value))</td>
                             <td><span class="pill @status.Css">@status.Word</span></td>
+                            @* Spec 0042 F8: a closed admission's MAR stays reachable — read-only
+                               on the chart itself, but never invisible. *@
+                            <td class="num"><a class="btn-tint" href="/emr/charts/@a.Id">Charts</a></td>
                         </tr>
                     }
                     </tbody>

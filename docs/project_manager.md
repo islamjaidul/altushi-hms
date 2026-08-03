@@ -7,10 +7,11 @@
 | **Prepared by** | ERP Project Manager (20 yrs, Hospital ERP domain) |
 | **Audience** | Principal Software Architect & Engineering Design Team |
 | **Date** | 26 July 2026 |
-| **Status** | Draft v1.1 — enriched with live-system walkthrough of both competitor products |
+| **Status** | Draft v1.2 — v1.1 enriched with live-system walkthrough of both competitor products; v1.2 adds R5 Nursing Station |
 | **Scope discipline** | This document contains **business requirements only**. All technology decisions (stack, database, architecture style, deployment) are explicitly delegated to the Software Architect — see §16 Handoff Checklist. |
 
 **Changelog**
+- **v1.2 (03 Aug 2026)** — Added §5A.2 **R5 Nursing Station** (ward nursing console: ward monitor, prescription-driven Medicine Chart schedule with overdue visibility, attributable care tasks, ward duty assignment — fills M6's duty-assignment `[S]` item and the 2026-08 audit's missed-dose visibility gap). Added US5.5, US6.5, US6.6.
 - **v1.1 (26 Jul 2026)** — Added §2.4 live-system walkthrough findings from authenticated access to **MEDISpa** (full menu + form crawl) and structural extraction of **PrimeMIS** (complete Angular route/API map). Added §3.4 Bangladesh financial rails (BEFTN/TDS/VAT). Added §5A live-observed module enrichments (46 verified additions across modules + 4 new sub-modules). Extended §11 state machines, §12/§16. Every added item is source-tagged `[obs: MEDISpa]` / `[obs: PrimeMIS]`.
 - **v1.0 (26 Jul 2026)** — Initial PRD from the two written vendor proposals + Bangladesh industry research.
 
@@ -409,6 +410,8 @@ All personas share a base profile: **age 30–55, non-technical, moderate Englis
 - **US5.3** As a Nurse, I want to record vitals before the doctor sees the patient, so that chamber time is spent on consultation.
 - **US5.4** As an OPD Consultant, when I order tests on the prescription, I want them to appear at the billing counter automatically, so that the patient just walks over and pays.
   **AC:** Ordered tests appear as a pending order under the patient's UHID at every billing counter (M4/M8); no re-typing.
+- **US5.5** As a Nurse / Ward In-charge, I want the Medicine Chart schedule to come from the doctor's indoor prescription, and any dose past its time to be visibly flagged, so that no dose is silently skipped and I never invent a drug time. → §5A.2 R5
+  **AC:** Generating twice never duplicates a dose; a frequency the system cannot read is left for manual scheduling, never guessed; an overdue dose is visually distinct from a pending one; marking a dose missed requires a reason and both are visible afterwards.
 
 ---
 
@@ -438,6 +441,9 @@ All personas share a base profile: **age 30–55, non-technical, moderate Englis
   **AC:** Zero manual re-entry; every line traceable to source module + poster; folio locks at settlement; late postings after lock require supervisor approval.
 - **US6.3** As a Front Desk Operator, I want to transfer a patient from general bed to cabin with correct per-day charging from transfer time, so that disputes about bed charges end.
 - **US6.4** As a Managing Director, I want a live occupancy view by ward/class, so that I know tonight's occupancy without phoning wards.
+- **US6.5** As a Nurse / Ward In-charge, I want one ward screen showing every occupied bed with what is due, overdue, or waiting (doses, care tasks, indents), so that a shift handover is a walk through one board, not a paper hunt. → §5A.2 R5
+- **US6.6** As a Nurse / Ward In-charge, I want to record who is on duty in my ward per shift and day (nurse, ward-boy, aya) and end an assignment with a reason, so that "who was on duty" always has one answer. → §5A.2 R5
+  **AC:** A duplicate assignment for the same ward, shift, day, and person is refused; ended assignments keep their history; the ward board shows today's duty list.
 
 ---
 
@@ -826,6 +832,7 @@ These are **verified additions** from the live-system walkthrough (§2.4). Each 
 | **R2** | **Health Card & Discount Card** | Patient-held **membership/loyalty cards** granting standing discounts: card issue with **expiry**, **Discount Card** vs **Health Card** types, **Discounted-By** master, and discount-card statements. Card auto-applies its rate at billing. `[obs: MEDISpa]`. | extends M4/M8/M21 rate plans | Should |
 | **R3** | **Public Queue Display & Patient Self-Service Status** | **Public monitor** showing token/queue and consultant-present status; **patient self-service report-status checker** (kiosk/web, no login) to check if a lab report is ready. `[obs: MEDISpa]` (Queue Monitor, Investigation Report Tracker) + `[obs: PrimeMIS]` (consultant-status, `Image-Report-Status`). | extends M3/M8/M22, Phase-3 portal | Should |
 | **R4** | **Bill-Block / Due-Control (Patient Hold)** | Patients with unpaid dues are **"blocked"** — barred from further chargeable service and from discharge until cleared: block-list, blocked-patient bill view, pending-blocked queues, and a **block→release approval**. Adds a **Blocked** state to admission/folio. `[obs: PrimeMIS]` (`block-list`, `patient-bill-blocked`, `held-up`, `pending-blockedpatients`). | extends M6/M11/M21, §11 | Should |
+| **R5** | **Nursing Station (ward nursing console)** | One console for the ward nurse: **ward monitor** of occupied beds (patient banner, latest vitals, doses due/**overdue**, pending ward indents, open care tasks, today's on-duty staff); **Medicine Chart schedule generated from the indoor prescription** with overdue doses visibly flagged and unreadable frequency lines falling back to manual scheduling; **attributable care tasks** (create / complete / cancel-with-reason); **ward duty assignment** per ward, shift, and day (nurse / ward-boy / aya), fed by the published HR roster where one exists. Fills M6's duty-assignment `[S]` item and the 2026-08 audit gap "a missed dose is not visible as missed". | extends M5/M6/M16 | Should |
 
 > **Consolidation note for the architect:** R1–R4 and 5A-21 confirm that our v1.0 **integration spine (folio + day-close)** and **universal approval engine** are the correct architectural bets — the live products lean on exactly these patterns, just more granularly. Nothing observed contradicts the §6 data flows; it thickens them.
 

@@ -162,6 +162,65 @@ public class IndentItem
     public int QtyReturned { get; set; }               // discharge-time return (0016 deferral #11)
 }
 
+/// <summary>
+/// One consultant's round on one admission on one day — §5 M6 [M] "which consultant saw patient
+/// which day", the fact M17 will compute payouts from (spec 0042). Written by the composition
+/// root when an indoor prescription is signed; the unique (admission, doctor, day) key is the
+/// BedDay-style idempotency anchor, so five notes in one round still make one visit and one
+/// charge. `ChargeLineId` is null when the folio was not postable at signing (R4 hold) — the
+/// visit is still a fact; the money follows the late-post path.
+/// </summary>
+public class ConsultantVisit
+{
+    public long Id { get; set; }
+    public long BranchId { get; set; }
+    public long AdmissionId { get; set; }
+    public long DoctorId { get; set; }                 // adm doctor master — cross-schema, no FK
+    public DateOnly OnDate { get; set; }
+    public long? NoteId { get; set; }                  // emr.note — cross-schema, no FK
+    public long? ChargeLineId { get; set; }            // bill.charge_line — cross-schema, no FK
+    public DateTimeOffset CreatedAt { get; set; }
+    public long CreatedBy { get; set; }
+}
+
+public static class DutyShift
+{
+    public const string Morning = "morning";
+    public const string Evening = "evening";
+    public const string Night = "night";
+}
+
+public static class DutyRole
+{
+    public const string Nurse = "nurse";
+    public const string WardBoy = "ward-boy";
+    public const string Aya = "aya";
+}
+
+/// <summary>
+/// R5 (spec 0041): who covers this ward, this shift, this day — M6's `[S]` duty-assignment item.
+/// Ward vocabulary stays in ipd (P27); employee_id is an hr scalar with no FK (ADR-0003), and
+/// staff_name is a snapshot so the row still reads when hr is empty or the aya was never hired
+/// into HR. Removal is deactivate-with-reason, never delete.
+/// </summary>
+public class DutyAssignment
+{
+    public long Id { get; set; }
+    public long BranchId { get; set; }
+    public long WardId { get; set; }
+    public DateOnly OnDate { get; set; }
+    public required string ShiftLabel { get; set; }    // morning|evening|night
+    public required string StaffRole { get; set; }     // nurse|ward-boy|aya
+    public long? EmployeeId { get; set; }              // hr.employee — cross-schema, no FK
+    public required string StaffName { get; set; }
+    public bool Active { get; set; } = true;
+    public string? EndedReason { get; set; }
+    public DateTimeOffset? EndedAt { get; set; }
+    public long? EndedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public long CreatedBy { get; set; }
+}
+
 /// <summary>Discharge/Death/Birth certificates — sequential numbers, reprint audited (§5 M6).</summary>
 public class Certificate
 {
@@ -193,6 +252,8 @@ public class IpdDbContext(DbContextOptions<IpdDbContext> options) : DbContext(op
     public DbSet<Indent> Indents => Set<Indent>();
     public DbSet<IndentItem> IndentItems => Set<IndentItem>();
     public DbSet<Certificate> Certificates => Set<Certificate>();
+    public DbSet<DutyAssignment> DutyAssignments => Set<DutyAssignment>();
+    public DbSet<ConsultantVisit> ConsultantVisits => Set<ConsultantVisit>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -331,6 +392,40 @@ public class IpdDbContext(DbContextOptions<IpdDbContext> options) : DbContext(op
             e.HasIndex(x => x.IndentId);
             e.HasOne<Indent>().WithMany().HasForeignKey(x => x.IndentId);
             // product_id points at pharm.product — cross-schema, so no FK (ADR-0003).
+        });
+        b.Entity<DutyAssignment>(e =>
+        {
+            e.ToTable("duty_assignment", t =>
+            {
+                t.HasCheckConstraint("ck_duty_shift",
+                    "shift_label IN ('morning','evening','night')");
+                t.HasCheckConstraint("ck_duty_role",
+                    "staff_role IN ('nurse','ward-boy','aya')");
+                // An ended assignment keeps who ended it and why — the row is the history
+                // (audit §2, same posture as bed out-of-service).
+                t.HasCheckConstraint("ck_duty_ended",
+                    "active OR (ended_reason IS NOT NULL "
+                    + "AND ended_at IS NOT NULL AND ended_by IS NOT NULL)");
+            });
+            e.Property(x => x.ShiftLabel).HasMaxLength(40);
+            e.Property(x => x.StaffRole).HasMaxLength(40);
+            e.Property(x => x.StaffName).HasMaxLength(200);
+            e.Property(x => x.EndedReason).HasMaxLength(4000);
+            // One person once per ward/shift/day *while active* — partial, so end-with-reason
+            // followed by reassignment of the same name is legal (the history keeps both rows).
+            e.HasIndex(x => new { x.WardId, x.OnDate, x.ShiftLabel, x.StaffName })
+                .IsUnique().HasFilter("active");
+            e.HasIndex(x => new { x.OnDate, x.WardId });
+            e.HasOne<Ward>().WithMany().HasForeignKey(x => x.WardId);
+        });
+        b.Entity<ConsultantVisit>(e =>
+        {
+            e.ToTable("consultant_visit");
+            // One visit per doctor per admission per day — the idempotency anchor that makes
+            // "sign twice" and "two notes in one round" charge once (same shape as bed_day).
+            e.HasIndex(x => new { x.AdmissionId, x.DoctorId, x.OnDate }).IsUnique();
+            e.HasIndex(x => new { x.DoctorId, x.OnDate });     // M17's future read: a day's rounds
+            e.HasOne<Admission>().WithMany().HasForeignKey(x => x.AdmissionId);
         });
         b.Entity<Certificate>(e =>
         {

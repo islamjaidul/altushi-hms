@@ -56,6 +56,21 @@ else if (admission.State == AdmissionState.DischargeInitiated)
         <div class="card-head">2 · Clinical clearance</div>
         <div class="card-body stack" style="gap:10px;padding-top:0">
             <p>@admission.ClinicalSummary</p>
+            @if (Model.OpenDoses + Model.OpenTasks > 0)
+            {
+                @* Spec 0042 F8: the last moment someone is certainly looking at this patient.
+                   Informational — the money gate is unchanged; the ward closes its own items. *@
+                <div class="alert warn">
+                    <span class="icon icon-sm" aria-hidden="true">warning</span>
+                    <span>
+                        The ward still holds
+                        @(Model.OpenDoses > 0 ? $"{Model.OpenDoses} scheduled dose(s)" : "")@(Model.OpenDoses > 0 && Model.OpenTasks > 0 ? " and " : "")@(Model.OpenTasks > 0 ? $"{Model.OpenTasks} open task(s)" : "")
+                        for this patient —
+                        <a href="/emr/charts/@Model.AdmissionId">chart</a> ·
+                        <a href="/emr/tasks/@Model.AdmissionId">tasks</a>
+                    </span>
+                </div>
+            }
             <form method="post" asp-page-handler="Clear">
                 <button type="submit" class="btn btn-primary">Clinically cleared</button>
             </form>

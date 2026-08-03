@@ -3,6 +3,7 @@ using Hms.Billing;
 using Hms.Diagnostics;
 using Hms.Ipd;
 using Hms.Ipd.Data;
+using Hms.Kernel.Audit;
 using Hms.Lis;
 using Hms.Pharmacy;
 using Microsoft.EntityFrameworkCore;
@@ -132,6 +133,92 @@ public static class IpdBilling
             new NewChargeLine("service", serviceCatalogId, service.Name, qty, rate.Price,
                 rate.RateVersionId, doctorId), actorId, ct: ct);
         return line.Id;
+    }
+
+    public const string VisitServiceCode = "IPD-VISIT";
+
+    public sealed record VisitResult(ConsultantVisit Visit, bool Charged, string? WhyNot);
+
+    /// <summary>
+    /// §5 M6 [M] "which consultant saw patient which day", closed by spec 0042: signing an
+    /// indoor prescription records the visit and posts its folio charge in one action.
+    ///
+    /// The visit row is claimed <b>first</b>, on its unique (admission, doctor, day) key — the
+    /// BedDay discipline — so two notes in one round, a double-click, or two concurrent signs
+    /// make one visit and one charge. Only after the claim holds does money post; a lost claim
+    /// means someone else already charged today's round.
+    ///
+    /// A folio that refuses the charge (R4 block, settlement lock) does <b>not</b> unrecord the
+    /// round: the visit stands with a null ChargeLineId — the payout fact M17 needs — and the
+    /// money follows the folio's own late-post path. A doctor's signature must never fail on a
+    /// billing hold, and a billing hold must never erase that the doctor was there.
+    /// </summary>
+    public static async Task<VisitResult> PostConsultantVisitAsync(
+        TxScope s, BillingService billing, FolioService folios, RateResolver rates,
+        AuditWriter audit, TimeProvider clock, long branchId, long admissionId, long doctorId,
+        long? noteId, long actorId, string actorName, CancellationToken ct = default)
+    {
+        var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
+
+        var existing = await s.Ipd.ConsultantVisits.AsNoTracking().FirstOrDefaultAsync(
+            v => v.AdmissionId == admissionId && v.DoctorId == doctorId && v.OnDate == today, ct);
+        if (existing is not null)
+            return new VisitResult(existing, false, "already recorded today");
+
+        var visit = new ConsultantVisit
+        {
+            BranchId = branchId, AdmissionId = admissionId, DoctorId = doctorId,
+            OnDate = today, NoteId = noteId, CreatedAt = clock.GetUtcNow(), CreatedBy = actorId,
+        };
+        s.Ipd.ConsultantVisits.Add(visit);
+        try
+        {
+            await s.Ipd.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Lost the unique-key race: a concurrent sign claimed today's visit. Their claim
+            // carries the charge; this caller has nothing left to do.
+            s.Ipd.Entry(visit).State = EntityState.Detached;
+            var winner = await s.Ipd.ConsultantVisits.AsNoTracking().FirstAsync(
+                v => v.AdmissionId == admissionId && v.DoctorId == doctorId && v.OnDate == today, ct);
+            return new VisitResult(winner, false, "already recorded today");
+        }
+
+        audit.Append(s.Kernel, branchId, actorId, actorName, "ipd.visit.recorded",
+            "ipd.consultant_visit", visit.Id, after: new { admissionId, doctorId, today, noteId },
+            tier: 1);
+        await s.Kernel.SaveChangesAsync(ct);
+
+        var folio = await s.Ipd.Folios.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.AdmissionId == admissionId, ct);
+        if (folio is null)
+            return new VisitResult(visit, false, "no folio on this admission");
+
+        var service = await s.Adm.Services.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Code == VisitServiceCode && x.Active, ct);
+        if (service is null)
+            return new VisitResult(visit, false,
+                "the consultant-visit catalog item is missing — check masters");
+
+        try
+        {
+            await folios.EnsurePostableAsync(s.Ipd, s.Kernel, folio.Id, null, ct);
+        }
+        catch (IpdException e)
+        {
+            return new VisitResult(visit, false, e.Message);
+        }
+
+        var rate = await rates.ResolveAsync(s.Adm, "service", service.Id, today, ct: ct);
+        var line = await billing.PostFolioChargeAsync(s.Bill, branchId, folio.Id, "Ipd",
+            new NewChargeLine("service", service.Id,
+                $"{service.Name} — {today:dd MMM yyyy}", 1, rate.Price, rate.RateVersionId, doctorId),
+            actorId, ct: ct);
+        visit.ChargeLineId = line.Id;
+        s.Ipd.ConsultantVisits.Update(visit);
+        await s.Ipd.SaveChangesAsync(ct);
+        return new VisitResult(visit, true, null);
     }
 
     /// <summary>Admission-time postings: admission fee and the package line (5A-9).</summary>

@@ -397,6 +397,84 @@ public sealed class IpdService(
         await kernel.SaveChangesAsync(ct);
     }
 
+    // ---- R5 ward duty (spec 0041) -------------------------------------------
+
+    /// <summary>
+    /// Who covers this ward, this shift, this day — M6's `[S]` duty-assignment item.
+    ///
+    /// The staff name is a <b>snapshot</b> and the employee id an optional scalar: HR lives in
+    /// another schema and another SKU (P27, ADR-0003), the ERP host may carry no employee rows at
+    /// all, and an aya is often not an HR record anywhere. A roster that only works when HR is
+    /// populated is a roster the ward cannot use tonight.
+    /// </summary>
+    public async Task<DutyAssignment> AssignDutyAsync(
+        IpdDbContext ipd, KernelDbContext kernel, long branchId, long wardId, DateOnly onDate,
+        string shiftLabel, string staffRole, long? employeeId, string? staffName,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        if (shiftLabel is not (DutyShift.Morning or DutyShift.Evening or DutyShift.Night))
+            throw new IpdException("Pick a shift: morning, evening or night.");
+        if (staffRole is not (DutyRole.Nurse or DutyRole.WardBoy or DutyRole.Aya))
+            throw new IpdException("Pick a role: nurse, ward boy or aya.");
+
+        var name = staffName?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            throw new IpdException("Whose duty is this? Enter a name.");
+
+        _ = await ipd.Wards.AsNoTracking()
+                .FirstOrDefaultAsync(w => w.Id == wardId && w.BranchId == branchId, ct)
+            ?? throw new IpdException("Unknown ward.");
+
+        // The partial unique index enforces this too; the check exists so the nurse reads a
+        // sentence instead of a constraint violation.
+        var duplicate = await ipd.DutyAssignments.AsNoTracking().AnyAsync(d =>
+            d.WardId == wardId && d.OnDate == onDate && d.ShiftLabel == shiftLabel
+            && d.StaffName == name && d.Active, ct);
+        if (duplicate)
+            throw new IpdException($"{name} is already on the {shiftLabel} shift that day.");
+
+        var duty = new DutyAssignment
+        {
+            BranchId = branchId, WardId = wardId, OnDate = onDate, ShiftLabel = shiftLabel,
+            StaffRole = staffRole, EmployeeId = employeeId, StaffName = name,
+            CreatedAt = clock.GetUtcNow(), CreatedBy = actorId,
+        };
+        ipd.DutyAssignments.Add(duty);
+        await ipd.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "ipd.duty.assigned",
+            "ipd.duty_assignment", duty.Id,
+            after: new { wardId, onDate, shiftLabel, staffRole, name }, tier: 1);
+        await kernel.SaveChangesAsync(ct);
+        return duty;
+    }
+
+    /// <summary>
+    /// Taking someone off a shift deactivates the row with a reason — it never deletes it. Who
+    /// was on the ward when something happened is exactly the question a roster is kept for.
+    /// </summary>
+    public async Task EndDutyAsync(
+        IpdDbContext ipd, KernelDbContext kernel, long branchId, long assignmentId, string? reason,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new IpdException("Say why the duty is ending — the roster is a record.");
+
+        var now = clock.GetUtcNow();
+        var affected = await ipd.Database.ExecuteSqlAsync($"""
+            UPDATE ipd.duty_assignment
+            SET active = false, ended_reason = {reason.Trim()}, ended_at = {now},
+                ended_by = {actorId}
+            WHERE id = {assignmentId} AND active AND branch_id = {branchId}
+            """, ct);
+        if (affected == 0)
+            throw new IpdException("This duty was already ended — refresh the roster.");
+
+        audit.Append(kernel, branchId, actorId, actorName, "ipd.duty.ended",
+            "ipd.duty_assignment", assignmentId, after: new { reason }, tier: 1);
+        await kernel.SaveChangesAsync(ct);
+    }
+
     // ---- helpers -----------------------------------------------------------
 
     private async Task CloseStayAsync(IpdDbContext ipd, long admissionId, CancellationToken ct)

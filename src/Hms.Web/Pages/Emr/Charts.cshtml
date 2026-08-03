@@ -50,10 +50,44 @@ else
         <div class="card-head">
             @Model.PatientName
             <span class="card-hint" style="margin-left:8px">@Model.AdmissionNo</span>
+            @if (Model.Banner is not null)
+            {
+                <partial name="_PatientBanner" model="Model.Banner" />
+            }
             <span class="spacer"></span>
             <a class="btn-tint" href="/emr/charts">Back to ward</a>
         </div>
     </div>
+
+    @if (Model.ReadOnly)
+    {
+        <div class="alert">
+            <span class="icon icon-sm" aria-hidden="true">history</span>
+            <span>This admission is closed — the record is read-only, except for closing the
+                open items below with a reason.</span>
+        </div>
+    }
+
+    @if (!Model.ReadOnly && Model.Prescriptions.Count > 0)
+    {
+        <div class="card">
+            <div class="card-head">
+                Build the chart from a prescription
+                <span class="spacer"></span>
+                <span class="card-hint">safe to press twice — a dose is never scheduled twice</span>
+            </div>
+            <div class="card-body">
+                @foreach (var p in Model.Prescriptions)
+                {
+                    <form method="post" asp-page-handler="Generate" class="inline-form">
+                        <input type="hidden" name="NoteId" value="@p.Id" />
+                        <span class="pill">@Ui.DateTimeShort(p.At) · @p.Drugs medicine(s)</span>
+                        <button type="submit" class="btn-tint">Generate schedule</button>
+                    </form>
+                }
+            </div>
+        </div>
+    }
 
     <div class="card card-clip">
         <div class="card-head">
@@ -76,7 +110,15 @@ else
                         <td>@(d.Dose ?? "—")</td>
                         <td>@(d.Route ?? "—")</td>
                         <td>
-                            <span class="pill @status.Css">@status.Word</span>
+                            @* LC-NUR-06: waiting and late must not look the same. *@
+                            @if (Model.IsOverdue(d))
+                            {
+                                <span class="pill bad">Overdue</span>
+                            }
+                            else
+                            {
+                                <span class="pill @status.Css">@status.Word</span>
+                            }
                             @if (d.AdministeredAt is not null)
                             {
                                 <div class="card-hint">
@@ -114,6 +156,8 @@ else
         </div>
     </div>
 
+    @if (!Model.ReadOnly)
+    {
     <form method="post" asp-page-handler="Schedule" class="card">
         <div class="card-head">Schedule a dose</div>
         <div class="card-body">
@@ -144,6 +188,7 @@ else
             </button>
         </div>
     </form>
+    }
 
     <div class="card card-clip">
         <div class="card-head">Diabetic chart</div>
@@ -170,6 +215,8 @@ else
         </div>
     </div>
 
+    @if (!Model.ReadOnly)
+    {
     <form method="post" asp-page-handler="Glucose" class="card">
         <div class="card-head">Record a reading</div>
         <div class="card-body">
@@ -229,4 +276,5 @@ else
             </button>
         </div>
     </form>
+    }
 }

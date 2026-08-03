@@ -1,0 +1,152 @@
+@page "/emr/indoor/{AdmissionId:long?}"
+@using Hms.Emr.Data
+@model Hms.Web.Pages.Emr.IndoorModel
+@{
+    ViewData["Title"] = "Indoor Prescription";
+    ViewData["Crumb"] = "Clinical";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.AdmissionId is null)
+{
+    <div class="card card-clip">
+        <div class="card-head">
+            Admitted patients
+            <span class="spacer"></span>
+            <span class="card-hint">ward-round prescribing — the medicine chart builds from this</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Admission</th><th>Patient</th><th>Bed</th><th class="num"></th></tr></thead>
+                <tbody>
+                @foreach (var w in Model.Ward)
+                {
+                    <tr>
+                        <td class="id-cell">@w.AdmissionNo</td>
+                        <td>@w.Patient</td>
+                        <td>@w.Bed</td>
+                        <td class="num"><a class="btn-tint" href="/emr/indoor/@w.AdmissionId">Prescribe</a></td>
+                    </tr>
+                }
+                @if (Model.Ward.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">No patients in the ward.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-head">
+            @Model.PatientName
+            <span class="card-hint" style="margin-left:8px">@Model.AdmissionNo</span>
+            @if (Model.Banner is not null)
+            {
+                <partial name="_PatientBanner" model="Model.Banner" />
+            }
+            <span class="spacer"></span>
+            <a class="btn-tint" href="/emr/charts/@Model.AdmissionId">Nursing charts</a>
+            <a class="btn-tint" href="/emr/indoor">Back to ward</a>
+        </div>
+    </div>
+
+    <form method="post" class="card">
+        <div class="card-head">
+            Today's prescription
+            <span class="spacer"></span>
+            <span class="card-hint">signed prescriptions cannot be edited — a correction supersedes</span>
+        </div>
+        <div class="card-body">
+            <div class="field-grid cols-3">
+                <label class="field">
+                    <span class="field-label">Complaint / progress</span>
+                    <input class="input" name="Complaint" autocomplete="off" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Diagnosis</span>
+                    <input class="input" name="Diagnosis" autocomplete="off" />
+                </label>
+                <label class="field">
+                    <span class="field-label">Advice</span>
+                    <input class="input" name="Advice" autocomplete="off" />
+                </label>
+            </div>
+
+            <div class="table-wrap" style="margin-top:12px">
+                <table class="data">
+                    <thead>
+                    <tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Note</th></tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <tr>
+                            @* The formulary picker (spec 0042): a line picked from the list
+                               carries the pharm product id, which is what lets the folio's
+                               "indent from prescription" resolve real stock. A free-typed name
+                               still works — not every drug is on the formulary. *@
+                            <td class="typeahead-host">
+                                <input type="hidden" name="DrugProductId" id="indoor-drug-@i" value="" />
+                                <input class="input" name="DrugName" autocomplete="off"
+                                       data-typeahead="/api/typeahead/products" data-target="#indoor-drug-@i" />
+                            </td>
+                            <td><input class="input input-sm" name="DrugDose" placeholder="1 tab" /></td>
+                            <td><input class="input input-sm" name="DrugFrequency" placeholder="1+0+1" /></td>
+                            <td><input class="input input-sm" name="DrugDuration" placeholder="7 days" /></td>
+                            <td><input class="input input-sm" name="DrugInstruction" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="btn-row" style="margin-top:12px">
+                <button type="submit" asp-page-handler="Save" class="btn">
+                    <span class="icon icon-sm" aria-hidden="true">save</span> Save draft
+                </button>
+                <button type="submit" asp-page-handler="Sign" class="btn btn-primary btn-cta">
+                    <span class="icon icon-sm" aria-hidden="true">task_alt</span> Sign prescription
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card card-clip">
+        <div class="card-head">Prescriptions on this admission</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>When</th><th>Doctor</th><th>Medicines</th><th>State</th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Prescriptions)
+                {
+                    var status = Ui.Status(p.State);
+                    <tr>
+                        <td>@Ui.DateTimeShort(p.At)</td>
+                        <td>@p.Doctor</td>
+                        <td>@p.Drugs</td>
+                        <td>
+                            <span class="pill @(p.State == NoteState.Final ? "good" : status.Css)">
+                                @(p.State == NoteState.Final ? "Signed" : status.Word)
+                            </span>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Prescriptions.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">Nothing prescribed on this admission yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

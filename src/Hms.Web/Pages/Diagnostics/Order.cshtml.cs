@@ -21,7 +21,8 @@ public sealed record TestItem(
 /// </summary>
 [Authorize(Policy = Perm.DiagnosticsOrderCreate)]
 public class OrderModel(
-    HmsTx tx, BillingService billing, RateResolver rates, LisService lis, TimeProvider clock)
+    HmsTx tx, BillingService billing, Hms.Ipd.FolioService folios, RateResolver rates,
+    LisService lis, TimeProvider clock)
     : HmsPageModel
 {
     [BindProperty(SupportsGet = true)] public long? PatientId { get; set; }
@@ -40,6 +41,11 @@ public class OrderModel(
     public IReadOnlyList<TestItem> Cart { get; private set; } = [];
     public string? PatientName { get; private set; }
     public IReadOnlyList<ReferrerPick> Referrers { get; private set; } = [];
+
+    /// <summary>Spec 0042 F2: where this patient is lying right now. Non-null flips the save to
+    /// the folio path — an inpatient's test must never become a separate outdoor invoice
+    /// (§5 M6 [M] "every chargeable event posts to the folio").</summary>
+    public (long AdmissionId, string AdmissionNo, string Bed)? AdmittedAs { get; private set; }
 
     public long Gross => Cart.Sum(c => c.Price);
     public int SlowestTat => Cart.Count == 0 ? 0 : Cart.Max(c => c.TatMinutes);
@@ -100,8 +106,11 @@ public class OrderModel(
                 .Where(r => r.Code == "SELF").Select(r => (long?)r.Id).FirstOrDefaultAsync());
 
             if (PatientId is { } pid and > 0)
+            {
                 PatientName = await s.Reg.Patients.AsNoTracking()
                     .Where(p => p.Id == pid).Select(p => p.FullName).FirstOrDefaultAsync();
+                AdmittedAs = await IpdBilling.FindOpenAdmissionAsync(s, pid);
+            }
             return 0;
         });
     }
@@ -124,9 +133,11 @@ public class OrderModel(
     {
         await LoadAsync();
 
-        if (Session is null) { Fail("Open your counter before invoicing tests."); return Page(); }
         if (PatientId is null or 0) { Fail("Select a patient first."); return Page(); }
         if (Cart.Count == 0) { Fail("Add at least one test."); return Page(); }
+        if (AdmittedAs is { } admitted) return await SaveToFolioAsync(admitted);
+
+        if (Session is null) { Fail("Open your counter before invoicing tests."); return Page(); }
         // The displayed cart is Items filtered to the priced catalogue; a mismatch means the
         // form carried a test id that is not sellable today. Refuse rather than invoice a subset
         // of what the operator believes is in the cart (AUD-VAL-22b).
@@ -240,6 +251,55 @@ public class OrderModel(
         }
         catch (BillingException e) { Fail(e.Message); return Page(); }
         catch (DiagnosticsException e) { Fail(e.Message); return Page(); }
+        catch (RateResolutionException e) { Fail(e.Message); return Page(); }
+    }
+
+    /// <summary>
+    /// Spec 0042 F2: the indoor branch of this counter. Before this, an admitted patient's test
+    /// became a separate outdoor invoice — off the folio, invisible to settlement, and with no
+    /// R4 check, sellable to a bill-blocked patient. Charges post to the folio; no money moves
+    /// at this counter for an inpatient.
+    /// </summary>
+    private async Task<IActionResult> SaveToFolioAsync((long AdmissionId, string AdmissionNo, string Bed) admitted)
+    {
+        if (PaidNow > 0 || DiscountFlat > 0)
+        {
+            Fail($"This patient is admitted ({admitted.AdmissionNo}) — tests post to the running "
+                 + "folio and are settled at discharge. Take no cash and give no discount here.");
+            return Page();
+        }
+
+        var cart = Cart.ToList();
+        try
+        {
+            var orderId = await tx.RunAsync(async s =>
+            {
+                await IpdBilling.EnsureNotBlockedAsync(s, PatientId!.Value);
+                var folioId = await s.Ipd.Folios.AsNoTracking()
+                                  .Where(f => f.AdmissionId == admitted.AdmissionId)
+                                  .Select(f => (long?)f.Id).FirstOrDefaultAsync()
+                              ?? throw new Hms.Ipd.IpdException(
+                                  "This admission has no folio yet — post from the folio screen.");
+
+                // A double submit must not charge the folio twice. The invoice submission token
+                // cannot cover an invoice-less path, so the guard is a repeat check: the same
+                // operator, folio and test count inside a minute is the same click.
+                var since = clock.GetUtcNow().AddMinutes(-1);
+                var repeat = await s.Diag.Orders.AsNoTracking()
+                    .Where(o => o.FolioId == folioId && o.CreatedBy == ActorId && o.CreatedAt >= since)
+                    .Select(o => (long?)o.Id).FirstOrDefaultAsync();
+                if (repeat is { } prior) return prior;
+
+                return await IpdBilling.OrderTestsAsync(s, billing, folios, rates, lis, clock,
+                    BranchId, folioId, cart.Select(c => c.Id).ToList(),
+                    doctorId: null, ActorId);
+            });
+
+            Toast($"Ordered to the folio ({admitted.AdmissionNo}) — samples raise now; "
+                  + "the bill settles at discharge", "receipt_long");
+            return Redirect($"/diagnostics/order/{orderId}");
+        }
+        catch (Hms.Ipd.IpdException e) { Fail(e.Message); return Page(); }
         catch (RateResolutionException e) { Fail(e.Message); return Page(); }
     }
 }

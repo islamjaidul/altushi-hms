@@ -1,6 +1,8 @@
 using Hms.Admin.Data;
 using Hms.Appointments.Data;
 using Hms.Billing.Data;
+using Hms.Hr;
+using Hms.Hr.Data;
 using Hms.Kernel.Auth;
 using Hms.Kernel.Data;
 using Microsoft.AspNetCore.Identity;
@@ -41,10 +43,12 @@ public static class DevSeed
             ["registration.read", "billing.invoice.create", "billing.receipt.create",
              "billing.session.close", "admin.approvals.decide", "ipd.read"],
         // §12 Nurse row: C on IPD service posting and requisitions, R elsewhere (US6.1).
-        // Spec 0024 adds the pre-checkup vitals (US5.3) and the 5A-7 nursing charts.
+        // Spec 0024 adds the pre-checkup vitals (US5.3) and the 5A-7 nursing charts;
+        // spec 0041 adds the R5 console's care tasks and ward duty roster.
         ["Nurse"] =
             ["registration.read", "ipd.read", "ipd.service.post",
-             "emr.read", "emr.vitals.record", "emr.chart.record"],
+             "emr.read", "emr.vitals.record", "emr.chart.record",
+             "emr.task.manage", "ipd.duty.manage"],
         // P4, the first non-operator persona: a consultant writes and signs prescriptions and
         // orders tests from them (US5.4), and reads the patient's record — nothing financial.
         ["OPD Consultant"] =
@@ -307,6 +311,112 @@ public static class DevSeed
         await SeedIpdAsync(sp, kdb);
         await SeedOtAsync(sp);
         await SeedRadiologyAsync(sp);
+        await SeedNursingHrAsync(sp);
+    }
+
+    /// <summary>
+    /// Spec 0041: ward shifts and a handful of ward staff on the <b>ERP</b> host.
+    ///
+    /// HrDemoSeed populates the HRM host only, so this host migrated the hr schema and then left
+    /// it empty — which made R5's roster panel and staff picker look broken rather than unused.
+    /// Everything here is additive and guarded: a hospital that runs the HRM SKU properly already
+    /// has these rows, and this seed steps aside.
+    /// </summary>
+    private static async Task SeedNursingHrAsync(IServiceProvider sp)
+    {
+        const long branchId = 1;
+        // Through HmsTx rather than the DI contexts the rest of this seed uses: hiring issues an
+        // employee code, and number issuance refuses to run without the caller's ambient
+        // transaction (ADR-0004 / G19) — a gap-free counter is only safe inside one.
+        var tx = sp.GetRequiredService<HmsTx>();
+        var employees = sp.GetRequiredService<EmployeeService>();
+
+        await tx.RunAsync(async s =>
+        {
+            var hr = s.Hr;
+
+            if (!await hr.Shifts.AnyAsync(x => x.BranchId == branchId))
+            {
+                hr.Shifts.AddRange(
+                    new Shift
+                    {
+                        BranchId = branchId, Code = "MORN", Name = "Morning (07:00–14:00)",
+                        StartsAt = new(7, 0), EndsAt = new(14, 0),
+                        BreakMinutes = 30, StandardMinutes = 390,
+                    },
+                    new Shift
+                    {
+                        BranchId = branchId, Code = "EVE", Name = "Evening (14:00–21:00)",
+                        StartsAt = new(14, 0), EndsAt = new(21, 0),
+                        BreakMinutes = 30, StandardMinutes = 390,
+                    },
+                    // Crosses midnight — the shift a ward actually runs, and the one that makes
+                    // the night-shift pairing rule visible rather than theoretical.
+                    new Shift
+                    {
+                        BranchId = branchId, Code = "NIGHT", Name = "Night (21:00–07:00)",
+                        StartsAt = new(21, 0), EndsAt = new(7, 0), EndsNextDay = true,
+                        BreakMinutes = 30, StandardMinutes = 540,
+                    });
+                await hr.SaveChangesAsync();
+            }
+
+            if (await hr.Employees.AnyAsync(e => e.BranchId == branchId)) return 0;
+
+            // HireAsync needs a unit, a designation and a grade; the ERP host has none of the
+            // HRM masters, so seed the minimum three rather than reaching into the other SKU.
+            //
+            // Each is find-or-create against its own unique code rather than gated on the
+            // employee check above. The two are not the same condition: a run that created the
+            // masters and then failed to hire leaves a database with masters and no employees,
+            // and a blind insert on the next start dies on ix_designation_branch_id_code —
+            // which is exactly how this seed first failed.
+            var unit = await hr.OrgUnits.FirstOrDefaultAsync(
+                    x => x.BranchId == branchId && x.Code == "WARD")
+                ?? Add(hr.OrgUnits, new OrgUnit
+                {
+                    BranchId = branchId, Code = "WARD", Name = "Nursing / Ward",
+                });
+            var designations = new List<Designation>();
+            foreach (var (code, title) in new[]
+                     {
+                         ("NURSE", "Staff Nurse"), ("WBOY", "Ward Boy"), ("AYA", "Aya"),
+                     })
+                designations.Add(await hr.Designations.FirstOrDefaultAsync(
+                        x => x.BranchId == branchId && x.Code == code)
+                    ?? Add(hr.Designations, new Designation
+                    {
+                        BranchId = branchId, Code = code, Name = title,
+                    }));
+            var grade = await hr.Grades.FirstOrDefaultAsync(
+                    x => x.BranchId == branchId && x.Code == "W3")
+                ?? Add(hr.Grades, new Grade
+                {
+                    BranchId = branchId, Code = "W3", Name = "Ward Grade 3", Rank = 3,
+                });
+            await hr.SaveChangesAsync();
+
+            var joined = DateOnly.FromDateTime(Ui.Local(DateTimeOffset.UtcNow).DateTime).AddYears(-2);
+            var ward = new (string Name, int Designation)[]
+            {
+                ("Nasrin Akter", 0), ("Salma Khatun", 0),
+                ("Jashim Uddin", 1), ("Babul Mia", 1), ("Rina Begum", 2),
+            };
+
+            foreach (var (name, designation) in ward)
+                await employees.HireAsync(hr, s.Kernel, branchId,
+                    new Employee { EmployeeCode = "", FullName = name, JoinedOn = joined },
+                    unit.Id, designations[designation].Id, grade.Id, 1, "seed");
+
+            // §12's "U (own leave)" needs the link between the signed-in nurse and her record.
+            var nasrin = await s.Auth.Users.FirstOrDefaultAsync(u => u.UserName == "nasrin");
+            if (nasrin is not null)
+            {
+                var record = await hr.Employees.FirstAsync(e => e.FullName == "Nasrin Akter");
+                record.UserRef = nasrin.Id.ToString();
+            }
+            return 0;
+        });
     }
 
     /// <summary>Spec 0017: wards, beds with effective-dated class tariffs, the 5A-9 masters
@@ -585,6 +695,13 @@ public static class DevSeed
             Note = "Opening stock (seed)", ActorId = 1, At = now,
         });
         await pharm.SaveChangesAsync();
+    }
+
+    /// <summary>Stage a new row and hand it straight back, so find-or-create reads as one line.</summary>
+    private static T Add<T>(DbSet<T> set, T row) where T : class
+    {
+        set.Add(row);
+        return row;
     }
 
     private static void ThrowIfFailed(this IdentityResult result)

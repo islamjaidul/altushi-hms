@@ -37,8 +37,8 @@ from _harness import BASE, CAST, RUN_ID, is_local  # noqa: E402
 TIERS = {
     "t0": ["role-journeys.py", "grant-drift.py"],
     "t1": ["lifecycle-thread.py", "edge-cases.py", "ipd-thread.py", "emr-thread.py",
-           "ot-thread.py", "radiology-thread.py", "pharmacy-thread.py", "pharmacy-full.py",
-           "frontdesk-check.py", "money-and-controls.py"],
+           "nursing-thread.py", "ot-thread.py", "radiology-thread.py", "pharmacy-thread.py",
+           "pharmacy-full.py", "frontdesk-check.py", "money-and-controls.py"],
     "t2": ["golden-thread.py", "discount-and-dues.py"],
 }
 # golden-thread registers the patient discount-and-dues then bills — order is load-bearing.

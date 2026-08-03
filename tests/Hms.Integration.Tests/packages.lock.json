@@ -467,6 +467,16 @@
       "hms.billing.contracts": {
         "type": "Project"
       },
+      "hms.dashboard": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Dashboard.Contracts": "[1.0.0, )",
+          "Hms.Kernel": "[1.0.0, )"
+        }
+      },
+      "hms.dashboard.contracts": {
+        "type": "Project"
+      },
       "hms.diagnostics": {
         "type": "Project",
         "dependencies": {
@@ -604,6 +614,28 @@
         "type": "Project",
         "dependencies": {
           "Hms.Kernel": "[1.0.0, )"
+        }
+      },
+      "hms.web": {
+        "type": "Project",
+        "dependencies": {
+          "Hms.Admin": "[1.0.0, )",
+          "Hms.Appointments": "[1.0.0, )",
+          "Hms.Billing": "[1.0.0, )",
+          "Hms.Dashboard": "[1.0.0, )",
+          "Hms.Diagnostics": "[1.0.0, )",
+          "Hms.Emr": "[1.0.0, )",
+          "Hms.Hr": "[1.0.0, )",
+          "Hms.Hr.Screens": "[1.0.0, )",
+          "Hms.Ipd": "[1.0.0, )",
+          "Hms.Kernel": "[1.0.0, )",
+          "Hms.Lis": "[1.0.0, )",
+          "Hms.Notifications": "[1.0.0, )",
+          "Hms.Ot": "[1.0.0, )",
+          "Hms.Pharmacy": "[1.0.0, )",
+          "Hms.Radiology": "[1.0.0, )",
+          "Hms.Registration": "[1.0.0, )",
+          "Hms.Shell": "[1.0.0, )"
         }
       }
     }
