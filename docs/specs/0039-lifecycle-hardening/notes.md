@@ -134,3 +134,44 @@ Guards at close: additive-migrations OK (HR script incl. the constraint rebuild)
 no-hard-deletes OK, ui-tokens OK, no-external-hosts OK, no-native-date OK.
 
 Nothing committed — committing is the user's call.
+
+## Deployed to the VM (2026-08-03)
+
+`main` = `a9b9245` (0039 + 0040) on `/opt/altushi-hms`. Both SKUs rebuilt and recreated on the
+shared demo box; `hms-app-1` and `hrm-app-1` healthy, memory *better* after the swap
+(1,435 MB available vs 861 MB before — the rebuild released cache). ERP 140 MiB RSS,
+HRM 101 MiB.
+
+**Backups first.** Both databases were dumped before the schema migrated, since 0039 is the
+largest schema change this product has taken to a database holding real rows:
+`/var/hms-backups-manual-pre0039-hms.dump` (386 K) and `-hrm.dump` (265 K). The HRM one
+matters especially — `hms-backup-1` still dumps only `hms` (known gap, RUNBOOK §10).
+
+**The migrations applied clean on live data**, which was the point of the NOT VALID posture:
+`ipd` head is `20260802195431_Hardening0039`, `hr` head is
+`20260802212220_HrPolicyExcludeDeferrable0039` with `condeferrable/condeferred = t/t`.
+313 CHECK/FK constraints now exist on `hms`, and `has_table_privilege('hms_app','bill.receipt','DELETE')`
+is **false** — hard rule 4 is enforced by the database on the deployment, not just by review.
+
+### Found on the deployment, NOT caused by it: role-grant drift
+
+`lifecycle-suite --tier t0` against the live ERP fails two checks, and both are one condition:
+
+```
+role-journeys.py:  admin (Admin) is refused the dashboard        FAIL
+grant-drift.py:    no role holds a permission the code does not grant
+                   DRIFT: Admin has dashboard.read, billing.receipt.create,
+                          ipd.settle, lis.result.verify, … (32 beyond the seed)
+```
+
+`Admin` holds **37** permissions on the box; the next-largest role holds 9. The audit trail
+dates them: **56 `role.grant` events on 2026-07-27/28 by "System Admin"** — six days before
+this deploy, through `/admin/users`, which §12 makes editable by design. The same code on a
+fresh database is green (`--tier t0` and `--tier t1`, 12/12 roles), so this is the box's data,
+not the build.
+
+It is left as found. Revoking permissions on a live account is not part of a deploy and could
+break a demo someone set up deliberately — it is the PM's call. Recorded because it matters:
+`Admin` can currently open the MD's money dashboard, which is precisely the separation of
+duties `role-journeys.py` encodes as a rule, and it is the drift class the security guardrails
+warn about ("grants drift, code must not").
