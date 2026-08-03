@@ -50,3 +50,8 @@ eng/dev-keys/
 
 # Run manifests are artifacts of a QA run against a shared target, not source.
 eng/verify/runs/
+
+# graphify: commit the graph outputs, not the caches or machine-local state
+graphify-out/cache/
+graphify-out/.graphify_*
+src/graphify-out/
