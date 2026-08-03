@@ -1,2522 +1,2857 @@
 {
-  "Hms.Hr.Web/Hms.Hr.Web.csproj": {
+  "src/Hms.Hr.Web/Hms.Hr.Web.csproj": {
     "mtime": 1785525232.6824546,
     "ast_hash": "c7c1d73e81a73acd093d7ef1577f620d",
     "semantic_hash": "c7c1d73e81a73acd093d7ef1577f620d"
   },
-  "Hms.Hr.Web/HrDemoSeed.cs": {
+  "src/Hms.Hr.Web/HrDemoSeed.cs": {
     "mtime": 1785702516.8224044,
     "ast_hash": "2d4d901a9a265a08a8a906bf5929d67a",
     "semantic_hash": "2d4d901a9a265a08a8a906bf5929d67a"
   },
-  "Hms.Hr.Web/HrSeed.cs": {
+  "src/Hms.Hr.Web/HrSeed.cs": {
     "mtime": 1785657749.3101885,
     "ast_hash": "b2557451c10d9e2d6c7e3d6505cac2f7",
     "semantic_hash": "b2557451c10d9e2d6c7e3d6505cac2f7"
   },
-  "Hms.Hr.Web/HrTx.cs": {
+  "src/Hms.Hr.Web/HrTx.cs": {
     "mtime": 1785662234.673775,
     "ast_hash": "18ff014af43e99c7bd5ee37d5f9a13a2",
     "semantic_hash": "18ff014af43e99c7bd5ee37d5f9a13a2"
   },
-  "Hms.Hr.Web/HrmNav.cs": {
+  "src/Hms.Hr.Web/HrmNav.cs": {
     "mtime": 1785657714.7464218,
     "ast_hash": "396ec2f2d74a48e45dc883339abc185b",
     "semantic_hash": "396ec2f2d74a48e45dc883339abc185b"
   },
-  "Hms.Hr.Web/Pages/Index.cshtml": {
+  "src/Hms.Hr.Web/Pages/Index.cshtml": {
     "mtime": 1785531507.232545,
     "ast_hash": "d787a30775a54bfcc2400275394952fe",
     "semantic_hash": "d787a30775a54bfcc2400275394952fe"
   },
-  "Hms.Hr.Web/Pages/Index.cshtml.cs": {
+  "src/Hms.Hr.Web/Pages/Index.cshtml.cs": {
     "mtime": 1785531517.2726398,
     "ast_hash": "5d0f533a7e3660456332b4dd5f9c5e83",
     "semantic_hash": "5d0f533a7e3660456332b4dd5f9c5e83"
   },
-  "Hms.Hr.Web/Pages/_ViewStart.cshtml": {
+  "src/Hms.Hr.Web/Pages/_ViewStart.cshtml": {
     "mtime": 1785655818.2493162,
     "ast_hash": "32fe8fd397a834e4de35e47c97c60791",
     "semantic_hash": "32fe8fd397a834e4de35e47c97c60791"
   },
-  "Hms.Hr.Web/PlatformTx.cs": {
+  "src/Hms.Hr.Web/PlatformTx.cs": {
     "mtime": 1785657668.856063,
     "ast_hash": "502d9c06d71b1565110808563c3d8a29",
     "semantic_hash": "502d9c06d71b1565110808563c3d8a29"
   },
-  "Hms.Hr.Web/Program.cs": {
+  "src/Hms.Hr.Web/Program.cs": {
     "mtime": 1785702183.180656,
     "ast_hash": "813addb96cb21cd7300776e83ec44132",
     "semantic_hash": "813addb96cb21cd7300776e83ec44132"
   },
-  "Hms.Hr.Web/appsettings.Development.json": {
+  "src/Hms.Hr.Web/appsettings.Development.json": {
     "mtime": 1785523953.3308468,
     "ast_hash": "5024ed4af228087f3a4ff2989e590cf1",
     "semantic_hash": "5024ed4af228087f3a4ff2989e590cf1"
   },
-  "Hms.Hr.Web/appsettings.json": {
+  "src/Hms.Hr.Web/appsettings.json": {
     "mtime": 1785523951.2086215,
     "ast_hash": "c2432524be4b650cf7c5cea0a52219ba",
     "semantic_hash": "c2432524be4b650cf7c5cea0a52219ba"
   },
-  "Hms.Hr.Web/packages.lock.json": {
+  "src/Hms.Hr.Web/packages.lock.json": {
     "mtime": 1785525242.5104704,
     "ast_hash": "78c6a0bc1ff39379a93f9af09fdd1860",
     "semantic_hash": "78c6a0bc1ff39379a93f9af09fdd1860"
   },
-  "Hms.Kernel/Approvals/ApprovalEngine.cs": {
+  "src/Hms.Kernel/Approvals/ApprovalEngine.cs": {
     "mtime": 1785070455.1169503,
     "ast_hash": "a6d9daa71fc58d0daaa07b841ad6b96b",
     "semantic_hash": "a6d9daa71fc58d0daaa07b841ad6b96b"
   },
-  "Hms.Kernel/Audit/AuditWriter.cs": {
+  "src/Hms.Kernel/Audit/AuditWriter.cs": {
     "mtime": 1785069059.2684193,
     "ast_hash": "ddbe7184c81cb71cdd4d53c857d84433",
     "semantic_hash": "ddbe7184c81cb71cdd4d53c857d84433"
   },
-  "Hms.Kernel/Auth/AuthDbContext.cs": {
+  "src/Hms.Kernel/Auth/AuthDbContext.cs": {
     "mtime": 1785701066.2754784,
     "ast_hash": "8d06385885852ea1ed74b2be0c5fb103",
     "semantic_hash": "8d06385885852ea1ed74b2be0c5fb103"
   },
-  "Hms.Kernel/Auth/Migrations/20260726124128_InitAuth.Designer.cs": {
+  "src/Hms.Kernel/Auth/Migrations/20260726124128_InitAuth.Designer.cs": {
     "mtime": 1785069688.933775,
     "ast_hash": "43b50e6d25139864d45a525f877a144b",
     "semantic_hash": "43b50e6d25139864d45a525f877a144b"
   },
-  "Hms.Kernel/Auth/Migrations/20260726124128_InitAuth.cs": {
+  "src/Hms.Kernel/Auth/Migrations/20260726124128_InitAuth.cs": {
     "mtime": 1785069688.9335895,
     "ast_hash": "094485be8a4928d1c3ec3491af6467b0",
     "semantic_hash": "094485be8a4928d1c3ec3491af6467b0"
   },
-  "Hms.Kernel/Auth/Migrations/20260802200510_UserBranch0039.Designer.cs": {
+  "src/Hms.Kernel/Auth/Migrations/20260802200510_UserBranch0039.Designer.cs": {
     "mtime": 1785701110.0718818,
     "ast_hash": "ce639419197cde75eec1461f1ceb296d",
     "semantic_hash": "ce639419197cde75eec1461f1ceb296d"
   },
-  "Hms.Kernel/Auth/Migrations/20260802200510_UserBranch0039.cs": {
+  "src/Hms.Kernel/Auth/Migrations/20260802200510_UserBranch0039.cs": {
     "mtime": 1785701110.0716434,
     "ast_hash": "a5f1f6fe5abd3a4242f1759732f9cfb6",
     "semantic_hash": "a5f1f6fe5abd3a4242f1759732f9cfb6"
   },
-  "Hms.Kernel/Auth/Migrations/AuthDbContextModelSnapshot.cs": {
+  "src/Hms.Kernel/Auth/Migrations/AuthDbContextModelSnapshot.cs": {
     "mtime": 1785701110.0721989,
     "ast_hash": "52de099a972a5d76f08ca86396792cc9",
     "semantic_hash": "52de099a972a5d76f08ca86396792cc9"
   },
-  "Hms.Kernel/Auth/NavComposer.cs": {
+  "src/Hms.Kernel/Auth/NavComposer.cs": {
     "mtime": 1785075718.7940872,
     "ast_hash": "ce23c4f45dd75cbee070beff23e6a827",
     "semantic_hash": "ce23c4f45dd75cbee070beff23e6a827"
   },
-  "Hms.Kernel/Auth/PermissionClaimsFactory.cs": {
+  "src/Hms.Kernel/Auth/PermissionClaimsFactory.cs": {
     "mtime": 1785701069.0431201,
     "ast_hash": "4faadab25d2a79cad82824814bb1446a",
     "semantic_hash": "4faadab25d2a79cad82824814bb1446a"
   },
-  "Hms.Kernel/Auth/PermissionPolicy.cs": {
+  "src/Hms.Kernel/Auth/PermissionPolicy.cs": {
     "mtime": 1785523320.2117863,
     "ast_hash": "fa141169ab8727819d2a50e6b762e5d1",
     "semantic_hash": "fa141169ab8727819d2a50e6b762e5d1"
   },
-  "Hms.Kernel/Data/BranchScope.cs": {
+  "src/Hms.Kernel/Data/BranchScope.cs": {
     "mtime": 1785701031.4945564,
     "ast_hash": "428f9174e9545246cacc9403ec8f7b73",
     "semantic_hash": "428f9174e9545246cacc9403ec8f7b73"
   },
-  "Hms.Kernel/Data/KernelDbContext.cs": {
+  "src/Hms.Kernel/Data/KernelDbContext.cs": {
     "mtime": 1785701049.986874,
     "ast_hash": "e52699117791d7e2da3dbef8770d5fe2",
     "semantic_hash": "e52699117791d7e2da3dbef8770d5fe2"
   },
-  "Hms.Kernel/Data/KernelEntities.cs": {
+  "src/Hms.Kernel/Data/KernelEntities.cs": {
     "mtime": 1785701900.469766,
     "ast_hash": "489560abc30a22422af1ee702d0f381b",
     "semantic_hash": "489560abc30a22422af1ee702d0f381b"
   },
-  "Hms.Kernel/Data/Migrations/20260726123428_InitKernel.Designer.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260726123428_InitKernel.Designer.cs": {
     "mtime": 1785069268.448612,
     "ast_hash": "84a03a23c3716591251dcc3c5b38d814",
     "semantic_hash": "84a03a23c3716591251dcc3c5b38d814"
   },
-  "Hms.Kernel/Data/Migrations/20260726123428_InitKernel.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260726123428_InitKernel.cs": {
     "mtime": 1785069268.4483907,
     "ast_hash": "19bde1fad79f40f2836dd2f22b33c458",
     "semantic_hash": "19bde1fad79f40f2836dd2f22b33c458"
   },
-  "Hms.Kernel/Data/Migrations/20260726130400_AddImportBatch.Designer.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260726130400_AddImportBatch.Designer.cs": {
     "mtime": 1785071040.4451013,
     "ast_hash": "47634bbd1d7ba8ce486fddc7155f454c",
     "semantic_hash": "47634bbd1d7ba8ce486fddc7155f454c"
   },
-  "Hms.Kernel/Data/Migrations/20260726130400_AddImportBatch.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260726130400_AddImportBatch.cs": {
     "mtime": 1785071040.4448993,
     "ast_hash": "da89232779ccddb302adfec47d688b67",
     "semantic_hash": "da89232779ccddb302adfec47d688b67"
   },
-  "Hms.Kernel/Data/Migrations/20260802195442_Hardening0039.Designer.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260802195442_Hardening0039.Designer.cs": {
     "mtime": 1785700482.9192321,
     "ast_hash": "39523b7e1b6d2e4dcf5b8d1d614a5f8e",
     "semantic_hash": "39523b7e1b6d2e4dcf5b8d1d614a5f8e"
   },
-  "Hms.Kernel/Data/Migrations/20260802195442_Hardening0039.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260802195442_Hardening0039.cs": {
     "mtime": 1785700576.0602736,
     "ast_hash": "1eb26a9b128b5ab684b98718cb9fc25a",
     "semantic_hash": "1eb26a9b128b5ab684b98718cb9fc25a"
   },
-  "Hms.Kernel/Data/Migrations/20260802202555_ApprovalEscalation0039.Designer.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260802202555_ApprovalEscalation0039.Designer.cs": {
     "mtime": 1785702355.6547415,
     "ast_hash": "2e9e42c70e9f75496b554fbaedb19a42",
     "semantic_hash": "2e9e42c70e9f75496b554fbaedb19a42"
   },
-  "Hms.Kernel/Data/Migrations/20260802202555_ApprovalEscalation0039.cs": {
+  "src/Hms.Kernel/Data/Migrations/20260802202555_ApprovalEscalation0039.cs": {
     "mtime": 1785702355.6540983,
     "ast_hash": "10d0a2b1b9211025d740b0559532c200",
     "semantic_hash": "10d0a2b1b9211025d740b0559532c200"
   },
-  "Hms.Kernel/Data/Migrations/KernelDbContextModelSnapshot.cs": {
+  "src/Hms.Kernel/Data/Migrations/KernelDbContextModelSnapshot.cs": {
     "mtime": 1785702355.65509,
     "ast_hash": "4e68e86a4f715e8ec60f785337425d6e",
     "semantic_hash": "4e68e86a4f715e8ec60f785337425d6e"
   },
-  "Hms.Kernel/Entitlements/EntitlementFile.cs": {
+  "src/Hms.Kernel/Entitlements/EntitlementFile.cs": {
     "mtime": 1785068933.3207302,
     "ast_hash": "29917747752f7f190163ee0a9027afd2",
     "semantic_hash": "29917747752f7f190163ee0a9027afd2"
   },
-  "Hms.Kernel/Entitlements/EntitlementProvider.cs": {
+  "src/Hms.Kernel/Entitlements/EntitlementProvider.cs": {
     "mtime": 1785523283.23389,
     "ast_hash": "87e4ecc8376f8684c6e50708fdacccd6",
     "semantic_hash": "87e4ecc8376f8684c6e50708fdacccd6"
   },
-  "Hms.Kernel/Entitlements/ModuleEntitlement.cs": {
+  "src/Hms.Kernel/Entitlements/ModuleEntitlement.cs": {
     "mtime": 1785523305.316692,
     "ast_hash": "0c9c7d0ae96e4bd12bb9f571d2580347",
     "semantic_hash": "0c9c7d0ae96e4bd12bb9f571d2580347"
   },
-  "Hms.Kernel/Entitlements/ModuleRouteConvention.cs": {
+  "src/Hms.Kernel/Entitlements/ModuleRouteConvention.cs": {
     "mtime": 1785523342.2785537,
     "ast_hash": "826464b7b4612b3b9f22aa96470435ff",
     "semantic_hash": "826464b7b4612b3b9f22aa96470435ff"
   },
-  "Hms.Kernel/Hms.Kernel.csproj": {
+  "src/Hms.Kernel/Hms.Kernel.csproj": {
     "mtime": 1785069806.5201435,
     "ast_hash": "2a431a28772cd6acfce50a0f39f0498f",
     "semantic_hash": "2a431a28772cd6acfce50a0f39f0498f"
   },
-  "Hms.Kernel/Hosting/BranchResolution.cs": {
+  "src/Hms.Kernel/Hosting/BranchResolution.cs": {
     "mtime": 1785701061.4903774,
     "ast_hash": "aa467a5c52386d57afe14b329d024091",
     "semantic_hash": "aa467a5c52386d57afe14b329d024091"
   },
-  "Hms.Kernel/Hosting/FaultBoundary.cs": {
+  "src/Hms.Kernel/Hosting/FaultBoundary.cs": {
     "mtime": 1785699079.1459756,
     "ast_hash": "2f34dc3903b30d465716bda91b853406",
     "semantic_hash": "2f34dc3903b30d465716bda91b853406"
   },
-  "Hms.Kernel/Hosting/HmsPlatform.cs": {
+  "src/Hms.Kernel/Hosting/HmsPlatform.cs": {
     "mtime": 1785701515.6972363,
     "ast_hash": "fb814ab791aa0b3226c5dd0391bd61c6",
     "semantic_hash": "fb814ab791aa0b3226c5dd0391bd61c6"
   },
-  "Hms.Kernel/Jobs/ApprovalEscalationJob.cs": {
+  "src/Hms.Kernel/Jobs/ApprovalEscalationJob.cs": {
     "mtime": 1785703067.6429384,
     "ast_hash": "410896b543b747159ac92d78bf1164da",
     "semantic_hash": "410896b543b747159ac92d78bf1164da"
   },
-  "Hms.Kernel/Jobs/DailyJobScheduler.cs": {
+  "src/Hms.Kernel/Jobs/DailyJobScheduler.cs": {
     "mtime": 1785703546.7692773,
     "ast_hash": "289a28cad6a5e60eb7f4bb7fc6b422be",
     "semantic_hash": "289a28cad6a5e60eb7f4bb7fc6b422be"
   },
-  "Hms.Kernel/Jobs/JobQueue.cs": {
+  "src/Hms.Kernel/Jobs/JobQueue.cs": {
     "mtime": 1785069204.4055142,
     "ast_hash": "cf322d4ed11283cb0da772d3c31eb5cc",
     "semantic_hash": "cf322d4ed11283cb0da772d3c31eb5cc"
   },
-  "Hms.Kernel/Jobs/JobWorker.cs": {
+  "src/Hms.Kernel/Jobs/JobWorker.cs": {
     "mtime": 1785703339.1086516,
     "ast_hash": "f584de8a3b78d05b650e3d41d6e889e6",
     "semantic_hash": "f584de8a3b78d05b650e3d41d6e889e6"
   },
-  "Hms.Kernel/Money/Taka.cs": {
+  "src/Hms.Kernel/Money/Taka.cs": {
     "mtime": 1785522982.4144747,
     "ast_hash": "8cfa6a9f8de03aa18d729a69eb5393bc",
     "semantic_hash": "8cfa6a9f8de03aa18d729a69eb5393bc"
   },
-  "Hms.Kernel/Numbering/NumberSeriesService.cs": {
+  "src/Hms.Kernel/Numbering/NumberSeriesService.cs": {
     "mtime": 1785069053.6102748,
     "ast_hash": "b7e310dadd51ed4f758bd3ba2a812d35",
     "semantic_hash": "b7e310dadd51ed4f758bd3ba2a812d35"
   },
-  "Hms.Kernel/Printing/PdfRenderer.cs": {
+  "src/Hms.Kernel/Printing/PdfRenderer.cs": {
     "mtime": 1785069851.6776848,
     "ast_hash": "4ad94971a6d4dc57dc99bacae12969a5",
     "semantic_hash": "4ad94971a6d4dc57dc99bacae12969a5"
   },
-  "Hms.Kernel/Time/BusinessDayCalendar.cs": {
+  "src/Hms.Kernel/Time/BusinessDayCalendar.cs": {
     "mtime": 1785068920.841799,
     "ast_hash": "ae85484dbcc230094fe049b01f95093c",
     "semantic_hash": "ae85484dbcc230094fe049b01f95093c"
   },
-  "Hms.Kernel/Time/FiscalCalendar.cs": {
+  "src/Hms.Kernel/Time/FiscalCalendar.cs": {
     "mtime": 1785068916.1390944,
     "ast_hash": "a66f9a9b21f61645bd03e8ba4c64a62e",
     "semantic_hash": "a66f9a9b21f61645bd03e8ba4c64a62e"
   },
-  "Hms.Kernel/Time/FlexibleDate.cs": {
+  "src/Hms.Kernel/Time/FlexibleDate.cs": {
     "mtime": 1785138423.7954621,
     "ast_hash": "e8bafedca3cf012bf2dccf007068e2e1",
     "semantic_hash": "e8bafedca3cf012bf2dccf007068e2e1"
   },
-  "Hms.Kernel/packages.lock.json": {
+  "src/Hms.Kernel/packages.lock.json": {
     "mtime": 1785069806.5254881,
     "ast_hash": "09f5fff450f63a6cc8dd97be16f30b80",
     "semantic_hash": "09f5fff450f63a6cc8dd97be16f30b80"
   },
-  "Hms.Shell/Barcode128.cs": {
+  "src/Hms.Shell/Barcode128.cs": {
     "mtime": 1785703017.3091574,
     "ast_hash": "fc63e040265cb37e5adc7a5d9241bf08",
     "semantic_hash": "fc63e040265cb37e5adc7a5d9241bf08"
   },
-  "Hms.Shell/Documents.cs": {
+  "src/Hms.Shell/Documents.cs": {
     "mtime": 1785522345.1065435,
     "ast_hash": "1d75174373125b597209afb92dcc7786",
     "semantic_hash": "1d75174373125b597209afb92dcc7786"
   },
-  "Hms.Shell/Hms.Shell.csproj": {
+  "src/Hms.Shell/Hms.Shell.csproj": {
     "mtime": 1785488850.7467742,
     "ast_hash": "6ff8d1705a1d0517e3614f7e0be919ca",
     "semantic_hash": "6ff8d1705a1d0517e3614f7e0be919ca"
   },
-  "Hms.Shell/HmsPageModel.cs": {
+  "src/Hms.Shell/HmsPageModel.cs": {
     "mtime": 1785701077.6887252,
     "ast_hash": "3ecfc1809e1bdf4f946cd7ab98283198",
     "semantic_hash": "3ecfc1809e1bdf4f946cd7ab98283198"
   },
-  "Hms.Shell/OrgIdentity.cs": {
+  "src/Hms.Shell/OrgIdentity.cs": {
     "mtime": 1785658094.5215392,
     "ast_hash": "b221bc22164f7a9cb9f0f34dcfeec512",
     "semantic_hash": "b221bc22164f7a9cb9f0f34dcfeec512"
   },
-  "Hms.Shell/Pages/Admin/Users.cshtml": {
+  "src/Hms.Shell/Pages/Admin/Users.cshtml": {
     "mtime": 1785701473.3618884,
     "ast_hash": "ac63e1c258bd74c073b6d8abbceb718e",
     "semantic_hash": "ac63e1c258bd74c073b6d8abbceb718e"
   },
-  "Hms.Shell/Pages/Admin/Users.cshtml.cs": {
+  "src/Hms.Shell/Pages/Admin/Users.cshtml.cs": {
     "mtime": 1785701462.9854531,
     "ast_hash": "dc658e4048ba22d42e0bb4155653b695",
     "semantic_hash": "dc658e4048ba22d42e0bb4155653b695"
   },
-  "Hms.Shell/Pages/Denied.cshtml": {
+  "src/Hms.Shell/Pages/Denied.cshtml": {
     "mtime": 1785523743.5098228,
     "ast_hash": "5f42b77659ee88a91d8fbe376d0f9b87",
     "semantic_hash": "5f42b77659ee88a91d8fbe376d0f9b87"
   },
-  "Hms.Shell/Pages/Denied.cshtml.cs": {
+  "src/Hms.Shell/Pages/Denied.cshtml.cs": {
     "mtime": 1785523701.6822867,
     "ast_hash": "1c0436644564d5cfd86989b51f380130",
     "semantic_hash": "1c0436644564d5cfd86989b51f380130"
   },
-  "Hms.Shell/Pages/Login.cshtml": {
+  "src/Hms.Shell/Pages/Login.cshtml": {
     "mtime": 1785734528.3618457,
     "ast_hash": "ec36b7ff7c10038c1045979ab6f70954",
     "semantic_hash": "ec36b7ff7c10038c1045979ab6f70954"
   },
-  "Hms.Shell/Pages/Login.cshtml.cs": {
+  "src/Hms.Shell/Pages/Login.cshtml.cs": {
     "mtime": 1785734232.10167,
     "ast_hash": "4df08dbecb789aeafe920e03c326b9b8",
     "semantic_hash": "4df08dbecb789aeafe920e03c326b9b8"
   },
-  "Hms.Shell/Pages/Logout.cshtml": {
+  "src/Hms.Shell/Pages/Logout.cshtml": {
     "mtime": 1785523708.6460366,
     "ast_hash": "e39984205503d4815eb3552458bca46c",
     "semantic_hash": "e39984205503d4815eb3552458bca46c"
   },
-  "Hms.Shell/Pages/Logout.cshtml.cs": {
+  "src/Hms.Shell/Pages/Logout.cshtml.cs": {
     "mtime": 1785734528.3650987,
     "ast_hash": "5f066d1a74438fd8dfe8149d03827d7c",
     "semantic_hash": "5f066d1a74438fd8dfe8149d03827d7c"
   },
-  "Hms.Shell/Pages/Shared/_Layout.cshtml": {
+  "src/Hms.Shell/Pages/Shared/_Layout.cshtml": {
     "mtime": 1785734286.892794,
     "ast_hash": "b3fdbeaa56bcd2ff1d855f26777fad77",
     "semantic_hash": "b3fdbeaa56bcd2ff1d855f26777fad77"
   },
-  "Hms.Shell/Pages/Shared/_Letterhead.cshtml": {
+  "src/Hms.Shell/Pages/Shared/_Letterhead.cshtml": {
     "mtime": 1785522345.1099682,
     "ast_hash": "aa52d90a31a4508ebf2ee9537ad3ceaa",
     "semantic_hash": "aa52d90a31a4508ebf2ee9537ad3ceaa"
   },
-  "Hms.Shell/Pages/Shared/_PrintTools.cshtml": {
+  "src/Hms.Shell/Pages/Shared/_PrintTools.cshtml": {
     "mtime": 1785079241.9495826,
     "ast_hash": "46640f0f3cdaa220c3e157c5c44b3092",
     "semantic_hash": "46640f0f3cdaa220c3e157c5c44b3092"
   },
-  "Hms.Shell/Pages/Shared/_SheetFooter.cshtml": {
+  "src/Hms.Shell/Pages/Shared/_SheetFooter.cshtml": {
     "mtime": 1785522345.1106334,
     "ast_hash": "eb62cd1726eb1c80b2171cb9ad0903a6",
     "semantic_hash": "eb62cd1726eb1c80b2171cb9ad0903a6"
   },
-  "Hms.Shell/Pages/_ViewImports.cshtml": {
+  "src/Hms.Shell/Pages/_ViewImports.cshtml": {
     "mtime": 1785523708.6522899,
     "ast_hash": "dec88e371156ce90d0f3fe4356f3c8aa",
     "semantic_hash": "dec88e371156ce90d0f3fe4356f3c8aa"
   },
-  "Hms.Shell/Pages/_ViewStart.cshtml": {
+  "src/Hms.Shell/Pages/_ViewStart.cshtml": {
     "mtime": 1785655811.9658065,
     "ast_hash": "3f948c0118624025f1e7af8b4a347a35",
     "semantic_hash": "3f948c0118624025f1e7af8b4a347a35"
   },
-  "Hms.Shell/PermissionCatalog.cs": {
+  "src/Hms.Shell/PermissionCatalog.cs": {
     "mtime": 1785657565.2640038,
     "ast_hash": "61552b66147e28f47c6f79058b4778a9",
     "semantic_hash": "61552b66147e28f47c6f79058b4778a9"
   },
-  "Hms.Shell/PlatformTx.cs": {
+  "src/Hms.Shell/PlatformTx.cs": {
     "mtime": 1785657533.885385,
     "ast_hash": "7631cc9363714299cc98272e4e4ae515",
     "semantic_hash": "7631cc9363714299cc98272e4e4ae515"
   },
-  "Hms.Shell/TagHelpers/HmsDateTagHelper.cs": {
+  "src/Hms.Shell/TagHelpers/HmsDateTagHelper.cs": {
     "mtime": 1785488876.4161654,
     "ast_hash": "3474a07b8883f4a7a09d8e6bdc5cad9d",
     "semantic_hash": "3474a07b8883f4a7a09d8e6bdc5cad9d"
   },
-  "Hms.Shell/Ui.cs": {
+  "src/Hms.Shell/Ui.cs": {
     "mtime": 1785488876.4095864,
     "ast_hash": "bec92f131deb6734365092612527c2dc",
     "semantic_hash": "bec92f131deb6734365092612527c2dc"
   },
-  "Hms.Shell/Validation.cs": {
+  "src/Hms.Shell/Validation.cs": {
     "mtime": 1785698692.004748,
     "ast_hash": "31949f179c3d10bdfbe3976e15237c06",
     "semantic_hash": "31949f179c3d10bdfbe3976e15237c06"
   },
-  "Hms.Shell/packages.lock.json": {
+  "src/Hms.Shell/packages.lock.json": {
     "mtime": 1785522317.3127031,
     "ast_hash": "6cfeda38f448f5e0669da3c10f3f1d17",
     "semantic_hash": "6cfeda38f448f5e0669da3c10f3f1d17"
   },
-  "Hms.Shell/wwwroot/js/app.js": {
+  "src/Hms.Shell/wwwroot/js/app.js": {
     "mtime": 1785169566.744962,
     "ast_hash": "829e14819cf0d3c3feba407bbf75432f",
     "semantic_hash": "829e14819cf0d3c3feba407bbf75432f"
   },
-  "Hms.Shell/wwwroot/js/barcode.js": {
+  "src/Hms.Shell/wwwroot/js/barcode.js": {
     "mtime": 1785069670.3689878,
     "ast_hash": "61f48974bd7d0fb4d019be01c9922037",
     "semantic_hash": "61f48974bd7d0fb4d019be01c9922037"
   },
-  "Hms.Shell/wwwroot/js/fkeys.js": {
+  "src/Hms.Shell/wwwroot/js/fkeys.js": {
     "mtime": 1785069652.4126203,
     "ast_hash": "4ac6c363ec64db46ffbbf069564aec8b",
     "semantic_hash": "4ac6c363ec64db46ffbbf069564aec8b"
   },
-  "Hms.Shell/wwwroot/js/hms-date.js": {
+  "src/Hms.Shell/wwwroot/js/hms-date.js": {
     "mtime": 1785138590.835902,
     "ast_hash": "2d9ba5f6762d2fb0e873d25dd9a962f0",
     "semantic_hash": "2d9ba5f6762d2fb0e873d25dd9a962f0"
   },
-  "Hms.Shell/wwwroot/js/login.js": {
+  "src/Hms.Shell/wwwroot/js/login.js": {
     "mtime": 1785734279.9208596,
     "ast_hash": "0612d135b1497736fe6fc9b9077b2806",
     "semantic_hash": "0612d135b1497736fe6fc9b9077b2806"
   },
-  "Hms.Shell/wwwroot/js/typeahead.js": {
+  "src/Hms.Shell/wwwroot/js/typeahead.js": {
     "mtime": 1785138692.8118253,
     "ast_hash": "80e5a5178f6966fce16d32145e162abe",
     "semantic_hash": "80e5a5178f6966fce16d32145e162abe"
   },
-  "Hms.Web/CounterContext.cs": {
+  "src/Hms.Web/CounterContext.cs": {
     "mtime": 1785128244.446511,
     "ast_hash": "43a6d70ee6beda848d56fad3f080c96c",
     "semantic_hash": "43a6d70ee6beda848d56fad3f080c96c"
   },
-  "Hms.Web/DailyNotificationJobs.cs": {
+  "src/Hms.Web/DailyNotificationJobs.cs": {
     "mtime": 1785703441.8954513,
     "ast_hash": "d9fd8819e6e6199e4e0c859d6c9aa362",
     "semantic_hash": "d9fd8819e6e6199e4e0c859d6c9aa362"
   },
-  "Hms.Web/DevSeed.cs": {
+  "src/Hms.Web/DevSeed.cs": {
     "mtime": 1785743010.8684068,
     "ast_hash": "f04239f5b779c82a6c618989ae9e8089",
     "semantic_hash": "f04239f5b779c82a6c618989ae9e8089"
   },
-  "Hms.Web/DiagnosticsRelease.cs": {
+  "src/Hms.Web/DiagnosticsRelease.cs": {
     "mtime": 1785143916.1486404,
     "ast_hash": "6daa5df9df3a7cb2fe847f5feafd30a4",
     "semantic_hash": "6daa5df9df3a7cb2fe847f5feafd30a4"
   },
-  "Hms.Web/EmrOrdering.cs": {
+  "src/Hms.Web/EmrOrdering.cs": {
     "mtime": 1785745984.7564628,
     "ast_hash": "13f5eb12674e32f857681cf2c8185085",
     "semantic_hash": "13f5eb12674e32f857681cf2c8185085"
   },
-  "Hms.Web/EmrRecord.cs": {
+  "src/Hms.Web/EmrRecord.cs": {
     "mtime": 1785746771.200018,
     "ast_hash": "d8df8ec62b9cedb282666be6529b7aec",
     "semantic_hash": "d8df8ec62b9cedb282666be6529b7aec"
   },
-  "Hms.Web/HistoryGenerator.cs": {
+  "src/Hms.Web/HistoryGenerator.cs": {
     "mtime": 1785235340.9721978,
     "ast_hash": "18c8ccd085e6d908633bec3c7dd180a1",
     "semantic_hash": "18c8ccd085e6d908633bec3c7dd180a1"
   },
-  "Hms.Web/Hms.Web.csproj": {
+  "src/Hms.Web/Hms.Web.csproj": {
     "mtime": 1785525232.6097188,
     "ast_hash": "e3ae12f2949bb529b7226b83272b744f",
     "semantic_hash": "e3ae12f2949bb529b7226b83272b744f"
   },
-  "Hms.Web/HmsTx.cs": {
+  "src/Hms.Web/HmsTx.cs": {
     "mtime": 1785662234.6745174,
     "ast_hash": "e843cf3d7b2af23e5d21b665463e658b",
     "semantic_hash": "e843cf3d7b2af23e5d21b665463e658b"
   },
-  "Hms.Web/HrTxAdapter.cs": {
+  "src/Hms.Web/HrTxAdapter.cs": {
     "mtime": 1785523374.1085289,
     "ast_hash": "152420ba034cdbb499f9fce73bbcd6dc",
     "semantic_hash": "152420ba034cdbb499f9fce73bbcd6dc"
   },
-  "Hms.Web/IpdBilling.cs": {
+  "src/Hms.Web/IpdBilling.cs": {
     "mtime": 1785745942.943725,
     "ast_hash": "7360c424b18ad4351e8dfa2bc6c95100",
     "semantic_hash": "7360c424b18ad4351e8dfa2bc6c95100"
   },
-  "Hms.Web/LabBoard.cs": {
+  "src/Hms.Web/LabBoard.cs": {
     "mtime": 1785699882.091908,
     "ast_hash": "4f41bb5f47df059245fd41d79d9c6893",
     "semantic_hash": "4f41bb5f47df059245fd41d79d9c6893"
   },
-  "Hms.Web/ModuleNav.cs": {
+  "src/Hms.Web/ModuleNav.cs": {
     "mtime": 1785742153.6175754,
     "ast_hash": "575c7f29e37aa152987b331a662b4453",
     "semantic_hash": "575c7f29e37aa152987b331a662b4453"
   },
-  "Hms.Web/OtBilling.cs": {
+  "src/Hms.Web/OtBilling.cs": {
     "mtime": 1785178707.515517,
     "ast_hash": "76f4259488d35b7e954a62daf9557ccd",
     "semantic_hash": "76f4259488d35b7e954a62daf9557ccd"
   },
-  "Hms.Web/Pages/Admin/Approvals.cshtml": {
+  "src/Hms.Web/Pages/Admin/Approvals.cshtml": {
     "mtime": 1785523767.673326,
     "ast_hash": "5c49e94d8c7b3d8f836c183a1f47075c",
     "semantic_hash": "5c49e94d8c7b3d8f836c183a1f47075c"
   },
-  "Hms.Web/Pages/Admin/Approvals.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/Approvals.cshtml.cs": {
     "mtime": 1785077065.8625455,
     "ast_hash": "a8d5bff73e02f0f64b9e3d6f5c09fc3d",
     "semantic_hash": "a8d5bff73e02f0f64b9e3d6f5c09fc3d"
   },
-  "Hms.Web/Pages/Admin/Audit.cshtml": {
+  "src/Hms.Web/Pages/Admin/Audit.cshtml": {
     "mtime": 1785523837.7051222,
     "ast_hash": "60de60a944e3f17f1784f671371dbd36",
     "semantic_hash": "60de60a944e3f17f1784f671371dbd36"
   },
-  "Hms.Web/Pages/Admin/Audit.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/Audit.cshtml.cs": {
     "mtime": 1785234475.5790067,
     "ast_hash": "d39874452f07725103120ce8172a5a64",
     "semantic_hash": "d39874452f07725103120ce8172a5a64"
   },
-  "Hms.Web/Pages/Admin/Import.cshtml": {
+  "src/Hms.Web/Pages/Admin/Import.cshtml": {
     "mtime": 1785523767.6897197,
     "ast_hash": "417eaea7bd03bb42706f2e7783803fbc",
     "semantic_hash": "417eaea7bd03bb42706f2e7783803fbc"
   },
-  "Hms.Web/Pages/Admin/Import.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/Import.cshtml.cs": {
     "mtime": 1785084248.3911426,
     "ast_hash": "967b96324a2a60c4f843ff65581ebdd2",
     "semantic_hash": "967b96324a2a60c4f843ff65581ebdd2"
   },
-  "Hms.Web/Pages/Admin/Masters.cshtml": {
+  "src/Hms.Web/Pages/Admin/Masters.cshtml": {
     "mtime": 1785138561.464258,
     "ast_hash": "8eb38d46611ae13f5e48b349fef5ebfa",
     "semantic_hash": "8eb38d46611ae13f5e48b349fef5ebfa"
   },
-  "Hms.Web/Pages/Admin/Masters.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/Masters.cshtml.cs": {
     "mtime": 1785699310.2799447,
     "ast_hash": "64e79b0d73c1fe9a0e6677ed0394bb73",
     "semantic_hash": "64e79b0d73c1fe9a0e6677ed0394bb73"
   },
-  "Hms.Web/Pages/Admin/People.cshtml": {
+  "src/Hms.Web/Pages/Admin/People.cshtml": {
     "mtime": 1785126048.9373662,
     "ast_hash": "1f3a738f0d801d31bf3585094934c3a6",
     "semantic_hash": "1f3a738f0d801d31bf3585094934c3a6"
   },
-  "Hms.Web/Pages/Admin/People.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/People.cshtml.cs": {
     "mtime": 1785699447.1427119,
     "ast_hash": "6e6b38049196d881596f4104e5cb4130",
     "semantic_hash": "6e6b38049196d881596f4104e5cb4130"
   },
-  "Hms.Web/Pages/Admin/Sms.cshtml": {
+  "src/Hms.Web/Pages/Admin/Sms.cshtml": {
     "mtime": 1785523839.1317677,
     "ast_hash": "0e6d334cd920f7c3fa0024165f5339a9",
     "semantic_hash": "0e6d334cd920f7c3fa0024165f5339a9"
   },
-  "Hms.Web/Pages/Admin/Sms.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/Sms.cshtml.cs": {
     "mtime": 1785132831.0953705,
     "ast_hash": "b096cc922ebdc88e5c3c3ed34b5c879b",
     "semantic_hash": "b096cc922ebdc88e5c3c3ed34b5c879b"
   },
-  "Hms.Web/Pages/Admin/Templates.cshtml": {
+  "src/Hms.Web/Pages/Admin/Templates.cshtml": {
     "mtime": 1785523767.6840003,
     "ast_hash": "bd3676c911918331215d701648e20cc6",
     "semantic_hash": "bd3676c911918331215d701648e20cc6"
   },
-  "Hms.Web/Pages/Admin/Templates.cshtml.cs": {
+  "src/Hms.Web/Pages/Admin/Templates.cshtml.cs": {
     "mtime": 1785135115.9293292,
     "ast_hash": "9b54171945acaa1ee115e822e76e2114",
     "semantic_hash": "9b54171945acaa1ee115e822e76e2114"
   },
-  "Hms.Web/Pages/Appointments/Index.cshtml": {
+  "src/Hms.Web/Pages/Appointments/Index.cshtml": {
     "mtime": 1785237367.9101527,
     "ast_hash": "be4a27b1d6943b7f65b7309f0c5b2976",
     "semantic_hash": "be4a27b1d6943b7f65b7309f0c5b2976"
   },
-  "Hms.Web/Pages/Appointments/Index.cshtml.cs": {
+  "src/Hms.Web/Pages/Appointments/Index.cshtml.cs": {
     "mtime": 1785699272.206929,
     "ast_hash": "f7d3a93846ca529d1b2ed49f51b8e050",
     "semantic_hash": "f7d3a93846ca529d1b2ed49f51b8e050"
   },
-  "Hms.Web/Pages/Billing/DayClose.cshtml": {
+  "src/Hms.Web/Pages/Billing/DayClose.cshtml": {
     "mtime": 1785076520.7553937,
     "ast_hash": "5a1f913efb1b9fe9d12ef6f32727e1ad",
     "semantic_hash": "5a1f913efb1b9fe9d12ef6f32727e1ad"
   },
-  "Hms.Web/Pages/Billing/DayClose.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/DayClose.cshtml.cs": {
     "mtime": 1785076499.296367,
     "ast_hash": "ba45c09b3659696064fea0418a714c90",
     "semantic_hash": "ba45c09b3659696064fea0418a714c90"
   },
-  "Hms.Web/Pages/Billing/Dues.cshtml": {
+  "src/Hms.Web/Pages/Billing/Dues.cshtml": {
     "mtime": 1785076461.6123066,
     "ast_hash": "97940f5cd0a6084acdf9800fc6f2ead0",
     "semantic_hash": "97940f5cd0a6084acdf9800fc6f2ead0"
   },
-  "Hms.Web/Pages/Billing/Dues.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Dues.cshtml.cs": {
     "mtime": 1785699349.617472,
     "ast_hash": "159278d74c84880e034f97116c47f941",
     "semantic_hash": "159278d74c84880e034f97116c47f941"
   },
-  "Hms.Web/Pages/Billing/Invoice.cshtml": {
+  "src/Hms.Web/Pages/Billing/Invoice.cshtml": {
     "mtime": 1785524700.8383145,
     "ast_hash": "d55f8ded43e45a1a6e3b5ef3463db060",
     "semantic_hash": "d55f8ded43e45a1a6e3b5ef3463db060"
   },
-  "Hms.Web/Pages/Billing/Invoice.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Invoice.cshtml.cs": {
     "mtime": 1785128284.5554707,
     "ast_hash": "68490946120a1d282713eebd8be890f9",
     "semantic_hash": "68490946120a1d282713eebd8be890f9"
   },
-  "Hms.Web/Pages/Billing/Opd.cshtml": {
+  "src/Hms.Web/Pages/Billing/Opd.cshtml": {
     "mtime": 1785168707.942223,
     "ast_hash": "27b1da888ac97f0c9ef9a1c0cd2106c9",
     "semantic_hash": "27b1da888ac97f0c9ef9a1c0cd2106c9"
   },
-  "Hms.Web/Pages/Billing/Opd.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Opd.cshtml.cs": {
     "mtime": 1785698717.914933,
     "ast_hash": "885f2a10a2d908765aec22d81f88f5f2",
     "semantic_hash": "885f2a10a2d908765aec22d81f88f5f2"
   },
-  "Hms.Web/Pages/Billing/Refund.cshtml": {
+  "src/Hms.Web/Pages/Billing/Refund.cshtml": {
     "mtime": 1785236934.3420255,
     "ast_hash": "802966c821e03dcdb17894386ea8f197",
     "semantic_hash": "802966c821e03dcdb17894386ea8f197"
   },
-  "Hms.Web/Pages/Billing/Refund.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Refund.cshtml.cs": {
     "mtime": 1785699864.7936976,
     "ast_hash": "e3fd66945737ff5716d9b259a7812ed6",
     "semantic_hash": "e3fd66945737ff5716d9b259a7812ed6"
   },
-  "Hms.Web/Pages/Billing/Reports.cshtml": {
+  "src/Hms.Web/Pages/Billing/Reports.cshtml": {
     "mtime": 1785138597.6896367,
     "ast_hash": "3ce495571f0c7621beb68ecafebfadbd",
     "semantic_hash": "3ce495571f0c7621beb68ecafebfadbd"
   },
-  "Hms.Web/Pages/Billing/Reports.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Reports.cshtml.cs": {
     "mtime": 1785138574.7803767,
     "ast_hash": "d65a17f2876d7081996790d707aa401a",
     "semantic_hash": "d65a17f2876d7081996790d707aa401a"
   },
-  "Hms.Web/Pages/Billing/Session.cshtml": {
+  "src/Hms.Web/Pages/Billing/Session.cshtml": {
     "mtime": 1785076263.2918372,
     "ast_hash": "bff9875d903dd57809444e23f003cd6c",
     "semantic_hash": "bff9875d903dd57809444e23f003cd6c"
   },
-  "Hms.Web/Pages/Billing/Session.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Session.cshtml.cs": {
     "mtime": 1785076416.248313,
     "ast_hash": "3449ae54707c1584016199a0a282fc9e",
     "semantic_hash": "3449ae54707c1584016199a0a282fc9e"
   },
-  "Hms.Web/Pages/Billing/Statement.cshtml": {
+  "src/Hms.Web/Pages/Billing/Statement.cshtml": {
     "mtime": 1785524700.8395598,
     "ast_hash": "519350c6aec9ebba2362acf747a0fde6",
     "semantic_hash": "519350c6aec9ebba2362acf747a0fde6"
   },
-  "Hms.Web/Pages/Billing/Statement.cshtml.cs": {
+  "src/Hms.Web/Pages/Billing/Statement.cshtml.cs": {
     "mtime": 1785076534.2448301,
     "ast_hash": "9824f15873c6a0baec168bc858f2e7d5",
     "semantic_hash": "9824f15873c6a0baec168bc858f2e7d5"
   },
-  "Hms.Web/Pages/Dashboard.cshtml": {
+  "src/Hms.Web/Pages/Dashboard.cshtml": {
     "mtime": 1785132861.4423633,
     "ast_hash": "4e62b375a8852ef2c9d4f3848a8f4c3d",
     "semantic_hash": "4e62b375a8852ef2c9d4f3848a8f4c3d"
   },
-  "Hms.Web/Pages/Dashboard.cshtml.cs": {
+  "src/Hms.Web/Pages/Dashboard.cshtml.cs": {
     "mtime": 1785236768.950821,
     "ast_hash": "7d794b48d04aa54be12de40fa495d660",
     "semantic_hash": "7d794b48d04aa54be12de40fa495d660"
   },
-  "Hms.Web/Pages/Diagnostics/Delivery.cshtml": {
+  "src/Hms.Web/Pages/Diagnostics/Delivery.cshtml": {
     "mtime": 1785076945.5608761,
     "ast_hash": "613fdf10758cf39700d3726b92771371",
     "semantic_hash": "613fdf10758cf39700d3726b92771371"
   },
-  "Hms.Web/Pages/Diagnostics/Delivery.cshtml.cs": {
+  "src/Hms.Web/Pages/Diagnostics/Delivery.cshtml.cs": {
     "mtime": 1785076931.5534642,
     "ast_hash": "b94b3c9893c0e0e4fd45349cfacf974d",
     "semantic_hash": "b94b3c9893c0e0e4fd45349cfacf974d"
   },
-  "Hms.Web/Pages/Diagnostics/Order.cshtml": {
+  "src/Hms.Web/Pages/Diagnostics/Order.cshtml": {
     "mtime": 1785746690.4159644,
     "ast_hash": "eb87002c9bb985a2f2f1f903f4e48863",
     "semantic_hash": "eb87002c9bb985a2f2f1f903f4e48863"
   },
-  "Hms.Web/Pages/Diagnostics/Order.cshtml.cs": {
+  "src/Hms.Web/Pages/Diagnostics/Order.cshtml.cs": {
     "mtime": 1785746673.7644045,
     "ast_hash": "f485a4eff71d0db484520370161aeaa5",
     "semantic_hash": "f485a4eff71d0db484520370161aeaa5"
   },
-  "Hms.Web/Pages/Diagnostics/Slip.cshtml": {
+  "src/Hms.Web/Pages/Diagnostics/Slip.cshtml": {
     "mtime": 1785702485.8022733,
     "ast_hash": "d6191a559325e37deaea8c6632f47ae2",
     "semantic_hash": "d6191a559325e37deaea8c6632f47ae2"
   },
-  "Hms.Web/Pages/Diagnostics/Slip.cshtml.cs": {
+  "src/Hms.Web/Pages/Diagnostics/Slip.cshtml.cs": {
     "mtime": 1785702306.3107927,
     "ast_hash": "3bf0441a4bfe6ad4b241cb87b68f1746",
     "semantic_hash": "3bf0441a4bfe6ad4b241cb87b68f1746"
   },
-  "Hms.Web/Pages/Emr/Charts.cshtml": {
+  "src/Hms.Web/Pages/Emr/Charts.cshtml": {
     "mtime": 1785746364.6801887,
     "ast_hash": "a34fd91dd86f5d9f34b9a3a31f991ddd",
     "semantic_hash": "a34fd91dd86f5d9f34b9a3a31f991ddd"
   },
-  "Hms.Web/Pages/Emr/Charts.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Charts.cshtml.cs": {
     "mtime": 1785746336.793251,
     "ast_hash": "d7fc2c9fa80facd020308282c966e39c",
     "semantic_hash": "d7fc2c9fa80facd020308282c966e39c"
   },
-  "Hms.Web/Pages/Emr/Consult.cshtml": {
+  "src/Hms.Web/Pages/Emr/Consult.cshtml": {
     "mtime": 1785524668.902057,
     "ast_hash": "9be7b4375dd2645bb087c46b079df103",
     "semantic_hash": "9be7b4375dd2645bb087c46b079df103"
   },
-  "Hms.Web/Pages/Emr/Consult.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Consult.cshtml.cs": {
     "mtime": 1785699565.7179823,
     "ast_hash": "86efdd4f976981207d91a15717eb6193",
     "semantic_hash": "86efdd4f976981207d91a15717eb6193"
   },
-  "Hms.Web/Pages/Emr/History.cshtml": {
+  "src/Hms.Web/Pages/Emr/History.cshtml": {
     "mtime": 1785746777.0742774,
     "ast_hash": "043d2014239a6962ca35969498b9623a",
     "semantic_hash": "043d2014239a6962ca35969498b9623a"
   },
-  "Hms.Web/Pages/Emr/History.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/History.cshtml.cs": {
     "mtime": 1785177596.5688925,
     "ast_hash": "6ddfd6f09e8583dcd4ee40a61ae3a250",
     "semantic_hash": "6ddfd6f09e8583dcd4ee40a61ae3a250"
   },
-  "Hms.Web/Pages/Emr/Indoor.cshtml": {
+  "src/Hms.Web/Pages/Emr/Indoor.cshtml": {
     "mtime": 1785746286.0543072,
     "ast_hash": "5fb2550b2dff568ff2347ce2028e0339",
     "semantic_hash": "5fb2550b2dff568ff2347ce2028e0339"
   },
-  "Hms.Web/Pages/Emr/Indoor.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Indoor.cshtml.cs": {
     "mtime": 1785746429.4800324,
     "ast_hash": "00c41add5c63190f46bee417aa1dac34",
     "semantic_hash": "00c41add5c63190f46bee417aa1dac34"
   },
-  "Hms.Web/Pages/Emr/Prescription.cshtml": {
+  "src/Hms.Web/Pages/Emr/Prescription.cshtml": {
     "mtime": 1785524700.8413687,
     "ast_hash": "c9806b2e38bb0552288776c519576f63",
     "semantic_hash": "c9806b2e38bb0552288776c519576f63"
   },
-  "Hms.Web/Pages/Emr/Prescription.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Prescription.cshtml.cs": {
     "mtime": 1785177563.784372,
     "ast_hash": "b1c2fad1082ad1fd4645d0ad541de28e",
     "semantic_hash": "b1c2fad1082ad1fd4645d0ad541de28e"
   },
-  "Hms.Web/Pages/Emr/Queue.cshtml": {
+  "src/Hms.Web/Pages/Emr/Queue.cshtml": {
     "mtime": 1785177139.5799882,
     "ast_hash": "b3e83c517832b851089abfbf5496d80a",
     "semantic_hash": "b3e83c517832b851089abfbf5496d80a"
   },
-  "Hms.Web/Pages/Emr/Queue.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Queue.cshtml.cs": {
     "mtime": 1785177127.2156107,
     "ast_hash": "974bb2324e2999bce8f9dc7c7000d48e",
     "semantic_hash": "974bb2324e2999bce8f9dc7c7000d48e"
   },
-  "Hms.Web/Pages/Emr/Tasks.cshtml": {
+  "src/Hms.Web/Pages/Emr/Tasks.cshtml": {
     "mtime": 1785746409.9680004,
     "ast_hash": "e411437cae6fbae0563680c75a284146",
     "semantic_hash": "e411437cae6fbae0563680c75a284146"
   },
-  "Hms.Web/Pages/Emr/Tasks.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Tasks.cshtml.cs": {
     "mtime": 1785746396.2772708,
     "ast_hash": "2b87dbfb35bb9d2ad269da291c117955",
     "semantic_hash": "2b87dbfb35bb9d2ad269da291c117955"
   },
-  "Hms.Web/Pages/Emr/Templates.cshtml": {
+  "src/Hms.Web/Pages/Emr/Templates.cshtml": {
     "mtime": 1785177666.2048485,
     "ast_hash": "6c2d4ec195f73957a6fbc4a2e50cf6ac",
     "semantic_hash": "6c2d4ec195f73957a6fbc4a2e50cf6ac"
   },
-  "Hms.Web/Pages/Emr/Templates.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Templates.cshtml.cs": {
     "mtime": 1785177644.883974,
     "ast_hash": "f47cbaf9afc21f0623218199ef76659c",
     "semantic_hash": "f47cbaf9afc21f0623218199ef76659c"
   },
-  "Hms.Web/Pages/Emr/Vitals.cshtml": {
+  "src/Hms.Web/Pages/Emr/Vitals.cshtml": {
     "mtime": 1785177475.7355666,
     "ast_hash": "d0130514ecfed164dbe301e18c2acaf9",
     "semantic_hash": "d0130514ecfed164dbe301e18c2acaf9"
   },
-  "Hms.Web/Pages/Emr/Vitals.cshtml.cs": {
+  "src/Hms.Web/Pages/Emr/Vitals.cshtml.cs": {
     "mtime": 1785699512.550001,
     "ast_hash": "e0d27c4cca2c66a62a457ac9189ae9ab",
     "semantic_hash": "e0d27c4cca2c66a62a457ac9189ae9ab"
   },
-  "Hms.Web/Pages/FrontDesk.cshtml": {
+  "src/Hms.Web/Pages/FrontDesk.cshtml": {
     "mtime": 1785238290.7834244,
     "ast_hash": "2fc073efbf6a4f22f0f1bbfb925fc5fb",
     "semantic_hash": "2fc073efbf6a4f22f0f1bbfb925fc5fb"
   },
-  "Hms.Web/Pages/FrontDesk.cshtml.cs": {
+  "src/Hms.Web/Pages/FrontDesk.cshtml.cs": {
     "mtime": 1785238270.5612304,
     "ast_hash": "1e172c266d48c9ddf54b4543257078d5",
     "semantic_hash": "1e172c266d48c9ddf54b4543257078d5"
   },
-  "Hms.Web/Pages/Index.cshtml": {
+  "src/Hms.Web/Pages/Index.cshtml": {
     "mtime": 1785075884.319442,
     "ast_hash": "4dd7e7a1ea6255f9dccd4891b452b8c8",
     "semantic_hash": "4dd7e7a1ea6255f9dccd4891b452b8c8"
   },
-  "Hms.Web/Pages/Index.cshtml.cs": {
+  "src/Hms.Web/Pages/Index.cshtml.cs": {
     "mtime": 1785134569.0141988,
     "ast_hash": "01074f2c1c9712e6a87ca6ec766fe334",
     "semantic_hash": "01074f2c1c9712e6a87ca6ec766fe334"
   },
-  "Hms.Web/Pages/Ipd/Admissions.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Admissions.cshtml": {
     "mtime": 1785145851.5129886,
     "ast_hash": "ffac437cd1498bda169414f0a75832ab",
     "semantic_hash": "ffac437cd1498bda169414f0a75832ab"
   },
-  "Hms.Web/Pages/Ipd/Admissions.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Admissions.cshtml.cs": {
     "mtime": 1785147799.6651158,
     "ast_hash": "c061bef098cdccc28a347bffba614214",
     "semantic_hash": "c061bef098cdccc28a347bffba614214"
   },
-  "Hms.Web/Pages/Ipd/Admit.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Admit.cshtml": {
     "mtime": 1785144799.5383291,
     "ast_hash": "6b6a39dc78b0e87cc71546505599876c",
     "semantic_hash": "6b6a39dc78b0e87cc71546505599876c"
   },
-  "Hms.Web/Pages/Ipd/Admit.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Admit.cshtml.cs": {
     "mtime": 1785699444.9862847,
     "ast_hash": "8653ec0231e16d4053bdb12d555b4c65",
     "semantic_hash": "8653ec0231e16d4053bdb12d555b4c65"
   },
-  "Hms.Web/Pages/Ipd/Board.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Board.cshtml": {
     "mtime": 1785147799.6595364,
     "ast_hash": "a1bd7b1603d6d839085863d7b94e8931",
     "semantic_hash": "a1bd7b1603d6d839085863d7b94e8931"
   },
-  "Hms.Web/Pages/Ipd/Board.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Board.cshtml.cs": {
     "mtime": 1785147799.6564624,
     "ast_hash": "fc1c3836b019f5f374214083a75200ad",
     "semantic_hash": "fc1c3836b019f5f374214083a75200ad"
   },
-  "Hms.Web/Pages/Ipd/Certificates.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Certificates.cshtml": {
     "mtime": 1785146385.8055665,
     "ast_hash": "602e00c3d4024d1099180072fa2d56d5",
     "semantic_hash": "602e00c3d4024d1099180072fa2d56d5"
   },
-  "Hms.Web/Pages/Ipd/Certificates.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Certificates.cshtml.cs": {
     "mtime": 1785146371.100631,
     "ast_hash": "0f6a5d5af17cd6154a6dea81a52d27c1",
     "semantic_hash": "0f6a5d5af17cd6154a6dea81a52d27c1"
   },
-  "Hms.Web/Pages/Ipd/Discharge.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Discharge.cshtml": {
     "mtime": 1785746608.387303,
     "ast_hash": "574a9d98e0046d503b730174ee6b8a60",
     "semantic_hash": "574a9d98e0046d503b730174ee6b8a60"
   },
-  "Hms.Web/Pages/Ipd/Discharge.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Discharge.cshtml.cs": {
     "mtime": 1785746590.9469163,
     "ast_hash": "51edcd8e13c7bfb0f046db2e499d4970",
     "semantic_hash": "51edcd8e13c7bfb0f046db2e499d4970"
   },
-  "Hms.Web/Pages/Ipd/Duty.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Duty.cshtml": {
     "mtime": 1785741820.1838646,
     "ast_hash": "55495ff3bf14282946b21689f6f21589",
     "semantic_hash": "55495ff3bf14282946b21689f6f21589"
   },
-  "Hms.Web/Pages/Ipd/Duty.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Duty.cshtml.cs": {
     "mtime": 1785741801.4515407,
     "ast_hash": "6f89ed096b2a9686198129b265c647ba",
     "semantic_hash": "6f89ed096b2a9686198129b265c647ba"
   },
-  "Hms.Web/Pages/Ipd/Folio.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Folio.cshtml": {
     "mtime": 1785746571.6646407,
     "ast_hash": "11bb1ff2ae183de8f8d92e26fde74f54",
     "semantic_hash": "11bb1ff2ae183de8f8d92e26fde74f54"
   },
-  "Hms.Web/Pages/Ipd/Folio.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Folio.cshtml.cs": {
     "mtime": 1785746560.7447276,
     "ast_hash": "68703a0c3568bd33cb29976f11e42417",
     "semantic_hash": "68703a0c3568bd33cb29976f11e42417"
   },
-  "Hms.Web/Pages/Ipd/Indents.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Indents.cshtml": {
     "mtime": 1785146452.6636872,
     "ast_hash": "4f6d840988a99823ccf50237a4b6419e",
     "semantic_hash": "4f6d840988a99823ccf50237a4b6419e"
   },
-  "Hms.Web/Pages/Ipd/Indents.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Indents.cshtml.cs": {
     "mtime": 1785147799.6780908,
     "ast_hash": "665b44d87f1d85fb1b42e753da1e16e5",
     "semantic_hash": "665b44d87f1d85fb1b42e753da1e16e5"
   },
-  "Hms.Web/Pages/Ipd/Reports.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Reports.cshtml": {
     "mtime": 1785146419.5436602,
     "ast_hash": "5cddac82435767fc47007feef1b2a021",
     "semantic_hash": "5cddac82435767fc47007feef1b2a021"
   },
-  "Hms.Web/Pages/Ipd/Reports.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Reports.cshtml.cs": {
     "mtime": 1785146660.6813362,
     "ast_hash": "ae29b5fe3eddb32888c28a18fdc1cd9c",
     "semantic_hash": "ae29b5fe3eddb32888c28a18fdc1cd9c"
   },
-  "Hms.Web/Pages/Ipd/Station.cshtml": {
+  "src/Hms.Web/Pages/Ipd/Station.cshtml": {
     "mtime": 1785746749.3170187,
     "ast_hash": "cf3b3b00e6d8a868f6d8c30f3ec42da1",
     "semantic_hash": "cf3b3b00e6d8a868f6d8c30f3ec42da1"
   },
-  "Hms.Web/Pages/Ipd/Station.cshtml.cs": {
+  "src/Hms.Web/Pages/Ipd/Station.cshtml.cs": {
     "mtime": 1785746746.0051675,
     "ast_hash": "5dc7ceaf5107a0d42bc618f094cfff0d",
     "semantic_hash": "5dc7ceaf5107a0d42bc618f094cfff0d"
   },
-  "Hms.Web/Pages/Lis/Amend.cshtml": {
+  "src/Hms.Web/Pages/Lis/Amend.cshtml": {
     "mtime": 1785700008.3506262,
     "ast_hash": "b8b5a6493996daf1e6ae734483e496ef",
     "semantic_hash": "b8b5a6493996daf1e6ae734483e496ef"
   },
-  "Hms.Web/Pages/Lis/Amend.cshtml.cs": {
+  "src/Hms.Web/Pages/Lis/Amend.cshtml.cs": {
     "mtime": 1785699981.867459,
     "ast_hash": "dc2f53eefa0617f4fc8c84b7699a7816",
     "semantic_hash": "dc2f53eefa0617f4fc8c84b7699a7816"
   },
-  "Hms.Web/Pages/Lis/Board.cshtml": {
+  "src/Hms.Web/Pages/Lis/Board.cshtml": {
     "mtime": 1785131799.2845936,
     "ast_hash": "046e970371c250f37a93cc3ad6cc1d20",
     "semantic_hash": "046e970371c250f37a93cc3ad6cc1d20"
   },
-  "Hms.Web/Pages/Lis/Board.cshtml.cs": {
+  "src/Hms.Web/Pages/Lis/Board.cshtml.cs": {
     "mtime": 1785131799.2597034,
     "ast_hash": "9eb0d9b14b3d028536b26d583b5060b0",
     "semantic_hash": "9eb0d9b14b3d028536b26d583b5060b0"
   },
-  "Hms.Web/Pages/Lis/Report.cshtml": {
+  "src/Hms.Web/Pages/Lis/Report.cshtml": {
     "mtime": 1785524700.8424523,
     "ast_hash": "f36d8d260411ffd49f5612901c6b5a82",
     "semantic_hash": "f36d8d260411ffd49f5612901c6b5a82"
   },
-  "Hms.Web/Pages/Lis/Report.cshtml.cs": {
+  "src/Hms.Web/Pages/Lis/Report.cshtml.cs": {
     "mtime": 1785130289.5576296,
     "ast_hash": "9fd6576f59dd149501b606b5e06ef73e",
     "semantic_hash": "9fd6576f59dd149501b606b5e06ef73e"
   },
-  "Hms.Web/Pages/Lis/Results.cshtml": {
+  "src/Hms.Web/Pages/Lis/Results.cshtml": {
     "mtime": 1785523767.6809022,
     "ast_hash": "160d5869420a879c50bf503184872a45",
     "semantic_hash": "160d5869420a879c50bf503184872a45"
   },
-  "Hms.Web/Pages/Lis/Results.cshtml.cs": {
+  "src/Hms.Web/Pages/Lis/Results.cshtml.cs": {
     "mtime": 1785699578.621059,
     "ast_hash": "edc6850efdf16abda6ed87149bf8aa5b",
     "semantic_hash": "edc6850efdf16abda6ed87149bf8aa5b"
   },
-  "Hms.Web/Pages/Lis/Verify.cshtml": {
+  "src/Hms.Web/Pages/Lis/Verify.cshtml": {
     "mtime": 1785130237.527381,
     "ast_hash": "8d2ec937d438e35b8ebbaf7f016f6d75",
     "semantic_hash": "8d2ec937d438e35b8ebbaf7f016f6d75"
   },
-  "Hms.Web/Pages/Lis/Verify.cshtml.cs": {
+  "src/Hms.Web/Pages/Lis/Verify.cshtml.cs": {
     "mtime": 1785699589.1387804,
     "ast_hash": "f06f6fdb32cd0c227df53813e9925b7b",
     "semantic_hash": "f06f6fdb32cd0c227df53813e9925b7b"
   },
-  "Hms.Web/Pages/Notifications/Tray.cshtml": {
+  "src/Hms.Web/Pages/Notifications/Tray.cshtml": {
     "mtime": 1785238229.7566347,
     "ast_hash": "e29c895ae1418781063c787cfc295efb",
     "semantic_hash": "e29c895ae1418781063c787cfc295efb"
   },
-  "Hms.Web/Pages/Notifications/Tray.cshtml.cs": {
+  "src/Hms.Web/Pages/Notifications/Tray.cshtml.cs": {
     "mtime": 1785077161.246676,
     "ast_hash": "d1968ada1e7e48d66c95af80e314b0ab",
     "semantic_hash": "d1968ada1e7e48d66c95af80e314b0ab"
   },
-  "Hms.Web/Pages/Ot/Board.cshtml": {
+  "src/Hms.Web/Pages/Ot/Board.cshtml": {
     "mtime": 1785178945.7196052,
     "ast_hash": "84fcc530bf3ee88ed855d09b00be0f05",
     "semantic_hash": "84fcc530bf3ee88ed855d09b00be0f05"
   },
-  "Hms.Web/Pages/Ot/Board.cshtml.cs": {
+  "src/Hms.Web/Pages/Ot/Board.cshtml.cs": {
     "mtime": 1785178909.460724,
     "ast_hash": "974a17a3542d84e8a61396236ba6cfdb",
     "semantic_hash": "974a17a3542d84e8a61396236ba6cfdb"
   },
-  "Hms.Web/Pages/Ot/Case.cshtml": {
+  "src/Hms.Web/Pages/Ot/Case.cshtml": {
     "mtime": 1785178895.2984245,
     "ast_hash": "0abda4a6694e910744e3975db4d1fec5",
     "semantic_hash": "0abda4a6694e910744e3975db4d1fec5"
   },
-  "Hms.Web/Pages/Ot/Case.cshtml.cs": {
+  "src/Hms.Web/Pages/Ot/Case.cshtml.cs": {
     "mtime": 1785178865.701133,
     "ast_hash": "8a52d1880ea9d18fa9972cb34436c038",
     "semantic_hash": "8a52d1880ea9d18fa9972cb34436c038"
   },
-  "Hms.Web/Pages/Ot/Register.cshtml": {
+  "src/Hms.Web/Pages/Ot/Register.cshtml": {
     "mtime": 1785178945.725819,
     "ast_hash": "1f1a978b572e2cf856ae5e78d266e36d",
     "semantic_hash": "1f1a978b572e2cf856ae5e78d266e36d"
   },
-  "Hms.Web/Pages/Ot/Register.cshtml.cs": {
+  "src/Hms.Web/Pages/Ot/Register.cshtml.cs": {
     "mtime": 1785178945.722873,
     "ast_hash": "5667db3719d36f6b21c2e9c2fe042edb",
     "semantic_hash": "5667db3719d36f6b21c2e9c2fe042edb"
   },
-  "Hms.Web/Pages/Ot/Schedule.cshtml": {
+  "src/Hms.Web/Pages/Ot/Schedule.cshtml": {
     "mtime": 1785178839.1859672,
     "ast_hash": "56a6385861a6c9ab673bcd93506e9de5",
     "semantic_hash": "56a6385861a6c9ab673bcd93506e9de5"
   },
-  "Hms.Web/Pages/Ot/Schedule.cshtml.cs": {
+  "src/Hms.Web/Pages/Ot/Schedule.cshtml.cs": {
     "mtime": 1785178820.9885757,
     "ast_hash": "cc2512d402e80fb188b1f542113af91b",
     "semantic_hash": "cc2512d402e80fb188b1f542113af91b"
   },
-  "Hms.Web/Pages/Ot/Theatres.cshtml": {
+  "src/Hms.Web/Pages/Ot/Theatres.cshtml": {
     "mtime": 1785178966.592283,
     "ast_hash": "9a9db2211b23f3ea011a0e5bc1058d75",
     "semantic_hash": "9a9db2211b23f3ea011a0e5bc1058d75"
   },
-  "Hms.Web/Pages/Ot/Theatres.cshtml.cs": {
+  "src/Hms.Web/Pages/Ot/Theatres.cshtml.cs": {
     "mtime": 1785178966.589029,
     "ast_hash": "cf862ccc7e2d67baa7fd3ff38023a60b",
     "semantic_hash": "cf862ccc7e2d67baa7fd3ff38023a60b"
   },
-  "Hms.Web/Pages/Pharmacy/Dashboard.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Dashboard.cshtml": {
     "mtime": 1785140770.736068,
     "ast_hash": "7f3911907dcb62bc2274bfb5097ee883",
     "semantic_hash": "7f3911907dcb62bc2274bfb5097ee883"
   },
-  "Hms.Web/Pages/Pharmacy/Dashboard.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Dashboard.cshtml.cs": {
     "mtime": 1785140762.3757615,
     "ast_hash": "c821b8e353da85daed768e5ef9a3c410",
     "semantic_hash": "c821b8e353da85daed768e5ef9a3c410"
   },
-  "Hms.Web/Pages/Pharmacy/Indents.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Indents.cshtml": {
     "mtime": 1785146487.1384714,
     "ast_hash": "48664b920ff393fca5070e2fc2171f14",
     "semantic_hash": "48664b920ff393fca5070e2fc2171f14"
   },
-  "Hms.Web/Pages/Pharmacy/Indents.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Indents.cshtml.cs": {
     "mtime": 1785146474.26457,
     "ast_hash": "3b89e5020c8f5f3d9500341d7f890716",
     "semantic_hash": "3b89e5020c8f5f3d9500341d7f890716"
   },
-  "Hms.Web/Pages/Pharmacy/Pos.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Pos.cshtml": {
     "mtime": 1785699358.2395756,
     "ast_hash": "82f024b8cba6c33fbd79d83b6bdbce81",
     "semantic_hash": "82f024b8cba6c33fbd79d83b6bdbce81"
   },
-  "Hms.Web/Pages/Pharmacy/Pos.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Pos.cshtml.cs": {
     "mtime": 1785699350.2266448,
     "ast_hash": "1e36172f82f82a607558816685e7168a",
     "semantic_hash": "1e36172f82f82a607558816685e7168a"
   },
-  "Hms.Web/Pages/Pharmacy/Products.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Products.cshtml": {
     "mtime": 1785140535.4399245,
     "ast_hash": "910a8b44f34c591ee2c8ebfb101d9f34",
     "semantic_hash": "910a8b44f34c591ee2c8ebfb101d9f34"
   },
-  "Hms.Web/Pages/Pharmacy/Products.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Products.cshtml.cs": {
     "mtime": 1785140514.9669526,
     "ast_hash": "e2c6632b74f8d894fd7b3be9f5e4f7ae",
     "semantic_hash": "e2c6632b74f8d894fd7b3be9f5e4f7ae"
   },
-  "Hms.Web/Pages/Pharmacy/Purchase.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Purchase.cshtml": {
     "mtime": 1785140598.3377762,
     "ast_hash": "35d6c230502fdc533997c4c98fd48048",
     "semantic_hash": "35d6c230502fdc533997c4c98fd48048"
   },
-  "Hms.Web/Pages/Pharmacy/Purchase.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Purchase.cshtml.cs": {
     "mtime": 1785699375.4741044,
     "ast_hash": "430da39a0879e7eeb2dc4fc3fbca48f5",
     "semantic_hash": "430da39a0879e7eeb2dc4fc3fbca48f5"
   },
-  "Hms.Web/Pages/Pharmacy/Reports.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Reports.cshtml": {
     "mtime": 1785140745.7324004,
     "ast_hash": "763be1e5b566e8df671150a3b349f011",
     "semantic_hash": "763be1e5b566e8df671150a3b349f011"
   },
-  "Hms.Web/Pages/Pharmacy/Reports.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Reports.cshtml.cs": {
     "mtime": 1785140722.8343043,
     "ast_hash": "2643204c51dff73685f1719c0f2439cd",
     "semantic_hash": "2643204c51dff73685f1719c0f2439cd"
   },
-  "Hms.Web/Pages/Pharmacy/Stock.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Stock.cshtml": {
     "mtime": 1785140490.8210266,
     "ast_hash": "e2a26790ef8802e5962d6c0ba0fabe32",
     "semantic_hash": "e2a26790ef8802e5962d6c0ba0fabe32"
   },
-  "Hms.Web/Pages/Pharmacy/Stock.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Stock.cshtml.cs": {
     "mtime": 1785699425.0846148,
     "ast_hash": "4f021dfbf1bda78829cb25faf7a8e94c",
     "semantic_hash": "4f021dfbf1bda78829cb25faf7a8e94c"
   },
-  "Hms.Web/Pages/Pharmacy/Suppliers.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Suppliers.cshtml": {
     "mtime": 1785140687.0123813,
     "ast_hash": "c2377feaecbc3ec745c697c48156b8c3",
     "semantic_hash": "c2377feaecbc3ec745c697c48156b8c3"
   },
-  "Hms.Web/Pages/Pharmacy/Suppliers.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Suppliers.cshtml.cs": {
     "mtime": 1785140669.5514843,
     "ast_hash": "6974f8bc32f38e6b294ee9adbf544ee8",
     "semantic_hash": "6974f8bc32f38e6b294ee9adbf544ee8"
   },
-  "Hms.Web/Pages/Pharmacy/Transfers.cshtml": {
+  "src/Hms.Web/Pages/Pharmacy/Transfers.cshtml": {
     "mtime": 1785140651.0717468,
     "ast_hash": "fd5f6ef6eba296dd29a9abc7fbc9300a",
     "semantic_hash": "fd5f6ef6eba296dd29a9abc7fbc9300a"
   },
-  "Hms.Web/Pages/Pharmacy/Transfers.cshtml.cs": {
+  "src/Hms.Web/Pages/Pharmacy/Transfers.cshtml.cs": {
     "mtime": 1785703651.4084473,
     "ast_hash": "25792071ca02f87dc3533414376d7eaf",
     "semantic_hash": "25792071ca02f87dc3533414376d7eaf"
   },
-  "Hms.Web/Pages/Public/Queue.cshtml": {
+  "src/Hms.Web/Pages/Public/Queue.cshtml": {
     "mtime": 1785569638.8297694,
     "ast_hash": "6ee1c99906573fef7a0c0d9b89074e6f",
     "semantic_hash": "6ee1c99906573fef7a0c0d9b89074e6f"
   },
-  "Hms.Web/Pages/Public/Queue.cshtml.cs": {
+  "src/Hms.Web/Pages/Public/Queue.cshtml.cs": {
     "mtime": 1785148284.6723475,
     "ast_hash": "6d05a5c598e6ec11b0099897501c9dcc",
     "semantic_hash": "6d05a5c598e6ec11b0099897501c9dcc"
   },
-  "Hms.Web/Pages/Public/ReportStatus.cshtml": {
+  "src/Hms.Web/Pages/Public/ReportStatus.cshtml": {
     "mtime": 1785702281.7705889,
     "ast_hash": "b05e49a17cdec0154dc9149eb6d3f885",
     "semantic_hash": "b05e49a17cdec0154dc9149eb6d3f885"
   },
-  "Hms.Web/Pages/Public/ReportStatus.cshtml.cs": {
+  "src/Hms.Web/Pages/Public/ReportStatus.cshtml.cs": {
     "mtime": 1785702270.9879766,
     "ast_hash": "fe960a4f82c0b78d58f3d3bb6a697653",
     "semantic_hash": "fe960a4f82c0b78d58f3d3bb6a697653"
   },
-  "Hms.Web/Pages/Radiology/Modalities.cshtml": {
+  "src/Hms.Web/Pages/Radiology/Modalities.cshtml": {
     "mtime": 1785180561.5763676,
     "ast_hash": "81800097d21c4e1f3f6b12f889612574",
     "semantic_hash": "81800097d21c4e1f3f6b12f889612574"
   },
-  "Hms.Web/Pages/Radiology/Modalities.cshtml.cs": {
+  "src/Hms.Web/Pages/Radiology/Modalities.cshtml.cs": {
     "mtime": 1785180561.5737407,
     "ast_hash": "cf71caf6f6fa09adaef8797a86366dc3",
     "semantic_hash": "cf71caf6f6fa09adaef8797a86366dc3"
   },
-  "Hms.Web/Pages/Radiology/Print.cshtml": {
+  "src/Hms.Web/Pages/Radiology/Print.cshtml": {
     "mtime": 1785524700.8431597,
     "ast_hash": "cc46a958d782a1c6624d6af4327b8a3e",
     "semantic_hash": "cc46a958d782a1c6624d6af4327b8a3e"
   },
-  "Hms.Web/Pages/Radiology/Print.cshtml.cs": {
+  "src/Hms.Web/Pages/Radiology/Print.cshtml.cs": {
     "mtime": 1785179803.7497451,
     "ast_hash": "df8b98eba2a17b096a36edd300a36e60",
     "semantic_hash": "df8b98eba2a17b096a36edd300a36e60"
   },
-  "Hms.Web/Pages/Radiology/Report.cshtml": {
+  "src/Hms.Web/Pages/Radiology/Report.cshtml": {
     "mtime": 1785179926.7039623,
     "ast_hash": "f4c5efcd651649b43de1209600b60f56",
     "semantic_hash": "f4c5efcd651649b43de1209600b60f56"
   },
-  "Hms.Web/Pages/Radiology/Report.cshtml.cs": {
+  "src/Hms.Web/Pages/Radiology/Report.cshtml.cs": {
     "mtime": 1785700021.8996742,
     "ast_hash": "0b3aef6206fc0733f35c10faef3a9db2",
     "semantic_hash": "0b3aef6206fc0733f35c10faef3a9db2"
   },
-  "Hms.Web/Pages/Radiology/Worklist.cshtml": {
+  "src/Hms.Web/Pages/Radiology/Worklist.cshtml": {
     "mtime": 1785179716.682961,
     "ast_hash": "c2b070aa52ebba63b2b3e3eafb3d871f",
     "semantic_hash": "c2b070aa52ebba63b2b3e3eafb3d871f"
   },
-  "Hms.Web/Pages/Radiology/Worklist.cshtml.cs": {
+  "src/Hms.Web/Pages/Radiology/Worklist.cshtml.cs": {
     "mtime": 1785179694.8118556,
     "ast_hash": "ba2cd1551830c786d2392e58de5e2efe",
     "semantic_hash": "ba2cd1551830c786d2392e58de5e2efe"
   },
-  "Hms.Web/Pages/Registration/Card.cshtml": {
+  "src/Hms.Web/Pages/Registration/Card.cshtml": {
     "mtime": 1785702483.8637161,
     "ast_hash": "4d9cf13dc9cd555ff2b03ae1c8c8babf",
     "semantic_hash": "4d9cf13dc9cd555ff2b03ae1c8c8babf"
   },
-  "Hms.Web/Pages/Registration/Card.cshtml.cs": {
+  "src/Hms.Web/Pages/Registration/Card.cshtml.cs": {
     "mtime": 1785132890.868321,
     "ast_hash": "76c7dc76a93a1afaba0712b26baebd87",
     "semantic_hash": "76c7dc76a93a1afaba0712b26baebd87"
   },
-  "Hms.Web/Pages/Registration/Index.cshtml": {
+  "src/Hms.Web/Pages/Registration/Index.cshtml": {
     "mtime": 1785076005.8572798,
     "ast_hash": "09693a2140757c3f84cc77206fdbd288",
     "semantic_hash": "09693a2140757c3f84cc77206fdbd288"
   },
-  "Hms.Web/Pages/Registration/Index.cshtml.cs": {
+  "src/Hms.Web/Pages/Registration/Index.cshtml.cs": {
     "mtime": 1785161436.3922594,
     "ast_hash": "6d36fb4530e6281bbd3e0ace4e388ba8",
     "semantic_hash": "6d36fb4530e6281bbd3e0ace4e388ba8"
   },
-  "Hms.Web/Pages/Registration/New.cshtml": {
+  "src/Hms.Web/Pages/Registration/New.cshtml": {
     "mtime": 1785746730.7681503,
     "ast_hash": "cc9547b622a71eb9ce46a4389d94b20d",
     "semantic_hash": "cc9547b622a71eb9ce46a4389d94b20d"
   },
-  "Hms.Web/Pages/Registration/New.cshtml.cs": {
+  "src/Hms.Web/Pages/Registration/New.cshtml.cs": {
     "mtime": 1785746727.8886364,
     "ast_hash": "92958e674d5d02ad3d8bb5182636bbdb",
     "semantic_hash": "92958e674d5d02ad3d8bb5182636bbdb"
   },
-  "Hms.Web/Pages/Shared/_PatientBanner.cshtml": {
+  "src/Hms.Web/Pages/Shared/_PatientBanner.cshtml": {
     "mtime": 1785746203.8620613,
     "ast_hash": "0de2c3700547f275024a178df4e42786",
     "semantic_hash": "0de2c3700547f275024a178df4e42786"
   },
-  "Hms.Web/Pages/_ViewImports.cshtml": {
+  "src/Hms.Web/Pages/_ViewImports.cshtml": {
     "mtime": 1785522266.2883642,
     "ast_hash": "0f5ebd4fa3c8417ea3d75ae98136d9e0",
     "semantic_hash": "0f5ebd4fa3c8417ea3d75ae98136d9e0"
   },
-  "Hms.Web/Pages/_ViewStart.cshtml": {
+  "src/Hms.Web/Pages/_ViewStart.cshtml": {
     "mtime": 1785069590.7048106,
     "ast_hash": "7b09d3a4b92bb9dc30ed94eb716689f6",
     "semantic_hash": "7b09d3a4b92bb9dc30ed94eb716689f6"
   },
-  "Hms.Web/PatientBanner.cs": {
+  "src/Hms.Web/PatientBanner.cs": {
     "mtime": 1785746199.6544573,
     "ast_hash": "b24ef364294a20bf8c399796f7e963a4",
     "semantic_hash": "b24ef364294a20bf8c399796f7e963a4"
   },
-  "Hms.Web/PatientSearch.cs": {
+  "src/Hms.Web/PatientSearch.cs": {
     "mtime": 1785161436.4074843,
     "ast_hash": "72dc2637c914dd7150a46c5813a95d63",
     "semantic_hash": "72dc2637c914dd7150a46c5813a95d63"
   },
-  "Hms.Web/Perm.cs": {
+  "src/Hms.Web/Perm.cs": {
     "mtime": 1785741897.2992911,
     "ast_hash": "c96807dedbec13370e4935350c152525",
     "semantic_hash": "c96807dedbec13370e4935350c152525"
   },
-  "Hms.Web/PharmacySale.cs": {
+  "src/Hms.Web/PharmacySale.cs": {
     "mtime": 1785172832.9207568,
     "ast_hash": "f6d50ccd90633a21dceb0b61a3f92fde",
     "semantic_hash": "f6d50ccd90633a21dceb0b61a3f92fde"
   },
-  "Hms.Web/PlatformTxAdapter.cs": {
+  "src/Hms.Web/PlatformTxAdapter.cs": {
     "mtime": 1785657662.3814828,
     "ast_hash": "b99de33ff56977a07e7c2424cc1e6953",
     "semantic_hash": "b99de33ff56977a07e7c2424cc1e6953"
   },
-  "Hms.Web/Program.cs": {
+  "src/Hms.Web/Program.cs": {
     "mtime": 1785703441.896201,
     "ast_hash": "d4eafd4f229473caae6b36f9c05612a4",
     "semantic_hash": "d4eafd4f229473caae6b36f9c05612a4"
   },
-  "Hms.Web/Properties/launchSettings.json": {
+  "src/Hms.Web/Properties/launchSettings.json": {
     "mtime": 1785068646.1629426,
     "ast_hash": "88e29cacd03a5021b12a5a737a21897d",
     "semantic_hash": "88e29cacd03a5021b12a5a737a21897d"
   },
-  "Hms.Web/RadiologyReporting.cs": {
+  "src/Hms.Web/RadiologyReporting.cs": {
     "mtime": 1785179665.7912362,
     "ast_hash": "d1cac35dc2d90471691b6ec8d3193a07",
     "semantic_hash": "d1cac35dc2d90471691b6ec8d3193a07"
   },
-  "Hms.Web/ResultTemplates.cs": {
+  "src/Hms.Web/ResultTemplates.cs": {
     "mtime": 1785135105.5928788,
     "ast_hash": "61ab866db69b5a7bc19865f0292f135c",
     "semantic_hash": "61ab866db69b5a7bc19865f0292f135c"
   },
-  "Hms.Web/ResultValues.cs": {
+  "src/Hms.Web/ResultValues.cs": {
     "mtime": 1785076813.8500915,
     "ast_hash": "f15109b73fd5d464e9d2e7d2b0b3bd60",
     "semantic_hash": "f15109b73fd5d464e9d2e7d2b0b3bd60"
   },
-  "Hms.Web/SmsSender.cs": {
+  "src/Hms.Web/SmsSender.cs": {
     "mtime": 1785132775.0087154,
     "ast_hash": "5ff48d1b82e9f19a43d1cee2eb80e5b3",
     "semantic_hash": "5ff48d1b82e9f19a43d1cee2eb80e5b3"
   },
-  "Hms.Web/SmsTemplates.cs": {
+  "src/Hms.Web/SmsTemplates.cs": {
     "mtime": 1785132745.1074781,
     "ast_hash": "27de20de1bd0e74b8f224e771ac50002",
     "semantic_hash": "27de20de1bd0e74b8f224e771ac50002"
   },
-  "Hms.Web/Submission.cs": {
+  "src/Hms.Web/Submission.cs": {
     "mtime": 1785168658.0650954,
     "ast_hash": "618a42b986969daf7c5388186f3bcb95",
     "semantic_hash": "618a42b986969daf7c5388186f3bcb95"
   },
-  "Hms.Web/WardGuard.cs": {
+  "src/Hms.Web/WardGuard.cs": {
     "mtime": 1785745916.7511778,
     "ast_hash": "1c64ca69cebb94c9cfbb3b3722d127a3",
     "semantic_hash": "1c64ca69cebb94c9cfbb3b3722d127a3"
   },
-  "Hms.Web/appsettings.Development.json": {
+  "src/Hms.Web/appsettings.Development.json": {
     "mtime": 1785069584.894711,
     "ast_hash": "aca45b0aeb6672f03f37dfed10b54880",
     "semantic_hash": "aca45b0aeb6672f03f37dfed10b54880"
   },
-  "Hms.Web/appsettings.json": {
+  "src/Hms.Web/appsettings.json": {
     "mtime": 1785069584.8916352,
     "ast_hash": "79640c6adee55cfc37bbc24ce51294bc",
     "semantic_hash": "79640c6adee55cfc37bbc24ce51294bc"
   },
-  "Hms.Web/packages.lock.json": {
+  "src/Hms.Web/packages.lock.json": {
     "mtime": 1785525242.5227075,
     "ast_hash": "4762452e67ab6f9386a0981e6f77aeeb",
     "semantic_hash": "4762452e67ab6f9386a0981e6f77aeeb"
   },
-  "Modules/Admin/Hms.Admin.Contracts/Hms.Admin.Contracts.csproj": {
+  "src/Modules/Admin/Hms.Admin.Contracts/Hms.Admin.Contracts.csproj": {
     "mtime": 1785068644.3432155,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Admin/Hms.Admin.Contracts/packages.lock.json": {
+  "src/Modules/Admin/Hms.Admin.Contracts/packages.lock.json": {
     "mtime": 1785068728.5630844,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Admin/Hms.Admin/Data/AdmDbContext.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/AdmDbContext.cs": {
     "mtime": 1785701049.9864883,
     "ast_hash": "a506be9b1f16946e2f144e0db415e3b4",
     "semantic_hash": "a506be9b1f16946e2f144e0db415e3b4"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/20260726125511_InitAdm.Designer.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/20260726125511_InitAdm.Designer.cs": {
     "mtime": 1785070511.7604966,
     "ast_hash": "894d8153e71adc5ffdc4a3e6304493e3",
     "semantic_hash": "894d8153e71adc5ffdc4a3e6304493e3"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/20260726125511_InitAdm.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/20260726125511_InitAdm.cs": {
     "mtime": 1785070511.8200126,
     "ast_hash": "8a3e22c0d23b823675c57226f34c4d76",
     "semantic_hash": "8a3e22c0d23b823675c57226f34c4d76"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/20260727041916_AddReferrerAndReportingConsultant.Designer.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/20260727041916_AddReferrerAndReportingConsultant.Designer.cs": {
     "mtime": 1785125956.1883647,
     "ast_hash": "8098caedd8ca8c747f518843a347eb31",
     "semantic_hash": "8098caedd8ca8c747f518843a347eb31"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/20260727041916_AddReferrerAndReportingConsultant.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/20260727041916_AddReferrerAndReportingConsultant.cs": {
     "mtime": 1785125956.1881592,
     "ast_hash": "3ca10054ffe92a4ab99fae0a5bd3338d",
     "semantic_hash": "3ca10054ffe92a4ab99fae0a5bd3338d"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/20260802195426_Hardening0039.Designer.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/20260802195426_Hardening0039.Designer.cs": {
     "mtime": 1785700466.1613572,
     "ast_hash": "76e9344c7d268084d69af5050e01a006",
     "semantic_hash": "76e9344c7d268084d69af5050e01a006"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/20260802195426_Hardening0039.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/20260802195426_Hardening0039.cs": {
     "mtime": 1785700576.0664487,
     "ast_hash": "c07e1e666538794b122c17ed1e8b0ef2",
     "semantic_hash": "c07e1e666538794b122c17ed1e8b0ef2"
   },
-  "Modules/Admin/Hms.Admin/Data/Migrations/AdmDbContextModelSnapshot.cs": {
+  "src/Modules/Admin/Hms.Admin/Data/Migrations/AdmDbContextModelSnapshot.cs": {
     "mtime": 1785700466.161707,
     "ast_hash": "9458286a2ee24c645e77ca5f23b99455",
     "semantic_hash": "9458286a2ee24c645e77ca5f23b99455"
   },
-  "Modules/Admin/Hms.Admin/Hms.Admin.csproj": {
+  "src/Modules/Admin/Hms.Admin/Hms.Admin.csproj": {
     "mtime": 1785070507.5346847,
     "ast_hash": "7b8d9627c1775700cec24fddd13d6ca0",
     "semantic_hash": "7b8d9627c1775700cec24fddd13d6ca0"
   },
-  "Modules/Admin/Hms.Admin/ImportService.cs": {
+  "src/Modules/Admin/Hms.Admin/ImportService.cs": {
     "mtime": 1785071001.9359093,
     "ast_hash": "60c295ca358aa18c3f7ad540e4c80b3c",
     "semantic_hash": "60c295ca358aa18c3f7ad540e4c80b3c"
   },
-  "Modules/Admin/Hms.Admin/ModuleDefinition.cs": {
+  "src/Modules/Admin/Hms.Admin/ModuleDefinition.cs": {
     "mtime": 1785068774.5316834,
     "ast_hash": "1fdb262701ebfed2ea78b46387047641",
     "semantic_hash": "1fdb262701ebfed2ea78b46387047641"
   },
-  "Modules/Admin/Hms.Admin/RateResolver.cs": {
+  "src/Modules/Admin/Hms.Admin/RateResolver.cs": {
     "mtime": 1785238435.5497773,
     "ast_hash": "df78cbc151fb51ce1f0816be469c4808",
     "semantic_hash": "df78cbc151fb51ce1f0816be469c4808"
   },
-  "Modules/Admin/Hms.Admin/packages.lock.json": {
+  "src/Modules/Admin/Hms.Admin/packages.lock.json": {
     "mtime": 1785070507.5390003,
     "ast_hash": "fe4fd2bf5a09f4ae498e0911ed449a1d",
     "semantic_hash": "fe4fd2bf5a09f4ae498e0911ed449a1d"
   },
-  "Modules/Appointments/Hms.Appointments.Contracts/Hms.Appointments.Contracts.csproj": {
+  "src/Modules/Appointments/Hms.Appointments.Contracts/Hms.Appointments.Contracts.csproj": {
     "mtime": 1785068639.8481047,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Appointments/Hms.Appointments.Contracts/packages.lock.json": {
+  "src/Modules/Appointments/Hms.Appointments.Contracts/packages.lock.json": {
     "mtime": 1785068728.714087,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Appointments/Hms.Appointments/AppointmentsService.cs": {
+  "src/Modules/Appointments/Hms.Appointments/AppointmentsService.cs": {
     "mtime": 1785699286.4475129,
     "ast_hash": "287d1de08e8ac82ec084d337356a57a5",
     "semantic_hash": "287d1de08e8ac82ec084d337356a57a5"
   },
-  "Modules/Appointments/Hms.Appointments/Data/ApptDbContext.cs": {
+  "src/Modules/Appointments/Hms.Appointments/Data/ApptDbContext.cs": {
     "mtime": 1785701628.2090163,
     "ast_hash": "221a35273b8bd0f9bff899f193a59970",
     "semantic_hash": "221a35273b8bd0f9bff899f193a59970"
   },
-  "Modules/Appointments/Hms.Appointments/Data/Migrations/20260726141427_InitAppt.Designer.cs": {
+  "src/Modules/Appointments/Hms.Appointments/Data/Migrations/20260726141427_InitAppt.Designer.cs": {
     "mtime": 1785075267.050515,
     "ast_hash": "53c5b3e50adae79c3f92ff7a0954fe1b",
     "semantic_hash": "53c5b3e50adae79c3f92ff7a0954fe1b"
   },
-  "Modules/Appointments/Hms.Appointments/Data/Migrations/20260726141427_InitAppt.cs": {
+  "src/Modules/Appointments/Hms.Appointments/Data/Migrations/20260726141427_InitAppt.cs": {
     "mtime": 1785075267.0503442,
     "ast_hash": "71ce94c0448b7266b26253ff5d97d763",
     "semantic_hash": "71ce94c0448b7266b26253ff5d97d763"
   },
-  "Modules/Appointments/Hms.Appointments/Data/Migrations/20260802195420_Hardening0039.Designer.cs": {
+  "src/Modules/Appointments/Hms.Appointments/Data/Migrations/20260802195420_Hardening0039.Designer.cs": {
     "mtime": 1785700460.3999717,
     "ast_hash": "6d66863a4c413a3f32f1d9c896d12bc1",
     "semantic_hash": "6d66863a4c413a3f32f1d9c896d12bc1"
   },
-  "Modules/Appointments/Hms.Appointments/Data/Migrations/20260802195420_Hardening0039.cs": {
+  "src/Modules/Appointments/Hms.Appointments/Data/Migrations/20260802195420_Hardening0039.cs": {
     "mtime": 1785701976.014968,
     "ast_hash": "d214a3f954f524f8477ca35c761a2b1c",
     "semantic_hash": "d214a3f954f524f8477ca35c761a2b1c"
   },
-  "Modules/Appointments/Hms.Appointments/Data/Migrations/ApptDbContextModelSnapshot.cs": {
+  "src/Modules/Appointments/Hms.Appointments/Data/Migrations/ApptDbContextModelSnapshot.cs": {
     "mtime": 1785700460.400088,
     "ast_hash": "5192e755775cb49f341a1009d7eb9b43",
     "semantic_hash": "5192e755775cb49f341a1009d7eb9b43"
   },
-  "Modules/Appointments/Hms.Appointments/Hms.Appointments.csproj": {
+  "src/Modules/Appointments/Hms.Appointments/Hms.Appointments.csproj": {
     "mtime": 1785068670.0317924,
     "ast_hash": "010b11e13367b1f4c1f4ed518f1d5d9d",
     "semantic_hash": "010b11e13367b1f4c1f4ed518f1d5d9d"
   },
-  "Modules/Appointments/Hms.Appointments/ModuleDefinition.cs": {
+  "src/Modules/Appointments/Hms.Appointments/ModuleDefinition.cs": {
     "mtime": 1785068774.521331,
     "ast_hash": "2b319454a2768149fa58abf4c3a60e04",
     "semantic_hash": "2b319454a2768149fa58abf4c3a60e04"
   },
-  "Modules/Appointments/Hms.Appointments/packages.lock.json": {
+  "src/Modules/Appointments/Hms.Appointments/packages.lock.json": {
     "mtime": 1785070091.9050913,
     "ast_hash": "fc91a7433a93343299138df62f2c8e88",
     "semantic_hash": "fc91a7433a93343299138df62f2c8e88"
   },
-  "Modules/Billing/Hms.Billing.Contracts/Hms.Billing.Contracts.csproj": {
+  "src/Modules/Billing/Hms.Billing.Contracts/Hms.Billing.Contracts.csproj": {
     "mtime": 1785068640.7504878,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Billing/Hms.Billing.Contracts/IChargePoster.cs": {
+  "src/Modules/Billing/Hms.Billing.Contracts/IChargePoster.cs": {
     "mtime": 1785070521.8394513,
     "ast_hash": "252acb918f36786a8c53a59e25159451",
     "semantic_hash": "252acb918f36786a8c53a59e25159451"
   },
-  "Modules/Billing/Hms.Billing.Contracts/packages.lock.json": {
+  "src/Modules/Billing/Hms.Billing.Contracts/packages.lock.json": {
     "mtime": 1785068728.5781696,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Billing/Hms.Billing/BillingService.cs": {
+  "src/Modules/Billing/Hms.Billing/BillingService.cs": {
     "mtime": 1785237151.6271155,
     "ast_hash": "8d475763be60ea38cf858a81e406462d",
     "semantic_hash": "8d475763be60ea38cf858a81e406462d"
   },
-  "Modules/Billing/Hms.Billing/ChargePoster.cs": {
+  "src/Modules/Billing/Hms.Billing/ChargePoster.cs": {
     "mtime": 1785070526.046046,
     "ast_hash": "1b3130d9e280dbfa5c706856b786b91e",
     "semantic_hash": "1b3130d9e280dbfa5c706856b786b91e"
   },
-  "Modules/Billing/Hms.Billing/Data/BillDbContext.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/BillDbContext.cs": {
     "mtime": 1785703143.3256764,
     "ast_hash": "f3c7508b1e884fbc43d195392f24d4fa",
     "semantic_hash": "f3c7508b1e884fbc43d195392f24d4fa"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260726125007_InitBill.Designer.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260726125007_InitBill.Designer.cs": {
     "mtime": 1785070207.9269943,
     "ast_hash": "624e2484274a00ed5f70d430a90bb7d8",
     "semantic_hash": "624e2484274a00ed5f70d430a90bb7d8"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260726125007_InitBill.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260726125007_InitBill.cs": {
     "mtime": 1785070225.50249,
     "ast_hash": "8425a5d4a6909a6c849f058fa2643fde",
     "semantic_hash": "8425a5d4a6909a6c849f058fa2643fde"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260726130403_DashboardReadModel.Designer.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260726130403_DashboardReadModel.Designer.cs": {
     "mtime": 1785071043.400347,
     "ast_hash": "21c3e06602a196a30e53e0c6d154f45a",
     "semantic_hash": "21c3e06602a196a30e53e0c6d154f45a"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260726130403_DashboardReadModel.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260726130403_DashboardReadModel.cs": {
     "mtime": 1785071043.4449394,
     "ast_hash": "33709dcbeb6d28dd9122e925a4e8c5b4",
     "semantic_hash": "33709dcbeb6d28dd9122e925a4e8c5b4"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260727092015_FolioSeam.Designer.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260727092015_FolioSeam.Designer.cs": {
     "mtime": 1785144015.889592,
     "ast_hash": "7615f2ef2c4014f79f60df2a2f996167",
     "semantic_hash": "7615f2ef2c4014f79f60df2a2f996167"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260727092015_FolioSeam.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260727092015_FolioSeam.cs": {
     "mtime": 1785144015.889382,
     "ast_hash": "a06db1c966aa4720e6563a6d93132095",
     "semantic_hash": "a06db1c966aa4720e6563a6d93132095"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260727161509_SubmissionToken.Designer.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260727161509_SubmissionToken.Designer.cs": {
     "mtime": 1785168909.8124378,
     "ast_hash": "065998400e2ba198d04614dcf5573521",
     "semantic_hash": "065998400e2ba198d04614dcf5573521"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260727161509_SubmissionToken.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260727161509_SubmissionToken.cs": {
     "mtime": 1785168909.8122349,
     "ast_hash": "ff4d3b5e19dd13a2cb23ab885ae20507",
     "semantic_hash": "ff4d3b5e19dd13a2cb23ab885ae20507"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260802195422_Hardening0039.Designer.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260802195422_Hardening0039.Designer.cs": {
     "mtime": 1785703156.9236662,
     "ast_hash": "8ab0469c3958a4e9b5388e03a897ee78",
     "semantic_hash": "8ab0469c3958a4e9b5388e03a897ee78"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/20260802195422_Hardening0039.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/20260802195422_Hardening0039.cs": {
     "mtime": 1785703156.9676256,
     "ast_hash": "fd602f0c5ef4d90cb9678fbdeca9e89c",
     "semantic_hash": "fd602f0c5ef4d90cb9678fbdeca9e89c"
   },
-  "Modules/Billing/Hms.Billing/Data/Migrations/BillDbContextModelSnapshot.cs": {
+  "src/Modules/Billing/Hms.Billing/Data/Migrations/BillDbContextModelSnapshot.cs": {
     "mtime": 1785703157.0186753,
     "ast_hash": "0269757e3d77d1c364b29942e2f14ad9",
     "semantic_hash": "0269757e3d77d1c364b29942e2f14ad9"
   },
-  "Modules/Billing/Hms.Billing/DayCloseService.cs": {
+  "src/Modules/Billing/Hms.Billing/DayCloseService.cs": {
     "mtime": 1785237151.6317472,
     "ast_hash": "6b7b1d80930b6651a960cb8954f312d9",
     "semantic_hash": "6b7b1d80930b6651a960cb8954f312d9"
   },
-  "Modules/Billing/Hms.Billing/Hms.Billing.csproj": {
+  "src/Modules/Billing/Hms.Billing/Hms.Billing.csproj": {
     "mtime": 1785070203.7653172,
     "ast_hash": "4a7e388a628592f35688c60593f6e7a4",
     "semantic_hash": "4a7e388a628592f35688c60593f6e7a4"
   },
-  "Modules/Billing/Hms.Billing/InvoiceValue.cs": {
+  "src/Modules/Billing/Hms.Billing/InvoiceValue.cs": {
     "mtime": 1785237151.629456,
     "ast_hash": "58622e46cd6788eaee3e0c48e5f8b0e6",
     "semantic_hash": "58622e46cd6788eaee3e0c48e5f8b0e6"
   },
-  "Modules/Billing/Hms.Billing/ModuleDefinition.cs": {
+  "src/Modules/Billing/Hms.Billing/ModuleDefinition.cs": {
     "mtime": 1785068774.523468,
     "ast_hash": "c57bce2d0534ce8a620df29e09f9c908",
     "semantic_hash": "c57bce2d0534ce8a620df29e09f9c908"
   },
-  "Modules/Billing/Hms.Billing/packages.lock.json": {
+  "src/Modules/Billing/Hms.Billing/packages.lock.json": {
     "mtime": 1785070203.769815,
     "ast_hash": "9237d96fa14d264e05030c13a63332fc",
     "semantic_hash": "9237d96fa14d264e05030c13a63332fc"
   },
-  "Modules/Dashboard/Hms.Dashboard.Contracts/Hms.Dashboard.Contracts.csproj": {
+  "src/Modules/Dashboard/Hms.Dashboard.Contracts/Hms.Dashboard.Contracts.csproj": {
     "mtime": 1785068643.45416,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Dashboard/Hms.Dashboard.Contracts/packages.lock.json": {
+  "src/Modules/Dashboard/Hms.Dashboard.Contracts/packages.lock.json": {
     "mtime": 1785068728.5633678,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Dashboard/Hms.Dashboard/Hms.Dashboard.csproj": {
+  "src/Modules/Dashboard/Hms.Dashboard/Hms.Dashboard.csproj": {
     "mtime": 1785068669.2132463,
     "ast_hash": "6d2bd9e03a68b188ea191696ba500dda",
     "semantic_hash": "6d2bd9e03a68b188ea191696ba500dda"
   },
-  "Modules/Dashboard/Hms.Dashboard/ModuleDefinition.cs": {
+  "src/Modules/Dashboard/Hms.Dashboard/ModuleDefinition.cs": {
     "mtime": 1785068774.5296786,
     "ast_hash": "bcc081cd6fa20d9dd03ea1c102dbb02b",
     "semantic_hash": "bcc081cd6fa20d9dd03ea1c102dbb02b"
   },
-  "Modules/Dashboard/Hms.Dashboard/packages.lock.json": {
+  "src/Modules/Dashboard/Hms.Dashboard/packages.lock.json": {
     "mtime": 1785070091.9051614,
     "ast_hash": "f816dd62ef30956eb4d30fb78c923990",
     "semantic_hash": "f816dd62ef30956eb4d30fb78c923990"
   },
-  "Modules/Diagnostics/Hms.Diagnostics.Contracts/Hms.Diagnostics.Contracts.csproj": {
+  "src/Modules/Diagnostics/Hms.Diagnostics.Contracts/Hms.Diagnostics.Contracts.csproj": {
     "mtime": 1785068641.6447258,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Diagnostics/Hms.Diagnostics.Contracts/packages.lock.json": {
+  "src/Modules/Diagnostics/Hms.Diagnostics.Contracts/packages.lock.json": {
     "mtime": 1785068728.5616112,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/DiagDbContext.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/DiagDbContext.cs": {
     "mtime": 1785702215.4428399,
     "ast_hash": "599c6d528e8eee2d3ed0a93d591eb2f7",
     "semantic_hash": "599c6d528e8eee2d3ed0a93d591eb2f7"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260726125605_InitDiag.Designer.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260726125605_InitDiag.Designer.cs": {
     "mtime": 1785070565.4999735,
     "ast_hash": "2fd7332367a24714204c0fb02385d046",
     "semantic_hash": "2fd7332367a24714204c0fb02385d046"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260726125605_InitDiag.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260726125605_InitDiag.cs": {
     "mtime": 1785070565.4998367,
     "ast_hash": "ea25e0b8525aeb827da5c31a1b0b3a73",
     "semantic_hash": "ea25e0b8525aeb827da5c31a1b0b3a73"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260727092020_FolioOrderSeam.Designer.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260727092020_FolioOrderSeam.Designer.cs": {
     "mtime": 1785144020.922641,
     "ast_hash": "c12d4d413ececa8a1a6a45efaa0c6a81",
     "semantic_hash": "c12d4d413ececa8a1a6a45efaa0c6a81"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260727092020_FolioOrderSeam.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260727092020_FolioOrderSeam.cs": {
     "mtime": 1785144020.9199283,
     "ast_hash": "472dcd754d08a84746671325933da5af",
     "semantic_hash": "472dcd754d08a84746671325933da5af"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802195424_Hardening0039.Designer.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802195424_Hardening0039.Designer.cs": {
     "mtime": 1785700464.3215826,
     "ast_hash": "a149d1f511bf55e45054656647e3a6ce",
     "semantic_hash": "a149d1f511bf55e45054656647e3a6ce"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802195424_Hardening0039.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802195424_Hardening0039.cs": {
     "mtime": 1785700576.067126,
     "ast_hash": "329f232116c142d2168551ad38f86f13",
     "semantic_hash": "329f232116c142d2168551ad38f86f13"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802202553_PublicToken0039.Designer.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802202553_PublicToken0039.Designer.cs": {
     "mtime": 1785702353.678367,
     "ast_hash": "16cd694b54b6b6a85a014d432c765d70",
     "semantic_hash": "16cd694b54b6b6a85a014d432c765d70"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802202553_PublicToken0039.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/20260802202553_PublicToken0039.cs": {
     "mtime": 1785702369.789949,
     "ast_hash": "233e045115c543e215d0c9128a35c827",
     "semantic_hash": "233e045115c543e215d0c9128a35c827"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/DiagDbContextModelSnapshot.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Data/Migrations/DiagDbContextModelSnapshot.cs": {
     "mtime": 1785702353.6787052,
     "ast_hash": "f2226fffda7bc19a2da79856711610bf",
     "semantic_hash": "f2226fffda7bc19a2da79856711610bf"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/DiagnosticsService.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/DiagnosticsService.cs": {
     "mtime": 1785702235.7594278,
     "ast_hash": "8bf46c7e17973e8170238da6797d2203",
     "semantic_hash": "8bf46c7e17973e8170238da6797d2203"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/Hms.Diagnostics.csproj": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/Hms.Diagnostics.csproj": {
     "mtime": 1785070561.4763997,
     "ast_hash": "9a161a8f2d796a54369df33277f60ee1",
     "semantic_hash": "9a161a8f2d796a54369df33277f60ee1"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/ModuleDefinition.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/ModuleDefinition.cs": {
     "mtime": 1785068774.5253823,
     "ast_hash": "ce683d4931c2851e2933e1ba12ffa5ef",
     "semantic_hash": "ce683d4931c2851e2933e1ba12ffa5ef"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/PublicReportLookup.cs": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/PublicReportLookup.cs": {
     "mtime": 1785702917.6741796,
     "ast_hash": "1f53f40d60db3eb1e92e7bc8c01ebf48",
     "semantic_hash": "1f53f40d60db3eb1e92e7bc8c01ebf48"
   },
-  "Modules/Diagnostics/Hms.Diagnostics/packages.lock.json": {
+  "src/Modules/Diagnostics/Hms.Diagnostics/packages.lock.json": {
     "mtime": 1785070561.4807596,
     "ast_hash": "3913e09424af94e60e43fc57819d3162",
     "semantic_hash": "3913e09424af94e60e43fc57819d3162"
   },
-  "Modules/Emr/Hms.Emr/Data/EmrDbContext.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/EmrDbContext.cs": {
     "mtime": 1785740751.9566615,
     "ast_hash": "e8385f9405bb52a1597113f56ad2719d",
     "semantic_hash": "e8385f9405bb52a1597113f56ad2719d"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/20260727182331_InitEmr.Designer.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/20260727182331_InitEmr.Designer.cs": {
     "mtime": 1785176611.2581317,
     "ast_hash": "efc3dff621e08214ebf380a023b85d3f",
     "semantic_hash": "efc3dff621e08214ebf380a023b85d3f"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/20260727182331_InitEmr.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/20260727182331_InitEmr.cs": {
     "mtime": 1785176611.2577045,
     "ast_hash": "98845c66b18218632a20d4ccf0410050",
     "semantic_hash": "98845c66b18218632a20d4ccf0410050"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/20260802195429_Hardening0039.Designer.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/20260802195429_Hardening0039.Designer.cs": {
     "mtime": 1785700804.1108437,
     "ast_hash": "fca6a102cdc5ede22db7af56c00158e0",
     "semantic_hash": "fca6a102cdc5ede22db7af56c00158e0"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/20260802195429_Hardening0039.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/20260802195429_Hardening0039.cs": {
     "mtime": 1785700794.9810667,
     "ast_hash": "a1fb128896e6bc84547232baf07a4f66",
     "semantic_hash": "a1fb128896e6bc84547232baf07a4f66"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/20260803070744_NursingStation.Designer.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/20260803070744_NursingStation.Designer.cs": {
     "mtime": 1785740864.4826202,
     "ast_hash": "95f21cc272ff1a54fe1c885e250c3fde",
     "semantic_hash": "95f21cc272ff1a54fe1c885e250c3fde"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/20260803070744_NursingStation.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/20260803070744_NursingStation.cs": {
     "mtime": 1785740905.0460212,
     "ast_hash": "6be5a8c415744c20d98f8e9237387a24",
     "semantic_hash": "6be5a8c415744c20d98f8e9237387a24"
   },
-  "Modules/Emr/Hms.Emr/Data/Migrations/EmrDbContextModelSnapshot.cs": {
+  "src/Modules/Emr/Hms.Emr/Data/Migrations/EmrDbContextModelSnapshot.cs": {
     "mtime": 1785740864.4840415,
     "ast_hash": "e4be9119234c83afb9b3c26a09a96a6b",
     "semantic_hash": "e4be9119234c83afb9b3c26a09a96a6b"
   },
-  "Modules/Emr/Hms.Emr/EmrService.cs": {
+  "src/Modules/Emr/Hms.Emr/EmrService.cs": {
     "mtime": 1785746127.0087385,
     "ast_hash": "0b4b4373ef2f62cfda378bf599adb433",
     "semantic_hash": "0b4b4373ef2f62cfda378bf599adb433"
   },
-  "Modules/Emr/Hms.Emr/Hms.Emr.csproj": {
+  "src/Modules/Emr/Hms.Emr/Hms.Emr.csproj": {
     "mtime": 1785176323.3741767,
     "ast_hash": "5df5e9039ca2fbf964e4cd956c2a7c20",
     "semantic_hash": "5df5e9039ca2fbf964e4cd956c2a7c20"
   },
-  "Modules/Emr/Hms.Emr/MarSchedule.cs": {
+  "src/Modules/Emr/Hms.Emr/MarSchedule.cs": {
     "mtime": 1785741373.6168563,
     "ast_hash": "b8512e4892bcb9a8651d22c5f6a3fa2e",
     "semantic_hash": "b8512e4892bcb9a8651d22c5f6a3fa2e"
   },
-  "Modules/Emr/Hms.Emr/ModuleDefinition.cs": {
+  "src/Modules/Emr/Hms.Emr/ModuleDefinition.cs": {
     "mtime": 1785176373.5456207,
     "ast_hash": "d20c4aeacf89ea1fc2b0b2865706976e",
     "semantic_hash": "d20c4aeacf89ea1fc2b0b2865706976e"
   },
-  "Modules/Emr/Hms.Emr/packages.lock.json": {
+  "src/Modules/Emr/Hms.Emr/packages.lock.json": {
     "mtime": 1785176439.3195744,
     "ast_hash": "39f4fd30f93b601ed84ff2f1748a24f4",
     "semantic_hash": "39f4fd30f93b601ed84ff2f1748a24f4"
   },
-  "Modules/Hr/Hms.Hr.Contracts/Hms.Hr.Contracts.csproj": {
+  "src/Modules/Hr/Hms.Hr.Contracts/Hms.Hr.Contracts.csproj": {
     "mtime": 1785522639.6705768,
     "ast_hash": "9b5d703defaa034d814e5c36b1deed3e",
     "semantic_hash": "9b5d703defaa034d814e5c36b1deed3e"
   },
-  "Modules/Hr/Hms.Hr.Contracts/HrContracts.cs": {
+  "src/Modules/Hr/Hms.Hr.Contracts/HrContracts.cs": {
     "mtime": 1785522650.1394894,
     "ast_hash": "629686d7d4f1dbb3a05e9eb56ce29f9e",
     "semantic_hash": "629686d7d4f1dbb3a05e9eb56ce29f9e"
   },
-  "Modules/Hr/Hms.Hr.Contracts/packages.lock.json": {
+  "src/Modules/Hr/Hms.Hr.Contracts/packages.lock.json": {
     "mtime": 1785522909.1971123,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Hr/Hms.Hr.Screens/Hms.Hr.Screens.csproj": {
+  "src/Modules/Hr/Hms.Hr.Screens/Hms.Hr.Screens.csproj": {
     "mtime": 1785523413.9415097,
     "ast_hash": "21f2ee318b02ebd54171cd55f7b42583",
     "semantic_hash": "21f2ee318b02ebd54171cd55f7b42583"
   },
-  "Modules/Hr/Hms.Hr.Screens/HrNav.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/HrNav.cs": {
     "mtime": 1785702789.2230134,
     "ast_hash": "09cc8f1e87ff433274ac35ce8ae30d30",
     "semantic_hash": "09cc8f1e87ff433274ac35ce8ae30d30"
   },
-  "Modules/Hr/Hms.Hr.Screens/HrPerm.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/HrPerm.cs": {
     "mtime": 1785525304.3251765,
     "ast_hash": "a5be039d84d46ca2096de1b0eecbcc15",
     "semantic_hash": "a5be039d84d46ca2096de1b0eecbcc15"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Attendance.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Attendance.cshtml": {
     "mtime": 1785702792.1641104,
     "ast_hash": "3bd3e5f0477c428808e3b9e9489068f3",
     "semantic_hash": "3bd3e5f0477c428808e3b9e9489068f3"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Attendance.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Attendance.cshtml.cs": {
     "mtime": 1785700498.5838857,
     "ast_hash": "8398da36f694f0f26a7ed8c87aaf4f80",
     "semantic_hash": "8398da36f694f0f26a7ed8c87aaf4f80"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employee.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employee.cshtml": {
     "mtime": 1785700608.3930979,
     "ast_hash": "64992bc386e28fdb2ea4349efb9d9592",
     "semantic_hash": "64992bc386e28fdb2ea4349efb9d9592"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employee.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employee.cshtml.cs": {
     "mtime": 1785700589.4975333,
     "ast_hash": "501ac4bc5bbe3718cf0a589fd7fb6dd6",
     "semantic_hash": "501ac4bc5bbe3718cf0a589fd7fb6dd6"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/EmployeeNew.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/EmployeeNew.cshtml": {
     "mtime": 1785525304.3805294,
     "ast_hash": "6f9b9687398cd3cab67b782309bdaacd",
     "semantic_hash": "6f9b9687398cd3cab67b782309bdaacd"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/EmployeeNew.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/EmployeeNew.cshtml.cs": {
     "mtime": 1785662234.6749055,
     "ast_hash": "0960b9b9e40cd095ab2880b97b32b0a1",
     "semantic_hash": "0960b9b9e40cd095ab2880b97b32b0a1"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employees.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employees.cshtml": {
     "mtime": 1785525304.3408153,
     "ast_hash": "63c72e15c24d4172dd71ccf177d0503e",
     "semantic_hash": "63c72e15c24d4172dd71ccf177d0503e"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employees.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Employees.cshtml.cs": {
     "mtime": 1785525304.3343294,
     "ast_hash": "078b6518954713742774e98c2c36c89d",
     "semantic_hash": "078b6518954713742774e98c2c36c89d"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Index.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Index.cshtml": {
     "mtime": 1785525304.3700304,
     "ast_hash": "76b84f9548173a3923d20ac910b83005",
     "semantic_hash": "76b84f9548173a3923d20ac910b83005"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Index.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Index.cshtml.cs": {
     "mtime": 1785525304.3749576,
     "ast_hash": "b89e2bc1422a259e0431ed0d39d11f9f",
     "semantic_hash": "b89e2bc1422a259e0431ed0d39d11f9f"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Leave.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Leave.cshtml": {
     "mtime": 1785525304.3489902,
     "ast_hash": "32697ddd4bfcaf434aee0d6027330645",
     "semantic_hash": "32697ddd4bfcaf434aee0d6027330645"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Leave.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Leave.cshtml.cs": {
     "mtime": 1785525304.3597004,
     "ast_hash": "8396d06d67d8a3b997be624823c93872",
     "semantic_hash": "8396d06d67d8a3b997be624823c93872"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Masters.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Masters.cshtml": {
     "mtime": 1785657915.0290859,
     "ast_hash": "ff1144d9f809b7d4db07445b311730fe",
     "semantic_hash": "ff1144d9f809b7d4db07445b311730fe"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Masters.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Masters.cshtml.cs": {
     "mtime": 1785662234.6751733,
     "ast_hash": "a8b5f9244e19635434c11ad7eb66af37",
     "semantic_hash": "a8b5f9244e19635434c11ad7eb66af37"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Me.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Me.cshtml": {
     "mtime": 1785525304.3545134,
     "ast_hash": "f979529bec29fa104f7d8a85b04edf59",
     "semantic_hash": "f979529bec29fa104f7d8a85b04edf59"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Me.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Me.cshtml.cs": {
     "mtime": 1785525304.377501,
     "ast_hash": "7220fbdef84931beafe8ddc73f103abe",
     "semantic_hash": "7220fbdef84931beafe8ddc73f103abe"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payroll.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payroll.cshtml": {
     "mtime": 1785700736.4387105,
     "ast_hash": "a3a7f0e909e54d91817e6831b3aab4dd",
     "semantic_hash": "a3a7f0e909e54d91817e6831b3aab4dd"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payroll.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payroll.cshtml.cs": {
     "mtime": 1785525304.3310006,
     "ast_hash": "bf106a079de3fc38deffe86f275915cd",
     "semantic_hash": "bf106a079de3fc38deffe86f275915cd"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/PayrollApprovals.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/PayrollApprovals.cshtml": {
     "mtime": 1785700648.9515452,
     "ast_hash": "9dc09846cb6162a759e0a7fc714c78d4",
     "semantic_hash": "9dc09846cb6162a759e0a7fc714c78d4"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/PayrollApprovals.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/PayrollApprovals.cshtml.cs": {
     "mtime": 1785702790.9515631,
     "ast_hash": "5d042541584845d84203cce582450123",
     "semantic_hash": "5d042541584845d84203cce582450123"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslip.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslip.cshtml": {
     "mtime": 1785700724.91681,
     "ast_hash": "98277b069d78ef86dbf0c2a9c0f5e003",
     "semantic_hash": "98277b069d78ef86dbf0c2a9c0f5e003"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslip.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslip.cshtml.cs": {
     "mtime": 1785700697.8031979,
     "ast_hash": "e11dfffad078c01a8cbd1576318cc38d",
     "semantic_hash": "e11dfffad078c01a8cbd1576318cc38d"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslips.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslips.cshtml": {
     "mtime": 1785700680.2396162,
     "ast_hash": "c345427eac2cf6ba2faedfb5b019d9bb",
     "semantic_hash": "c345427eac2cf6ba2faedfb5b019d9bb"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslips.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Payslips.cshtml.cs": {
     "mtime": 1785700668.408219,
     "ast_hash": "a3e285e00b167145caa4447ed2c0aad0",
     "semantic_hash": "a3e285e00b167145caa4447ed2c0aad0"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Policies.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Policies.cshtml": {
     "mtime": 1785700408.2667816,
     "ast_hash": "e66bb085f2a4c692827e258fe6807c3f",
     "semantic_hash": "e66bb085f2a4c692827e258fe6807c3f"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Policies.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Policies.cshtml.cs": {
     "mtime": 1785700369.7937515,
     "ast_hash": "fe30d0ac2018274919a38914c5312411",
     "semantic_hash": "fe30d0ac2018274919a38914c5312411"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Roster.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Roster.cshtml": {
     "mtime": 1785662234.6758564,
     "ast_hash": "8eed71ad4703c7921c9da76f97b2e523",
     "semantic_hash": "8eed71ad4703c7921c9da76f97b2e523"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/Hr/Roster.cshtml.cs": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Roster.cshtml.cs": {
     "mtime": 1785662234.6760798,
     "ast_hash": "e6ac40ebf3e599aba790b5929d3fd5a1",
     "semantic_hash": "e6ac40ebf3e599aba790b5929d3fd5a1"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/_ViewImports.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/_ViewImports.cshtml": {
     "mtime": 1785525304.32798,
     "ast_hash": "52c689544a5583ffbd835a5ed75efcfd",
     "semantic_hash": "52c689544a5583ffbd835a5ed75efcfd"
   },
-  "Modules/Hr/Hms.Hr.Screens/Pages/_ViewStart.cshtml": {
+  "src/Modules/Hr/Hms.Hr.Screens/Pages/_ViewStart.cshtml": {
     "mtime": 1785655805.725854,
     "ast_hash": "ff94b22d6365b8fb8486532ec52d1fa1",
     "semantic_hash": "ff94b22d6365b8fb8486532ec52d1fa1"
   },
-  "Modules/Hr/Hms.Hr.Screens/packages.lock.json": {
+  "src/Modules/Hr/Hms.Hr.Screens/packages.lock.json": {
     "mtime": 1785523482.315673,
     "ast_hash": "75c250b582d86a47e95540981843b0dc",
     "semantic_hash": "75c250b582d86a47e95540981843b0dc"
   },
-  "Modules/Hr/Hms.Hr/AttendanceService.cs": {
+  "src/Modules/Hr/Hms.Hr/AttendanceService.cs": {
     "mtime": 1785701831.9768534,
     "ast_hash": "6c1d75ccccd6f2cb51410049fd68397d",
     "semantic_hash": "6c1d75ccccd6f2cb51410049fd68397d"
   },
-  "Modules/Hr/Hms.Hr/CsvPunchSource.cs": {
+  "src/Modules/Hr/Hms.Hr/CsvPunchSource.cs": {
     "mtime": 1785700433.923644,
     "ast_hash": "382887a9689e0fe9373712013e8f97ae",
     "semantic_hash": "382887a9689e0fe9373712013e8f97ae"
   },
-  "Modules/Hr/Hms.Hr/Data/HrDbContext.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrDbContext.cs": {
     "mtime": 1785703010.2855377,
     "ast_hash": "f15d5110b281a13ee4e16180c69b40ae",
     "semantic_hash": "f15d5110b281a13ee4e16180c69b40ae"
   },
-  "Modules/Hr/Hms.Hr/Data/HrEntities.Leave.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrEntities.Leave.cs": {
     "mtime": 1785522776.1015995,
     "ast_hash": "33b4f0c915fff9b4ddd4e8a0ba670ec6",
     "semantic_hash": "33b4f0c915fff9b4ddd4e8a0ba670ec6"
   },
-  "Modules/Hr/Hms.Hr/Data/HrEntities.Masters.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrEntities.Masters.cs": {
     "mtime": 1785662234.676291,
     "ast_hash": "b38848b8a8ce145360865651320b2247",
     "semantic_hash": "b38848b8a8ce145360865651320b2247"
   },
-  "Modules/Hr/Hms.Hr/Data/HrEntities.Pay.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrEntities.Pay.cs": {
     "mtime": 1785522813.9504824,
     "ast_hash": "4ddc0dc179477c3694b25ed4dfd84bdd",
     "semantic_hash": "4ddc0dc179477c3694b25ed4dfd84bdd"
   },
-  "Modules/Hr/Hms.Hr/Data/HrEntities.People.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrEntities.People.cs": {
     "mtime": 1785522725.9532955,
     "ast_hash": "39d03af51d4da44b69301ec3435df4c0",
     "semantic_hash": "39d03af51d4da44b69301ec3435df4c0"
   },
-  "Modules/Hr/Hms.Hr/Data/HrEntities.Policy.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrEntities.Policy.cs": {
     "mtime": 1785522846.9943287,
     "ast_hash": "2e91b2dd13a7fe428901b4554128892c",
     "semantic_hash": "2e91b2dd13a7fe428901b4554128892c"
   },
-  "Modules/Hr/Hms.Hr/Data/HrEntities.Time.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/HrEntities.Time.cs": {
     "mtime": 1785522751.5064592,
     "ast_hash": "a253fc9956b1bb3c64a13a3c562c9a52",
     "semantic_hash": "a253fc9956b1bb3c64a13a3c562c9a52"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/20260731184553_InitHr.Designer.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260731184553_InitHr.Designer.cs": {
     "mtime": 1785523553.807824,
     "ast_hash": "278f00fc82d2d415b59e8770b55944ac",
     "semantic_hash": "278f00fc82d2d415b59e8770b55944ac"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/20260731184553_InitHr.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260731184553_InitHr.cs": {
     "mtime": 1785523591.5724375,
     "ast_hash": "b6ef7db2d6ffb22854bdf5e37888e2a2",
     "semantic_hash": "b6ef7db2d6ffb22854bdf5e37888e2a2"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/20260802200247_HrPayrollIntegrity.Designer.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260802200247_HrPayrollIntegrity.Designer.cs": {
     "mtime": 1785700967.240809,
     "ast_hash": "2d4c14eac7085c2942235d5b4e21fda6",
     "semantic_hash": "2d4c14eac7085c2942235d5b4e21fda6"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/20260802200247_HrPayrollIntegrity.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260802200247_HrPayrollIntegrity.cs": {
     "mtime": 1785700967.2405078,
     "ast_hash": "921225d93baec2796d3eb95cec67978d",
     "semantic_hash": "921225d93baec2796d3eb95cec67978d"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/20260802212220_HrPolicyExcludeDeferrable0039.Designer.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260802212220_HrPolicyExcludeDeferrable0039.Designer.cs": {
     "mtime": 1785705740.2905054,
     "ast_hash": "c58373b0ef99a0b4ce135bca64225c0c",
     "semantic_hash": "c58373b0ef99a0b4ce135bca64225c0c"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/20260802212220_HrPolicyExcludeDeferrable0039.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260802212220_HrPolicyExcludeDeferrable0039.cs": {
     "mtime": 1785705777.3938148,
     "ast_hash": "1a25b424cdbfbac452839ef27c345b78",
     "semantic_hash": "1a25b424cdbfbac452839ef27c345b78"
   },
-  "Modules/Hr/Hms.Hr/Data/Migrations/HrDbContextModelSnapshot.cs": {
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/HrDbContextModelSnapshot.cs": {
     "mtime": 1785705740.2913618,
     "ast_hash": "60ad7499d908cc4fd032b9cacd6aa0fc",
     "semantic_hash": "60ad7499d908cc4fd032b9cacd6aa0fc"
   },
-  "Modules/Hr/Hms.Hr/EmployeeService.cs": {
+  "src/Modules/Hr/Hms.Hr/EmployeeService.cs": {
     "mtime": 1785658722.2144854,
     "ast_hash": "74cca287f9d510571cc5105661364bfb",
     "semantic_hash": "74cca287f9d510571cc5105661364bfb"
   },
-  "Modules/Hr/Hms.Hr/Hms.Hr.csproj": {
+  "src/Modules/Hr/Hms.Hr/Hms.Hr.csproj": {
     "mtime": 1785523543.1438854,
     "ast_hash": "90d0d7024aecf081bbd42c3cb95d5eeb",
     "semantic_hash": "90d0d7024aecf081bbd42c3cb95d5eeb"
   },
-  "Modules/Hr/Hms.Hr/HrScope.cs": {
+  "src/Modules/Hr/Hms.Hr/HrScope.cs": {
     "mtime": 1785522932.3554516,
     "ast_hash": "73fecc4bf0b34493741d7eb8b5dfbd73",
     "semantic_hash": "73fecc4bf0b34493741d7eb8b5dfbd73"
   },
-  "Modules/Hr/Hms.Hr/LeaveService.cs": {
+  "src/Modules/Hr/Hms.Hr/LeaveService.cs": {
     "mtime": 1785523136.8700528,
     "ast_hash": "3eb47acd03beb5dfa030bc8717e379da",
     "semantic_hash": "3eb47acd03beb5dfa030bc8717e379da"
   },
-  "Modules/Hr/Hms.Hr/ModuleDefinition.cs": {
+  "src/Modules/Hr/Hms.Hr/ModuleDefinition.cs": {
     "mtime": 1785522659.448599,
     "ast_hash": "564c493b4a31c15914c8548426e7d3f7",
     "semantic_hash": "564c493b4a31c15914c8548426e7d3f7"
   },
-  "Modules/Hr/Hms.Hr/PayrollService.cs": {
+  "src/Modules/Hr/Hms.Hr/PayrollService.cs": {
     "mtime": 1785701831.976407,
     "ast_hash": "1a7929302285bfae3595601b5bfb3bd8",
     "semantic_hash": "1a7929302285bfae3595601b5bfb3bd8"
   },
-  "Modules/Hr/Hms.Hr/PolicyResolver.cs": {
+  "src/Modules/Hr/Hms.Hr/PolicyResolver.cs": {
     "mtime": 1785700294.604306,
     "ast_hash": "91c9fcb9de246a16f4ff68284232db29",
     "semantic_hash": "91c9fcb9de246a16f4ff68284232db29"
   },
-  "Modules/Hr/Hms.Hr/packages.lock.json": {
+  "src/Modules/Hr/Hms.Hr/packages.lock.json": {
     "mtime": 1785523552.5412087,
     "ast_hash": "7609c56d9f8ea2a4f0272dc8e85186d3",
     "semantic_hash": "7609c56d9f8ea2a4f0272dc8e85186d3"
   },
-  "Modules/Ipd/Hms.Ipd/CertificateService.cs": {
+  "src/Modules/Ipd/Hms.Ipd/CertificateService.cs": {
     "mtime": 1785144314.5868208,
     "ast_hash": "588881282347a64657bdd9ae560d41a2",
     "semantic_hash": "588881282347a64657bdd9ae560d41a2"
   },
-  "Modules/Ipd/Hms.Ipd/Data/IpdDbContext.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/IpdDbContext.cs": {
     "mtime": 1785745576.7362275,
     "ast_hash": "ec51c35c170343d72937501794409d01",
     "semantic_hash": "ec51c35c170343d72937501794409d01"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260727092725_InitIpd.Designer.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260727092725_InitIpd.Designer.cs": {
     "mtime": 1785144445.7968192,
     "ast_hash": "1c41226d62ef2b525feeaa5d0d6f0f39",
     "semantic_hash": "1c41226d62ef2b525feeaa5d0d6f0f39"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260727092725_InitIpd.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260727092725_InitIpd.cs": {
     "mtime": 1785144445.7966564,
     "ast_hash": "6708cccae5ad87159f1e4152a46c7146",
     "semantic_hash": "6708cccae5ad87159f1e4152a46c7146"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260802195431_Hardening0039.Designer.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260802195431_Hardening0039.Designer.cs": {
     "mtime": 1785700471.6365995,
     "ast_hash": "b40a34156903e42898dd2090a2740a3a",
     "semantic_hash": "b40a34156903e42898dd2090a2740a3a"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260802195431_Hardening0039.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260802195431_Hardening0039.cs": {
     "mtime": 1785702280.3310392,
     "ast_hash": "6137667acdb3f15d0234a0612adb1e29",
     "semantic_hash": "6137667acdb3f15d0234a0612adb1e29"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260803070756_DutyAssignment.Designer.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260803070756_DutyAssignment.Designer.cs": {
     "mtime": 1785740876.3825276,
     "ast_hash": "145dbdfc7fb4847a872baf774988a47f",
     "semantic_hash": "145dbdfc7fb4847a872baf774988a47f"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260803070756_DutyAssignment.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260803070756_DutyAssignment.cs": {
     "mtime": 1785740876.3823388,
     "ast_hash": "c2ab4b14a3f61460d3a158655a328446",
     "semantic_hash": "c2ab4b14a3f61460d3a158655a328446"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260803082647_ConsultantVisit.Designer.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260803082647_ConsultantVisit.Designer.cs": {
     "mtime": 1785745608.0267556,
     "ast_hash": "895ffede6680a6bb2053d375ca369ee5",
     "semantic_hash": "895ffede6680a6bb2053d375ca369ee5"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/20260803082647_ConsultantVisit.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/20260803082647_ConsultantVisit.cs": {
     "mtime": 1785745608.026577,
     "ast_hash": "515d6bbd8c3659a45ff508193e784aff",
     "semantic_hash": "515d6bbd8c3659a45ff508193e784aff"
   },
-  "Modules/Ipd/Hms.Ipd/Data/Migrations/IpdDbContextModelSnapshot.cs": {
+  "src/Modules/Ipd/Hms.Ipd/Data/Migrations/IpdDbContextModelSnapshot.cs": {
     "mtime": 1785745608.0269032,
     "ast_hash": "68fa8fa2f5aa574d9cf545b86eadc215",
     "semantic_hash": "68fa8fa2f5aa574d9cf545b86eadc215"
   },
-  "Modules/Ipd/Hms.Ipd/FolioService.cs": {
+  "src/Modules/Ipd/Hms.Ipd/FolioService.cs": {
     "mtime": 1785232323.9095669,
     "ast_hash": "b78fb27cbacb819d270e800769400d01",
     "semantic_hash": "b78fb27cbacb819d270e800769400d01"
   },
-  "Modules/Ipd/Hms.Ipd/Hms.Ipd.csproj": {
+  "src/Modules/Ipd/Hms.Ipd/Hms.Ipd.csproj": {
     "mtime": 1785144126.6657856,
     "ast_hash": "5df5e9039ca2fbf964e4cd956c2a7c20",
     "semantic_hash": "5df5e9039ca2fbf964e4cd956c2a7c20"
   },
-  "Modules/Ipd/Hms.Ipd/IpdService.cs": {
+  "src/Modules/Ipd/Hms.Ipd/IpdService.cs": {
     "mtime": 1785741518.0877073,
     "ast_hash": "1cb83d1f98434ade287873a1de9b13c0",
     "semantic_hash": "1cb83d1f98434ade287873a1de9b13c0"
   },
-  "Modules/Ipd/Hms.Ipd/ModuleDefinition.cs": {
+  "src/Modules/Ipd/Hms.Ipd/ModuleDefinition.cs": {
     "mtime": 1785144127.68642,
     "ast_hash": "61365c8b8879c60b719450e6f12b05fc",
     "semantic_hash": "61365c8b8879c60b719450e6f12b05fc"
   },
-  "Modules/Ipd/Hms.Ipd/packages.lock.json": {
+  "src/Modules/Ipd/Hms.Ipd/packages.lock.json": {
     "mtime": 1785144430.6863503,
     "ast_hash": "39f4fd30f93b601ed84ff2f1748a24f4",
     "semantic_hash": "39f4fd30f93b601ed84ff2f1748a24f4"
   },
-  "Modules/Lis/Hms.Lis.Contracts/Hms.Lis.Contracts.csproj": {
+  "src/Modules/Lis/Hms.Lis.Contracts/Hms.Lis.Contracts.csproj": {
     "mtime": 1785068642.5406594,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Lis/Hms.Lis.Contracts/packages.lock.json": {
+  "src/Modules/Lis/Hms.Lis.Contracts/packages.lock.json": {
     "mtime": 1785068728.5615475,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Lis/Hms.Lis/Data/LisDbContext.cs": {
+  "src/Modules/Lis/Hms.Lis/Data/LisDbContext.cs": {
     "mtime": 1785701628.204602,
     "ast_hash": "810ae8501c37190f850057ae5fcaff4b",
     "semantic_hash": "810ae8501c37190f850057ae5fcaff4b"
   },
-  "Modules/Lis/Hms.Lis/Data/Migrations/20260726130111_InitLis.Designer.cs": {
+  "src/Modules/Lis/Hms.Lis/Data/Migrations/20260726130111_InitLis.Designer.cs": {
     "mtime": 1785070871.3448863,
     "ast_hash": "f527b81cef22d0b3f571c5c1507a2e11",
     "semantic_hash": "f527b81cef22d0b3f571c5c1507a2e11"
   },
-  "Modules/Lis/Hms.Lis/Data/Migrations/20260726130111_InitLis.cs": {
+  "src/Modules/Lis/Hms.Lis/Data/Migrations/20260726130111_InitLis.cs": {
     "mtime": 1785070871.344606,
     "ast_hash": "a35a25a1770b4b2bf576d39e1570f296",
     "semantic_hash": "a35a25a1770b4b2bf576d39e1570f296"
   },
-  "Modules/Lis/Hms.Lis/Data/Migrations/20260802195435_Hardening0039.Designer.cs": {
+  "src/Modules/Lis/Hms.Lis/Data/Migrations/20260802195435_Hardening0039.Designer.cs": {
     "mtime": 1785700475.866934,
     "ast_hash": "134a4f56b1d8d0b9a8de3d4c7a0316b4",
     "semantic_hash": "134a4f56b1d8d0b9a8de3d4c7a0316b4"
   },
-  "Modules/Lis/Hms.Lis/Data/Migrations/20260802195435_Hardening0039.cs": {
+  "src/Modules/Lis/Hms.Lis/Data/Migrations/20260802195435_Hardening0039.cs": {
     "mtime": 1785700576.0641062,
     "ast_hash": "642c2d190c41e96fd474020419d0a7c2",
     "semantic_hash": "642c2d190c41e96fd474020419d0a7c2"
   },
-  "Modules/Lis/Hms.Lis/Data/Migrations/LisDbContextModelSnapshot.cs": {
+  "src/Modules/Lis/Hms.Lis/Data/Migrations/LisDbContextModelSnapshot.cs": {
     "mtime": 1785700475.8671112,
     "ast_hash": "54f4476856583985d74ca7b4f600e6ef",
     "semantic_hash": "54f4476856583985d74ca7b4f600e6ef"
   },
-  "Modules/Lis/Hms.Lis/Hms.Lis.csproj": {
+  "src/Modules/Lis/Hms.Lis/Hms.Lis.csproj": {
     "mtime": 1785070867.8180952,
     "ast_hash": "9c7488d21709e1ac16c2fde47c99a4ac",
     "semantic_hash": "9c7488d21709e1ac16c2fde47c99a4ac"
   },
-  "Modules/Lis/Hms.Lis/LisService.cs": {
+  "src/Modules/Lis/Hms.Lis/LisService.cs": {
     "mtime": 1785699964.6629736,
     "ast_hash": "26678c79e2c0532e66c76c4dcff54c7d",
     "semantic_hash": "26678c79e2c0532e66c76c4dcff54c7d"
   },
-  "Modules/Lis/Hms.Lis/ModuleDefinition.cs": {
+  "src/Modules/Lis/Hms.Lis/ModuleDefinition.cs": {
     "mtime": 1785068774.5275834,
     "ast_hash": "ea8ed135824ee9df3dca93617f672022",
     "semantic_hash": "ea8ed135824ee9df3dca93617f672022"
   },
-  "Modules/Lis/Hms.Lis/packages.lock.json": {
+  "src/Modules/Lis/Hms.Lis/packages.lock.json": {
     "mtime": 1785070867.8222427,
     "ast_hash": "a67c3fdf028cc8207c9d8c06453519fa",
     "semantic_hash": "a67c3fdf028cc8207c9d8c06453519fa"
   },
-  "Modules/Notifications/Hms.Notifications.Contracts/Hms.Notifications.Contracts.csproj": {
+  "src/Modules/Notifications/Hms.Notifications.Contracts/Hms.Notifications.Contracts.csproj": {
     "mtime": 1785068645.2568662,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Notifications/Hms.Notifications.Contracts/packages.lock.json": {
+  "src/Modules/Notifications/Hms.Notifications.Contracts/packages.lock.json": {
     "mtime": 1785068728.5638843,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/20260726141430_InitNotif.Designer.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/20260726141430_InitNotif.Designer.cs": {
     "mtime": 1785075270.6812544,
     "ast_hash": "d85a3447fba6f36faff7bd3af38dba0e",
     "semantic_hash": "d85a3447fba6f36faff7bd3af38dba0e"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/20260726141430_InitNotif.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/20260726141430_InitNotif.cs": {
     "mtime": 1785075270.6810944,
     "ast_hash": "96828598a7b68223ab5378091bb9acbb",
     "semantic_hash": "96828598a7b68223ab5378091bb9acbb"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/20260802195441_Hardening0039.Designer.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/20260802195441_Hardening0039.Designer.cs": {
     "mtime": 1785700481.1787846,
     "ast_hash": "d53db4814f00d08f60ecd0cda137caf2",
     "semantic_hash": "d53db4814f00d08f60ecd0cda137caf2"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/20260802195441_Hardening0039.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/20260802195441_Hardening0039.cs": {
     "mtime": 1785700576.0699866,
     "ast_hash": "13bf65116c17e24bf8ffbb26bee13cee",
     "semantic_hash": "13bf65116c17e24bf8ffbb26bee13cee"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/20260802202544_SmsRetry0039.Designer.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/20260802202544_SmsRetry0039.Designer.cs": {
     "mtime": 1785702345.0349004,
     "ast_hash": "929e3832359feca6f89776edbb64d561",
     "semantic_hash": "929e3832359feca6f89776edbb64d561"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/20260802202544_SmsRetry0039.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/20260802202544_SmsRetry0039.cs": {
     "mtime": 1785702345.0347269,
     "ast_hash": "26b20dbf8884c4f492f90bc14461995d",
     "semantic_hash": "26b20dbf8884c4f492f90bc14461995d"
   },
-  "Modules/Notifications/Hms.Notifications/Data/Migrations/NotifDbContextModelSnapshot.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/Migrations/NotifDbContextModelSnapshot.cs": {
     "mtime": 1785702345.0351481,
     "ast_hash": "6f8844fe0f42d783fad58f8311e65960",
     "semantic_hash": "6f8844fe0f42d783fad58f8311e65960"
   },
-  "Modules/Notifications/Hms.Notifications/Data/NotifDbContext.cs": {
+  "src/Modules/Notifications/Hms.Notifications/Data/NotifDbContext.cs": {
     "mtime": 1785702034.6906009,
     "ast_hash": "d4b1e5ff26a735caaea080ca4a9aad88",
     "semantic_hash": "d4b1e5ff26a735caaea080ca4a9aad88"
   },
-  "Modules/Notifications/Hms.Notifications/Hms.Notifications.csproj": {
+  "src/Modules/Notifications/Hms.Notifications/Hms.Notifications.csproj": {
     "mtime": 1785068669.7799551,
     "ast_hash": "94a5f2b2a427cef448a797a00f13aad9",
     "semantic_hash": "94a5f2b2a427cef448a797a00f13aad9"
   },
-  "Modules/Notifications/Hms.Notifications/ModuleDefinition.cs": {
+  "src/Modules/Notifications/Hms.Notifications/ModuleDefinition.cs": {
     "mtime": 1785068774.533877,
     "ast_hash": "fd3b8338eb726abb924e6d57f2cacf27",
     "semantic_hash": "fd3b8338eb726abb924e6d57f2cacf27"
   },
-  "Modules/Notifications/Hms.Notifications/SmsDispatchJob.cs": {
+  "src/Modules/Notifications/Hms.Notifications/SmsDispatchJob.cs": {
     "mtime": 1785702992.0912912,
     "ast_hash": "413a44ce1da416d8b00d3025a1a5806b",
     "semantic_hash": "413a44ce1da416d8b00d3025a1a5806b"
   },
-  "Modules/Notifications/Hms.Notifications/SmsGateway.cs": {
+  "src/Modules/Notifications/Hms.Notifications/SmsGateway.cs": {
     "mtime": 1785701975.5648763,
     "ast_hash": "eb37a5f2bade8f95c550982aab3df348",
     "semantic_hash": "eb37a5f2bade8f95c550982aab3df348"
   },
-  "Modules/Notifications/Hms.Notifications/SmsQueue.cs": {
+  "src/Modules/Notifications/Hms.Notifications/SmsQueue.cs": {
     "mtime": 1785238014.3667686,
     "ast_hash": "1c36b00445abf2b8afc22220913e29aa",
     "semantic_hash": "1c36b00445abf2b8afc22220913e29aa"
   },
-  "Modules/Notifications/Hms.Notifications/packages.lock.json": {
+  "src/Modules/Notifications/Hms.Notifications/packages.lock.json": {
     "mtime": 1785070091.905023,
     "ast_hash": "0cf6bd0085d995004f53664a97c81164",
     "semantic_hash": "0cf6bd0085d995004f53664a97c81164"
   },
-  "Modules/Ot/Hms.Ot/Data/Migrations/20260727185943_InitOt.Designer.cs": {
+  "src/Modules/Ot/Hms.Ot/Data/Migrations/20260727185943_InitOt.Designer.cs": {
     "mtime": 1785178783.4178793,
     "ast_hash": "494fa817740f1cc316c226b10287fdab",
     "semantic_hash": "494fa817740f1cc316c226b10287fdab"
   },
-  "Modules/Ot/Hms.Ot/Data/Migrations/20260727185943_InitOt.cs": {
+  "src/Modules/Ot/Hms.Ot/Data/Migrations/20260727185943_InitOt.cs": {
     "mtime": 1785178783.417569,
     "ast_hash": "38ff6f491cb4885b4c0cd698d56e032f",
     "semantic_hash": "38ff6f491cb4885b4c0cd698d56e032f"
   },
-  "Modules/Ot/Hms.Ot/Data/Migrations/20260802195437_Hardening0039.Designer.cs": {
+  "src/Modules/Ot/Hms.Ot/Data/Migrations/20260802195437_Hardening0039.Designer.cs": {
     "mtime": 1785700477.540353,
     "ast_hash": "a2a76eebb86742910d4dab9b39780fbd",
     "semantic_hash": "a2a76eebb86742910d4dab9b39780fbd"
   },
-  "Modules/Ot/Hms.Ot/Data/Migrations/20260802195437_Hardening0039.cs": {
+  "src/Modules/Ot/Hms.Ot/Data/Migrations/20260802195437_Hardening0039.cs": {
     "mtime": 1785700576.069177,
     "ast_hash": "c401f669232dc933b8c9645407302e73",
     "semantic_hash": "c401f669232dc933b8c9645407302e73"
   },
-  "Modules/Ot/Hms.Ot/Data/Migrations/OtDbContextModelSnapshot.cs": {
+  "src/Modules/Ot/Hms.Ot/Data/Migrations/OtDbContextModelSnapshot.cs": {
     "mtime": 1785700477.5408452,
     "ast_hash": "ddab477fbce4dec46a66a88aeaede802",
     "semantic_hash": "ddab477fbce4dec46a66a88aeaede802"
   },
-  "Modules/Ot/Hms.Ot/Data/OtDbContext.cs": {
+  "src/Modules/Ot/Hms.Ot/Data/OtDbContext.cs": {
     "mtime": 1785701628.2275288,
     "ast_hash": "d8033d91cbc3f1f2f828aedba9e39a9d",
     "semantic_hash": "d8033d91cbc3f1f2f828aedba9e39a9d"
   },
-  "Modules/Ot/Hms.Ot/Hms.Ot.csproj": {
+  "src/Modules/Ot/Hms.Ot/Hms.Ot.csproj": {
     "mtime": 1785178599.786127,
     "ast_hash": "5df5e9039ca2fbf964e4cd956c2a7c20",
     "semantic_hash": "5df5e9039ca2fbf964e4cd956c2a7c20"
   },
-  "Modules/Ot/Hms.Ot/ModuleDefinition.cs": {
+  "src/Modules/Ot/Hms.Ot/ModuleDefinition.cs": {
     "mtime": 1785178678.4565742,
     "ast_hash": "ed3c94cce7dade200c2e76159326ec66",
     "semantic_hash": "ed3c94cce7dade200c2e76159326ec66"
   },
-  "Modules/Ot/Hms.Ot/OtService.cs": {
+  "src/Modules/Ot/Hms.Ot/OtService.cs": {
     "mtime": 1785178669.3368726,
     "ast_hash": "566ac8423707a0d3a0058196f9971398",
     "semantic_hash": "566ac8423707a0d3a0058196f9971398"
   },
-  "Modules/Ot/Hms.Ot/packages.lock.json": {
+  "src/Modules/Ot/Hms.Ot/packages.lock.json": {
     "mtime": 1785178679.2011442,
     "ast_hash": "39f4fd30f93b601ed84ff2f1748a24f4",
     "semantic_hash": "39f4fd30f93b601ed84ff2f1748a24f4"
   },
-  "Modules/Pharmacy/Hms.Pharmacy.Contracts/Hms.Pharmacy.Contracts.csproj": {
+  "src/Modules/Pharmacy/Hms.Pharmacy.Contracts/Hms.Pharmacy.Contracts.csproj": {
     "mtime": 1785139834.205647,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Pharmacy/Hms.Pharmacy.Contracts/PharmacyContracts.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy.Contracts/PharmacyContracts.cs": {
     "mtime": 1785139837.444053,
     "ast_hash": "e279f871c4649ad34db2fc68561d1a7e",
     "semantic_hash": "e279f871c4649ad34db2fc68561d1a7e"
   },
-  "Modules/Pharmacy/Hms.Pharmacy.Contracts/packages.lock.json": {
+  "src/Modules/Pharmacy/Hms.Pharmacy.Contracts/packages.lock.json": {
     "mtime": 1785140081.7996035,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727081512_InitPharm.Designer.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727081512_InitPharm.Designer.cs": {
     "mtime": 1785140112.957012,
     "ast_hash": "600e10ee369120fdcc94e176831922bf",
     "semantic_hash": "600e10ee369120fdcc94e176831922bf"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727081512_InitPharm.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727081512_InitPharm.cs": {
     "mtime": 1785140112.9568484,
     "ast_hash": "b36d5482825043d6dad15b7e732dfdce",
     "semantic_hash": "b36d5482825043d6dad15b7e732dfdce"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727092713_IssueAllocation.Designer.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727092713_IssueAllocation.Designer.cs": {
     "mtime": 1785144433.4222786,
     "ast_hash": "744867dfb6c0643ed9a0efc7d79d7ee0",
     "semantic_hash": "744867dfb6c0643ed9a0efc7d79d7ee0"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727092713_IssueAllocation.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260727092713_IssueAllocation.cs": {
     "mtime": 1785144433.421116,
     "ast_hash": "d50e2b2a9ad9fee0834a590da931ca9d",
     "semantic_hash": "d50e2b2a9ad9fee0834a590da931ca9d"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260802195433_Hardening0039.Designer.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260802195433_Hardening0039.Designer.cs": {
     "mtime": 1785700473.9381015,
     "ast_hash": "56baef09590605b2c55f6a6aaf37a1cd",
     "semantic_hash": "56baef09590605b2c55f6a6aaf37a1cd"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260802195433_Hardening0039.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/20260802195433_Hardening0039.cs": {
     "mtime": 1785700576.06168,
     "ast_hash": "3c9d9d9c067e97874c9d12d5bb0be7a5",
     "semantic_hash": "3c9d9d9c067e97874c9d12d5bb0be7a5"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/PharmDbContextModelSnapshot.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/Migrations/PharmDbContextModelSnapshot.cs": {
     "mtime": 1785700473.9383028,
     "ast_hash": "564939ab3f7997e3384433fe76a60070",
     "semantic_hash": "564939ab3f7997e3384433fe76a60070"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Data/PharmDbContext.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Data/PharmDbContext.cs": {
     "mtime": 1785701628.1757538,
     "ast_hash": "b2c4ecedf978ea0b00390d831a3a5ba7",
     "semantic_hash": "b2c4ecedf978ea0b00390d831a3a5ba7"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/Hms.Pharmacy.csproj": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/Hms.Pharmacy.csproj": {
     "mtime": 1785139841.2175698,
     "ast_hash": "874a5cab89fb37a9d941201c6032ad02",
     "semantic_hash": "874a5cab89fb37a9d941201c6032ad02"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/ModuleDefinition.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/ModuleDefinition.cs": {
     "mtime": 1785139842.3049958,
     "ast_hash": "17bc5f77ec2114a6edd8c375a9e74fc8",
     "semantic_hash": "17bc5f77ec2114a6edd8c375a9e74fc8"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/PurchaseService.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/PurchaseService.cs": {
     "mtime": 1785140096.012511,
     "ast_hash": "fb5816cec366c7b06c213211bfb54df3",
     "semantic_hash": "fb5816cec366c7b06c213211bfb54df3"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/StockService.cs": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/StockService.cs": {
     "mtime": 1785699853.5172625,
     "ast_hash": "ecce5bb90d47be49a70fcad29cb28631",
     "semantic_hash": "ecce5bb90d47be49a70fcad29cb28631"
   },
-  "Modules/Pharmacy/Hms.Pharmacy/packages.lock.json": {
+  "src/Modules/Pharmacy/Hms.Pharmacy/packages.lock.json": {
     "mtime": 1785140082.8803658,
     "ast_hash": "7e26d7342c6d9e6f247acbcf887d0174",
     "semantic_hash": "7e26d7342c6d9e6f247acbcf887d0174"
   },
-  "Modules/Radiology/Hms.Radiology/Data/Migrations/20260727191357_InitRadiology.Designer.cs": {
+  "src/Modules/Radiology/Hms.Radiology/Data/Migrations/20260727191357_InitRadiology.Designer.cs": {
     "mtime": 1785179637.620854,
     "ast_hash": "5498ecc73b4888676cebc92e2f31fc32",
     "semantic_hash": "5498ecc73b4888676cebc92e2f31fc32"
   },
-  "Modules/Radiology/Hms.Radiology/Data/Migrations/20260727191357_InitRadiology.cs": {
+  "src/Modules/Radiology/Hms.Radiology/Data/Migrations/20260727191357_InitRadiology.cs": {
     "mtime": 1785179637.6202993,
     "ast_hash": "c784e481a985347a6c8d0c769d34b303",
     "semantic_hash": "c784e481a985347a6c8d0c769d34b303"
   },
-  "Modules/Radiology/Hms.Radiology/Data/Migrations/20260802195439_Hardening0039.Designer.cs": {
+  "src/Modules/Radiology/Hms.Radiology/Data/Migrations/20260802195439_Hardening0039.Designer.cs": {
     "mtime": 1785700479.459045,
     "ast_hash": "d8b36f5d83fbd0617b1316acb15356c9",
     "semantic_hash": "d8b36f5d83fbd0617b1316acb15356c9"
   },
-  "Modules/Radiology/Hms.Radiology/Data/Migrations/20260802195439_Hardening0039.cs": {
+  "src/Modules/Radiology/Hms.Radiology/Data/Migrations/20260802195439_Hardening0039.cs": {
     "mtime": 1785700576.0653849,
     "ast_hash": "9818f2615a3b2d59484bc861a7cbfe95",
     "semantic_hash": "9818f2615a3b2d59484bc861a7cbfe95"
   },
-  "Modules/Radiology/Hms.Radiology/Data/Migrations/RadiologyDbContextModelSnapshot.cs": {
+  "src/Modules/Radiology/Hms.Radiology/Data/Migrations/RadiologyDbContextModelSnapshot.cs": {
     "mtime": 1785700479.4591832,
     "ast_hash": "7eec1d33479c8f747417d831d956b6d9",
     "semantic_hash": "7eec1d33479c8f747417d831d956b6d9"
   },
-  "Modules/Radiology/Hms.Radiology/Data/RadiologyDbContext.cs": {
+  "src/Modules/Radiology/Hms.Radiology/Data/RadiologyDbContext.cs": {
     "mtime": 1785701628.212586,
     "ast_hash": "f0d1407ccc950af098672f9cc22f1e2c",
     "semantic_hash": "f0d1407ccc950af098672f9cc22f1e2c"
   },
-  "Modules/Radiology/Hms.Radiology/Hms.Radiology.csproj": {
+  "src/Modules/Radiology/Hms.Radiology/Hms.Radiology.csproj": {
     "mtime": 1785179521.360503,
     "ast_hash": "5df5e9039ca2fbf964e4cd956c2a7c20",
     "semantic_hash": "5df5e9039ca2fbf964e4cd956c2a7c20"
   },
-  "Modules/Radiology/Hms.Radiology/ModuleDefinition.cs": {
+  "src/Modules/Radiology/Hms.Radiology/ModuleDefinition.cs": {
     "mtime": 1785179599.3376985,
     "ast_hash": "ae2b9ee912be0acc4e5834aa4e7d3840",
     "semantic_hash": "ae2b9ee912be0acc4e5834aa4e7d3840"
   },
-  "Modules/Radiology/Hms.Radiology/RadiologyService.cs": {
+  "src/Modules/Radiology/Hms.Radiology/RadiologyService.cs": {
     "mtime": 1785179569.6628432,
     "ast_hash": "c17b5c8a7a33fad6e3fc2941d928c0a2",
     "semantic_hash": "c17b5c8a7a33fad6e3fc2941d928c0a2"
   },
-  "Modules/Radiology/Hms.Radiology/packages.lock.json": {
+  "src/Modules/Radiology/Hms.Radiology/packages.lock.json": {
     "mtime": 1785179602.9441555,
     "ast_hash": "39f4fd30f93b601ed84ff2f1748a24f4",
     "semantic_hash": "39f4fd30f93b601ed84ff2f1748a24f4"
   },
-  "Modules/Registration/Hms.Registration.Contracts/Hms.Registration.Contracts.csproj": {
+  "src/Modules/Registration/Hms.Registration.Contracts/Hms.Registration.Contracts.csproj": {
     "mtime": 1785068584.8296974,
     "ast_hash": "4258e11a2b535b27f62d0cc8ecdeccc5",
     "semantic_hash": "4258e11a2b535b27f62d0cc8ecdeccc5"
   },
-  "Modules/Registration/Hms.Registration.Contracts/IPatientLookup.cs": {
+  "src/Modules/Registration/Hms.Registration.Contracts/IPatientLookup.cs": {
     "mtime": 1785070058.2933557,
     "ast_hash": "fa20903bd25e64dd66fe1fa5016f67f8",
     "semantic_hash": "fa20903bd25e64dd66fe1fa5016f67f8"
   },
-  "Modules/Registration/Hms.Registration.Contracts/packages.lock.json": {
+  "src/Modules/Registration/Hms.Registration.Contracts/packages.lock.json": {
     "mtime": 1785068728.5655098,
     "ast_hash": "65fcf5846f810311931b4940838ac845",
     "semantic_hash": "65fcf5846f810311931b4940838ac845"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260726124814_InitReg.Designer.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260726124814_InitReg.Designer.cs": {
     "mtime": 1785070094.9621582,
     "ast_hash": "bd4934e2c1630d003df5ead84f785c52",
     "semantic_hash": "bd4934e2c1630d003df5ead84f785c52"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260726124814_InitReg.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260726124814_InitReg.cs": {
     "mtime": 1785070118.6461656,
     "ast_hash": "a23e527f7d364c1dbc1f6b816d4eede8",
     "semantic_hash": "a23e527f7d364c1dbc1f6b816d4eede8"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260727140415_PhoneDigits.Designer.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260727140415_PhoneDigits.Designer.cs": {
     "mtime": 1785161436.407677,
     "ast_hash": "7ce81a27fa07587a22e3a4f0aeb4d2b1",
     "semantic_hash": "7ce81a27fa07587a22e3a4f0aeb4d2b1"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260727140415_PhoneDigits.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260727140415_PhoneDigits.cs": {
     "mtime": 1785161436.407792,
     "ast_hash": "66b267532db29bd16bc09fc8c85feeba",
     "semantic_hash": "66b267532db29bd16bc09fc8c85feeba"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260728104406_WidenIdentityCheckForAgeMonths.Designer.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260728104406_WidenIdentityCheckForAgeMonths.Designer.cs": {
     "mtime": 1785235446.316081,
     "ast_hash": "162c4dc4b6e07ae254ebd7e766e38ff1",
     "semantic_hash": "162c4dc4b6e07ae254ebd7e766e38ff1"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260728104406_WidenIdentityCheckForAgeMonths.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260728104406_WidenIdentityCheckForAgeMonths.cs": {
     "mtime": 1785235446.315865,
     "ast_hash": "fe05fc8534e4ef9cbbbabbf9f433cdac",
     "semantic_hash": "fe05fc8534e4ef9cbbbabbf9f433cdac"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260802195428_Hardening0039.Designer.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260802195428_Hardening0039.Designer.cs": {
     "mtime": 1785700468.0925095,
     "ast_hash": "7e845cc561ff014d497fd9628ea7c436",
     "semantic_hash": "7e845cc561ff014d497fd9628ea7c436"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260802195428_Hardening0039.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260802195428_Hardening0039.cs": {
     "mtime": 1785700576.0623136,
     "ast_hash": "dafbdd8e2eb83b81a20e715c7439b1bf",
     "semantic_hash": "dafbdd8e2eb83b81a20e715c7439b1bf"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260803082703_Allergies.Designer.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260803082703_Allergies.Designer.cs": {
     "mtime": 1785745623.339702,
     "ast_hash": "e0e100c37289f96cdfcb0e4fc90fa66d",
     "semantic_hash": "e0e100c37289f96cdfcb0e4fc90fa66d"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/20260803082703_Allergies.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/20260803082703_Allergies.cs": {
     "mtime": 1785745623.3393877,
     "ast_hash": "a065835468212d066e05cb2e86345797",
     "semantic_hash": "a065835468212d066e05cb2e86345797"
   },
-  "Modules/Registration/Hms.Registration/Data/Migrations/RegDbContextModelSnapshot.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/Migrations/RegDbContextModelSnapshot.cs": {
     "mtime": 1785745623.3402658,
     "ast_hash": "93596202426834c9282884e5f2879c00",
     "semantic_hash": "93596202426834c9282884e5f2879c00"
   },
-  "Modules/Registration/Hms.Registration/Data/RegDbContext.cs": {
+  "src/Modules/Registration/Hms.Registration/Data/RegDbContext.cs": {
     "mtime": 1785745560.2777574,
     "ast_hash": "ad33a9dded262c64b27de51d38d0db56",
     "semantic_hash": "ad33a9dded262c64b27de51d38d0db56"
   },
-  "Modules/Registration/Hms.Registration/Hms.Registration.csproj": {
+  "src/Modules/Registration/Hms.Registration/Hms.Registration.csproj": {
     "mtime": 1785525419.8233037,
     "ast_hash": "7f9cb11c39d54aa50cca4c66fea3e156",
     "semantic_hash": "7f9cb11c39d54aa50cca4c66fea3e156"
   },
-  "Modules/Registration/Hms.Registration/ModuleDefinition.cs": {
+  "src/Modules/Registration/Hms.Registration/ModuleDefinition.cs": {
     "mtime": 1785068774.5191233,
     "ast_hash": "f829337d7701d94ee29b10f1ad232d80",
     "semantic_hash": "f829337d7701d94ee29b10f1ad232d80"
   },
-  "Modules/Registration/Hms.Registration/RegistrationService.cs": {
+  "src/Modules/Registration/Hms.Registration/RegistrationService.cs": {
     "mtime": 1785746723.7339242,
     "ast_hash": "280b3a80bb10a60b5f572362f547b66b",
     "semantic_hash": "280b3a80bb10a60b5f572362f547b66b"
   },
-  "Modules/Registration/Hms.Registration/packages.lock.json": {
+  "src/Modules/Registration/Hms.Registration/packages.lock.json": {
     "mtime": 1785070205.960529,
     "ast_hash": "91be15910665495a992fe2a9d79931fa",
     "semantic_hash": "91be15910665495a992fe2a9d79931fa"
+  },
+  "tests/Hms.Architecture.Tests/BranchIsolationTests.cs": {
+    "mtime": 1785703015.9901202,
+    "ast_hash": "2ceaedf2a51beab24ebdf079cdca42b5",
+    "semantic_hash": "2ceaedf2a51beab24ebdf079cdca42b5"
+  },
+  "tests/Hms.Architecture.Tests/CrossContextQueryTests.cs": {
+    "mtime": 1785525348.521214,
+    "ast_hash": "eeee3b90bd159e5e3c7f5191596ab4ce",
+    "semantic_hash": "eeee3b90bd159e5e3c7f5191596ab4ce"
+  },
+  "tests/Hms.Architecture.Tests/HandlerPermissionTests.cs": {
+    "mtime": 1785227135.5623367,
+    "ast_hash": "c4ceb66f44c421577c4fd1ced34a04b4",
+    "semantic_hash": "c4ceb66f44c421577c4fd1ced34a04b4"
+  },
+  "tests/Hms.Architecture.Tests/Hms.Architecture.Tests.csproj": {
+    "mtime": 1785068696.4523377,
+    "ast_hash": "25791532b735dc4c12977487155e0e67",
+    "semantic_hash": "25791532b735dc4c12977487155e0e67"
+  },
+  "tests/Hms.Architecture.Tests/HostRootRouteTests.cs": {
+    "mtime": 1785531564.8576121,
+    "ast_hash": "3c2af68d396246e07fcbf1e72455643c",
+    "semantic_hash": "3c2af68d396246e07fcbf1e72455643c"
+  },
+  "tests/Hms.Architecture.Tests/HrIndependenceTests.cs": {
+    "mtime": 1785525369.0822024,
+    "ast_hash": "f75fd493356334c2f981e4ea7ac9cf1a",
+    "semantic_hash": "f75fd493356334c2f981e4ea7ac9cf1a"
+  },
+  "tests/Hms.Architecture.Tests/InputGateCoverageTests.cs": {
+    "mtime": 1785702406.7419353,
+    "ast_hash": "fc0d55743bc63dc7d2461e4c764f8b25",
+    "semantic_hash": "fc0d55743bc63dc7d2461e4c764f8b25"
+  },
+  "tests/Hms.Architecture.Tests/ModuleBoundaryTests.cs": {
+    "mtime": 1785525345.985755,
+    "ast_hash": "7363f6f1026b2306f2fb7c77cff7b2c1",
+    "semantic_hash": "7363f6f1026b2306f2fb7c77cff7b2c1"
+  },
+  "tests/Hms.Architecture.Tests/NumberSeriesScopeTests.cs": {
+    "mtime": 1785658683.9808135,
+    "ast_hash": "99a8b7da5c1cde7a94e3c3da1ef7b78b",
+    "semantic_hash": "99a8b7da5c1cde7a94e3c3da1ef7b78b"
+  },
+  "tests/Hms.Architecture.Tests/PermissionCatalogTests.cs": {
+    "mtime": 1785658451.3248425,
+    "ast_hash": "cff534e970367c75c6724416b5b807fb",
+    "semantic_hash": "cff534e970367c75c6724416b5b807fb"
+  },
+  "tests/Hms.Architecture.Tests/RazorLayoutTests.cs": {
+    "mtime": 1785655838.5656831,
+    "ast_hash": "19bd3b2d89fc4cf633448171c584e750",
+    "semantic_hash": "19bd3b2d89fc4cf633448171c584e750"
+  },
+  "tests/Hms.Architecture.Tests/ViewGuardPermissionTests.cs": {
+    "mtime": 1785238165.6126585,
+    "ast_hash": "6bf5b7546e3d39dcd8085902ee10dad4",
+    "semantic_hash": "6bf5b7546e3d39dcd8085902ee10dad4"
+  },
+  "tests/Hms.Architecture.Tests/packages.lock.json": {
+    "mtime": 1785525242.511148,
+    "ast_hash": "cb7d240f5715078f2b10a23af8520409",
+    "semantic_hash": "cb7d240f5715078f2b10a23af8520409"
+  },
+  "tests/Hms.Integration.Tests/AppointmentQueueTests.cs": {
+    "mtime": 1785705660.4684691,
+    "ast_hash": "abcc4a595f68aec7afaaec9ae5d386fa",
+    "semantic_hash": "abcc4a595f68aec7afaaec9ae5d386fa"
+  },
+  "tests/Hms.Integration.Tests/ApprovalAndRateTests.cs": {
+    "mtime": 1785070600.4626427,
+    "ast_hash": "fb58401bd6f61c1df50e800c4503544a",
+    "semantic_hash": "fb58401bd6f61c1df50e800c4503544a"
+  },
+  "tests/Hms.Integration.Tests/AuditWriterTests.cs": {
+    "mtime": 1785069086.680438,
+    "ast_hash": "ca64099167820077f779f2212071aa11",
+    "semantic_hash": "ca64099167820077f779f2212071aa11"
+  },
+  "tests/Hms.Integration.Tests/BedDayEstimateTests.cs": {
+    "mtime": 1785238392.1321204,
+    "ast_hash": "63f74831e1fd1cbcaf49293aee558cfe",
+    "semantic_hash": "63f74831e1fd1cbcaf49293aee558cfe"
+  },
+  "tests/Hms.Integration.Tests/ConcurrencyTests.cs": {
+    "mtime": 1785705589.8290594,
+    "ast_hash": "9b5aa9f39f1f0c9355a4e222c8ae86e4",
+    "semantic_hash": "9b5aa9f39f1f0c9355a4e222c8ae86e4"
+  },
+  "tests/Hms.Integration.Tests/DayCloseBoundaryTests.cs": {
+    "mtime": 1785705640.2344291,
+    "ast_hash": "681cbd6ae876519585bf65005fa4e7d0",
+    "semantic_hash": "681cbd6ae876519585bf65005fa4e7d0"
+  },
+  "tests/Hms.Integration.Tests/DiagnosticsOrderTests.cs": {
+    "mtime": 1785070714.6028488,
+    "ast_hash": "1854d6d26305e8647d8b70960c29585a",
+    "semantic_hash": "1854d6d26305e8647d8b70960c29585a"
+  },
+  "tests/Hms.Integration.Tests/EmrTests.cs": {
+    "mtime": 1785178288.8885021,
+    "ast_hash": "fdefabf78ead7212ce53fd77099d887c",
+    "semantic_hash": "fdefabf78ead7212ce53fd77099d887c"
+  },
+  "tests/Hms.Integration.Tests/Hms.Integration.Tests.csproj": {
+    "mtime": 1785745801.3358858,
+    "ast_hash": "231267ab41fe4bf37c605aa861999d57",
+    "semantic_hash": "231267ab41fe4bf37c605aa861999d57"
+  },
+  "tests/Hms.Integration.Tests/HrAttendanceTests.cs": {
+    "mtime": 1785705704.6739788,
+    "ast_hash": "49b1c94af489bd79801d07e99fc39e1b",
+    "semantic_hash": "49b1c94af489bd79801d07e99fc39e1b"
+  },
+  "tests/Hms.Integration.Tests/HrBranchIsolationTests.cs": {
+    "mtime": 1785705688.3068054,
+    "ast_hash": "b75e98918a9e8cdc0965e2d8d2584ba5",
+    "semantic_hash": "b75e98918a9e8cdc0965e2d8d2584ba5"
+  },
+  "tests/Hms.Integration.Tests/HrPayrollTests.cs": {
+    "mtime": 1785705704.6734445,
+    "ast_hash": "317f45e1f807ddf8e65b6ccf5f6e9cc3",
+    "semantic_hash": "317f45e1f807ddf8e65b6ccf5f6e9cc3"
+  },
+  "tests/Hms.Integration.Tests/ImportAndDashboardTests.cs": {
+    "mtime": 1785071067.7676706,
+    "ast_hash": "21d53dae5784260da6af416644add59d",
+    "semantic_hash": "21d53dae5784260da6af416644add59d"
+  },
+  "tests/Hms.Integration.Tests/IpdFolioTests.cs": {
+    "mtime": 1785705609.9047186,
+    "ast_hash": "e7371ac97f87d65d348f9b8b6799c990",
+    "semantic_hash": "e7371ac97f87d65d348f9b8b6799c990"
+  },
+  "tests/Hms.Integration.Tests/IpdSeed.cs": {
+    "mtime": 1785705562.214163,
+    "ast_hash": "7c2a856bf09c62e6a6481832acd821b8",
+    "semantic_hash": "7c2a856bf09c62e6a6481832acd821b8"
+  },
+  "tests/Hms.Integration.Tests/JobQueueTests.cs": {
+    "mtime": 1785069218.1002798,
+    "ast_hash": "0ec1125c2d64f6934b48b866affc4cc2",
+    "semantic_hash": "0ec1125c2d64f6934b48b866affc4cc2"
+  },
+  "tests/Hms.Integration.Tests/JobWorkerTests.cs": {
+    "mtime": 1785703480.0630493,
+    "ast_hash": "e3f9dc23d7fa20086e42bfa87264901a",
+    "semantic_hash": "e3f9dc23d7fa20086e42bfa87264901a"
+  },
+  "tests/Hms.Integration.Tests/LifecycleGapTests.cs": {
+    "mtime": 1785161436.4079208,
+    "ast_hash": "02bb982b39b2b4c55e3a1a78d3dc5019",
+    "semantic_hash": "02bb982b39b2b4c55e3a1a78d3dc5019"
+  },
+  "tests/Hms.Integration.Tests/LisAndDayCloseTests.cs": {
+    "mtime": 1785700060.9073596,
+    "ast_hash": "0fce0b8d6d6f4d37944bb0ebc61198f2",
+    "semantic_hash": "0fce0b8d6d6f4d37944bb0ebc61198f2"
+  },
+  "tests/Hms.Integration.Tests/MoneySpineTests.cs": {
+    "mtime": 1785237039.6540842,
+    "ast_hash": "9fa75f5b5c1fe209a9a3bbfcab9d4f8e",
+    "semantic_hash": "9fa75f5b5c1fe209a9a3bbfcab9d4f8e"
+  },
+  "tests/Hms.Integration.Tests/NumberSeriesTests.cs": {
+    "mtime": 1785169703.9778829,
+    "ast_hash": "293310e27f609b1ece491e005baf67a9",
+    "semantic_hash": "293310e27f609b1ece491e005baf67a9"
+  },
+  "tests/Hms.Integration.Tests/NursingStationTests.cs": {
+    "mtime": 1785745894.2245114,
+    "ast_hash": "e67f5a041b6abaa88068be3f0fb98894",
+    "semantic_hash": "e67f5a041b6abaa88068be3f0fb98894"
+  },
+  "tests/Hms.Integration.Tests/OtTests.cs": {
+    "mtime": 1785179336.9727278,
+    "ast_hash": "472bb0730bbe2724338921c064791ead",
+    "semantic_hash": "472bb0730bbe2724338921c064791ead"
+  },
+  "tests/Hms.Integration.Tests/PharmacyStockTests.cs": {
+    "mtime": 1785140898.155564,
+    "ast_hash": "62a30984ad80fae3cf6c1a55fbf93993",
+    "semantic_hash": "62a30984ad80fae3cf6c1a55fbf93993"
+  },
+  "tests/Hms.Integration.Tests/PostgresFixture.cs": {
+    "mtime": 1785069125.7602952,
+    "ast_hash": "3a798026632a76773d49da76969307fd",
+    "semantic_hash": "3a798026632a76773d49da76969307fd"
+  },
+  "tests/Hms.Integration.Tests/PublicReportLookupTests.cs": {
+    "mtime": 1785702768.6595478,
+    "ast_hash": "e64751311654b0b3fcaebb175d869d98",
+    "semantic_hash": "e64751311654b0b3fcaebb175d869d98"
+  },
+  "tests/Hms.Integration.Tests/RadiologyTests.cs": {
+    "mtime": 1785179969.6053178,
+    "ast_hash": "f790cabf1f98ae28bfe0dd26b87afb11",
+    "semantic_hash": "f790cabf1f98ae28bfe0dd26b87afb11"
+  },
+  "tests/Hms.Integration.Tests/RegistrationTests.cs": {
+    "mtime": 1785235385.2853794,
+    "ast_hash": "47bd84c324cc4e288c7366e14d8b7d57",
+    "semantic_hash": "47bd84c324cc4e288c7366e14d8b7d57"
+  },
+  "tests/Hms.Integration.Tests/SettlementReopenAuditTests.cs": {
+    "mtime": 1785705603.886038,
+    "ast_hash": "bd0eb988ffdd318d73ad1b360f72b3e4",
+    "semantic_hash": "bd0eb988ffdd318d73ad1b360f72b3e4"
+  },
+  "tests/Hms.Integration.Tests/SmsDispatchJobTests.cs": {
+    "mtime": 1785702738.4661384,
+    "ast_hash": "d54071ff97f48a96f83be90c72fa922e",
+    "semantic_hash": "d54071ff97f48a96f83be90c72fa922e"
+  },
+  "tests/Hms.Integration.Tests/SmsQueueTests.cs": {
+    "mtime": 1785238074.691608,
+    "ast_hash": "7cf574a1383966a453b9076626aac158",
+    "semantic_hash": "7cf574a1383966a453b9076626aac158"
+  },
+  "tests/Hms.Integration.Tests/TerminalExitTests.cs": {
+    "mtime": 1785169001.660227,
+    "ast_hash": "b58f361a589d5b7443ac006a1aead2e0",
+    "semantic_hash": "b58f361a589d5b7443ac006a1aead2e0"
+  },
+  "tests/Hms.Integration.Tests/TransactionDurabilityTests.cs": {
+    "mtime": 1785661415.1494145,
+    "ast_hash": "2bc12c86c7d29c3a56d54a4ce5141f9d",
+    "semantic_hash": "2bc12c86c7d29c3a56d54a4ce5141f9d"
+  },
+  "tests/Hms.Integration.Tests/WardMoneySeamTests.cs": {
+    "mtime": 1785746072.7848887,
+    "ast_hash": "9e6c31e0f68c72bc54173fbc3356a9c6",
+    "semantic_hash": "9e6c31e0f68c72bc54173fbc3356a9c6"
+  },
+  "tests/Hms.Integration.Tests/packages.lock.json": {
+    "mtime": 1785745967.700325,
+    "ast_hash": "0d3724e460abe6ddca2a5aabcfcb9608",
+    "semantic_hash": "0d3724e460abe6ddca2a5aabcfcb9608"
+  },
+  "tests/Hms.Kernel.Tests/BusinessDayTests.cs": {
+    "mtime": 1785068885.8726037,
+    "ast_hash": "a2d6e4baa641c62d23fcc3746971020b",
+    "semantic_hash": "a2d6e4baa641c62d23fcc3746971020b"
+  },
+  "tests/Hms.Kernel.Tests/EntitlementTests.cs": {
+    "mtime": 1785068899.9983711,
+    "ast_hash": "bfca4fe25fe46499817f7a98a2e4bfe1",
+    "semantic_hash": "bfca4fe25fe46499817f7a98a2e4bfe1"
+  },
+  "tests/Hms.Kernel.Tests/FiscalCalendarTests.cs": {
+    "mtime": 1785068878.8052433,
+    "ast_hash": "24a07a7f44249c86cdb0736fbfdb7dcc",
+    "semantic_hash": "24a07a7f44249c86cdb0736fbfdb7dcc"
+  },
+  "tests/Hms.Kernel.Tests/Hms.Kernel.Tests.csproj": {
+    "mtime": 1785068671.5837913,
+    "ast_hash": "17d0df2b2750421c2c576be56596934b",
+    "semantic_hash": "17d0df2b2750421c2c576be56596934b"
+  },
+  "tests/Hms.Kernel.Tests/NavComposerTests.cs": {
+    "mtime": 1785069292.1520894,
+    "ast_hash": "23c81984de36d23bc1822fc6922bb0fa",
+    "semantic_hash": "23c81984de36d23bc1822fc6922bb0fa"
+  },
+  "tests/Hms.Kernel.Tests/packages.lock.json": {
+    "mtime": 1785070566.2838244,
+    "ast_hash": "9b18d889bb74b46a28a7f1ad5f2965a8",
+    "semantic_hash": "9b18d889bb74b46a28a7f1ad5f2965a8"
+  },
+  "tests/Hms.PrintGolden.Tests/BanglaSpikeTests.cs": {
+    "mtime": 1785662251.707569,
+    "ast_hash": "77479a39feaffccf59aa32812f3ed183",
+    "semantic_hash": "77479a39feaffccf59aa32812f3ed183"
+  },
+  "tests/Hms.PrintGolden.Tests/Hms.PrintGolden.Tests.csproj": {
+    "mtime": 1785068672.4647346,
+    "ast_hash": "17d0df2b2750421c2c576be56596934b",
+    "semantic_hash": "17d0df2b2750421c2c576be56596934b"
+  },
+  "tests/Hms.PrintGolden.Tests/packages.lock.json": {
+    "mtime": 1785069841.0251207,
+    "ast_hash": "9b18d889bb74b46a28a7f1ad5f2965a8",
+    "semantic_hash": "9b18d889bb74b46a28a7f1ad5f2965a8"
+  },
+  "tests/Hms.Web.Tests/Barcode128Tests.cs": {
+    "mtime": 1785702590.469306,
+    "ast_hash": "d2a01e5c3787e275c00caf17ac65d2c7",
+    "semantic_hash": "d2a01e5c3787e275c00caf17ac65d2c7"
+  },
+  "tests/Hms.Web.Tests/Hms.Web.Tests.csproj": {
+    "mtime": 1785235509.6794965,
+    "ast_hash": "85ab02cdef4133fb0d6226e313fcad6e",
+    "semantic_hash": "85ab02cdef4133fb0d6226e313fcad6e"
+  },
+  "tests/Hms.Web.Tests/LoginReturnUrlTests.cs": {
+    "mtime": 1785734314.1150944,
+    "ast_hash": "081d3df551193447897c16ba3243190b",
+    "semantic_hash": "081d3df551193447897c16ba3243190b"
+  },
+  "tests/Hms.Web.Tests/LoginValidationTests.cs": {
+    "mtime": 1785734321.6830907,
+    "ast_hash": "de48c8fcddbfc44de04b3f30171cf121",
+    "semantic_hash": "de48c8fcddbfc44de04b3f30171cf121"
+  },
+  "tests/Hms.Web.Tests/MarScheduleTests.cs": {
+    "mtime": 1785741398.046777,
+    "ast_hash": "e31ee8fd7034c09f779aa294b15911fc",
+    "semantic_hash": "e31ee8fd7034c09f779aa294b15911fc"
+  },
+  "tests/Hms.Web.Tests/RegistrationInputTests.cs": {
+    "mtime": 1785699259.6683834,
+    "ast_hash": "ccc5390dabb5ccc0085dc2cc8511cf0c",
+    "semantic_hash": "ccc5390dabb5ccc0085dc2cc8511cf0c"
+  },
+  "tests/Hms.Web.Tests/RegistrationScreenTests.cs": {
+    "mtime": 1785699418.9683094,
+    "ast_hash": "93c2d56c20efb2fcc1e1c8ef2c195b5b",
+    "semantic_hash": "93c2d56c20efb2fcc1e1c8ef2c195b5b"
+  },
+  "tests/Hms.Web.Tests/SmsGatewayTests.cs": {
+    "mtime": 1785702623.9825516,
+    "ast_hash": "c7f37411f260dab79321675974f443ce",
+    "semantic_hash": "c7f37411f260dab79321675974f443ce"
+  },
+  "tests/Hms.Web.Tests/SmsSegmentTests.cs": {
+    "mtime": 1785237971.1267183,
+    "ast_hash": "77bca42ef56baabb1e7fe56cf5692a8b",
+    "semantic_hash": "77bca42ef56baabb1e7fe56cf5692a8b"
+  },
+  "tests/Hms.Web.Tests/packages.lock.json": {
+    "mtime": 1785525242.510961,
+    "ast_hash": "118fc73c74daa2e20053172101533b88",
+    "semantic_hash": "118fc73c74daa2e20053172101533b88"
   }
 }
