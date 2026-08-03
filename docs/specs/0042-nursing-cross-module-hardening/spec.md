@@ -1,6 +1,6 @@
 # 0042 — Nursing Station cross-module hardening
 
-- **Status:** Done (build + local verification; deploy rides the next ERP image — `notes.md` §5)
+- **Status:** Done (deployed to the VM 2026-08-03 and re-verified there — `notes.md` §6)
 - **Date:** 2026-08-03
 - **PRD ref:** §5 M6 [M] (consultation/visit entry; folio universality), §5 M5 [C] (allergy & alert flags), §11, §12
 - **MVP:** in scope (defect closure + implementation of existing §5 text — no new scope)

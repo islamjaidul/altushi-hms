@@ -99,4 +99,4 @@ It is test fallout, not a change belonging to any spec — `git checkout` it bef
   trailing scheduled dose on a discharged admission is left for a nurse to close.
 - Frequency dialects beyond `a+b+c(+d)` and `N hourly` — the dash form `1-0-1` in particular —
   fall back to manual scheduling. Adding a dialect is a constant in one pure class plus a test.
-- **Not deployed.** The ERP VM image has been stale since 2026-07-29; this rides the next rebuild.
+- **Deployed 2026-08-03** with 0042 (ERP image rebuilt on the VM, commit 6da0ee5); nursing-thread re-run 13/13 green against hms.specshipper.com.

@@ -62,4 +62,16 @@ push notification to pharmacy/pathology; receive-note prompting from the admit f
 `DutyAssignment.EmployeeId` service-level validation; `MarDose.ProductId` for dose-vs-issue
 reconciliation; a doctor-facing test-ordering UI on `/emr/indoor`.
 
-**Not deployed** — rides the next ERP image rebuild with 0038–0041.
+~~**Not deployed** — rides the next ERP image rebuild with 0038–0041.~~ Superseded by §6.
+
+## 6. Deployed (2026-08-03, post-close)
+
+Committed as `6da0ee5` (0041 + 0042 in one commit — 0042 modified 0041's files before either
+was committed, so splitting would have archived an intermediate state that was never built or
+tested), pushed, pulled on the VM, ERP image rebuilt in place and restarted
+(`compose.yml` + `compose.vm.yml`, `up -d db app backup`). All four migrations
+(`NursingStation`, `DutyAssignment`, `ConsultantVisit`, `Allergies`) applied at boot; app
+listening. Verified live: `/login` 200, `/ipd/station` behind auth, then
+`nursing-thread.py` against `hms.specshipper.com` (`HMS_QA_ENV=vm` interlock) — **13 cases,
+0 failed**, fixtures returned, manifest in `eng/verify/runs/`. The "deployment drift" risk
+(live image stale since 2026-07-29) is closed: the VM now runs everything through 0042.

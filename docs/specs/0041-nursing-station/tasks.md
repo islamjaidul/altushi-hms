@@ -20,4 +20,4 @@
 - [x] `docs/qa/patient-lifecycle.md`: LC-NUR-06 → `auto`; LC-NUR-07…13 added; gap register updated
 - [x] Verification: 488 unit/integration tests, 7 guards, nursing-thread ×2, role-journeys, full t1 suite — all green (`notes.md` §5)
 - [x] Close-out: Status Done, deviations in `notes.md`
-- [ ] **Deploy** — deferred with the rest of the ERP image (stale since 2026-07-29); rides the next rebuild
+- [x] **Deploy** — ERP image rebuilt on the VM 2026-08-03 (commit 6da0ee5); nursing-thread 13/13 green against hms.specshipper.com

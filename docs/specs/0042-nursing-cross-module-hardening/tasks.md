@@ -15,4 +15,4 @@
 - [x] `nursing-thread.py` LC-NUR-14…18; lifecycle doc rows; gap register: 4 new rows for the recorded-not-built findings
 - [x] Verification: 498 tests, 8 guards, nursing-thread ×2, role-journeys, full t1 suite — green (`notes.md` §4)
 - [x] Close-out: Status Done, deviations in `notes.md`
-- [ ] **Deploy** — rides the next ERP image rebuild (stale since 2026-07-29), together with 0038–0041
+- [x] **Deploy** — ERP image rebuilt on the VM 2026-08-03 (commit 6da0ee5, with 0041); all four migrations applied at boot; nursing-thread 13/13 green against hms.specshipper.com (`notes.md` §6)
