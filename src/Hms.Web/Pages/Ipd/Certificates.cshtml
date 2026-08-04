@@ -35,7 +35,8 @@
                         <td class="tabular">@Ui.Local(row.IssuedAt).ToString("dd MMM HH:mm")</td>
                         <td class="tabular">@row.PrintCount</td>
                         <td>
-                            <form method="post" asp-page-handler="Reprint">
+                            <a class="btn-tint" href="/ipd/certificates/@row.Id">View</a>
+                            <form method="post" asp-page-handler="Reprint" style="display:inline-block">
                                 <input type="hidden" name="CertificateId" value="@row.Id" />
                                 <button type="submit" class="btn-tint">Reprint</button>
                             </form>
@@ -58,22 +59,30 @@
         <div class="card-head">Issue a certificate</div>
         <div class="card-body stack" style="gap:10px;padding-top:0">
             <label class="field">
-                <span class="field-label">Admission</span>
-                <select class="select" asp-for="AdmissionId">
-                    <option value="0">—</option>
-                    @foreach (var a in Model.Eligible)
-                    {
-                        <option value="@a.Id">@a.AdmissionNo — @a.Patient (@Ui.Humanize(a.State))</option>
-                    }
-                </select>
-            </label>
-            <label class="field">
                 <span class="field-label">Kind</span>
-                <select class="select" asp-for="Kind">
+                <select class="select" asp-for="Kind" data-cert-kind>
                     <option value="discharge">Discharge certificate</option>
                     <option value="death">Death certificate</option>
                     <option value="birth">Birth certificate</option>
                 </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Admission</span>
+                <select class="select" asp-for="AdmissionId" data-cert-admission>
+                    <option value="0">—</option>
+                    @foreach (var a in Model.Eligible)
+                    {
+                        <option value="@a.Id" data-kinds="@a.Kinds">@a.AdmissionNo — @a.Patient (@Ui.Humanize(a.State))</option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Clinical summary (blank = the summary recorded at discharge)</span>
+                <textarea class="input" asp-for="ClinicalSummary" rows="3"></textarea>
+            </label>
+            <label class="field">
+                <span class="field-label">Follow-up date (optional)</span>
+                <input class="input" type="date" asp-for="FollowUpOn" />
             </label>
             <label class="field">
                 <span class="field-label">Extra line (e.g. newborn name / cause note)</span>
@@ -81,8 +90,10 @@
             </label>
             <button type="submit" class="btn btn-primary">Issue with next number</button>
             <div class="card-hint">
-                Discharge certificates need a settled admission; death certificates need a
-                death-recorded one. The body freezes at issue — reprints never recompute.
+                The list only offers admissions valid for the chosen kind — a discharge
+                certificate needs a settled admission, a death certificate a death-recorded
+                one. The body freezes at issue and lands on the printable document;
+                reprints never recompute.
             </div>
         </div>
     </form>

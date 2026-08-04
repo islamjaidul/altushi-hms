@@ -178,6 +178,27 @@
   }
 })();
 
+// Spec 0047 — the certificate form only offers admissions valid for the chosen kind. The
+// server enforces the same rule before issue; this removes the trap from the picker (§7 U7).
+(function () {
+  "use strict";
+  const kind = document.querySelector("[data-cert-kind]");
+  const target = document.querySelector("[data-cert-admission]");
+  if (!kind || !target) return;
+  const sync = () => {
+    const want = kind.value;
+    [...target.options].forEach((opt) => {
+      if (!opt.dataset.kinds) return;              // the "—" placeholder always stays
+      const ok = opt.dataset.kinds.split(" ").indexOf(want) !== -1;
+      opt.hidden = !ok;
+      opt.disabled = !ok;
+      if (!ok && opt.selected) target.value = "0";
+    });
+  };
+  kind.addEventListener("change", sync);
+  sync();
+})();
+
 // Spec 0021 — visible half of "one submission, one invoice". The guarantee is the unique
 // submission token in the database; this only stops the operator watching a second click do
 // nothing while the first request is still in flight (§7: fast, non-technical hands).

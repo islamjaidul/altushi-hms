@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Hms.Ipd;
 using Hms.Ipd.Data;
@@ -10,7 +11,8 @@ namespace Hms.Web.Pages.Ipd;
 public sealed record CertRow(
     long Id, string CertNo, string Kind, string Patient, string AdmissionNo,
     DateTimeOffset IssuedAt, int PrintCount, string Body);
-public sealed record EligibleAdmission(long Id, string AdmissionNo, string Patient, string State);
+public sealed record EligibleAdmission(
+    long Id, string AdmissionNo, string Patient, string State, string Kinds);
 
 /// <summary>
 /// §5 M6 [M]: discharge/death/birth certificates — sequential numbers from the kernel series,
@@ -22,6 +24,11 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
     [BindProperty] public long AdmissionId { get; set; }
     [BindProperty] public string Kind { get; set; } = "discharge";
     [BindProperty] public string? Extra { get; set; }
+    // Spec 0047: the operator reviews and edits what the document will say, pre-issue.
+    // Blank falls back to the summary recorded at discharge; post-issue stays frozen.
+    [BindProperty, StringLength(10000, ErrorMessage = "Clinical summary — at most 10000 characters")]
+    public string? ClinicalSummary { get; set; }
+    [BindProperty] public DateOnly? FollowUpOn { get; set; }
     [BindProperty] public long CertificateId { get; set; }
 
     public IReadOnlyList<CertRow> Rows { get; private set; } = [];
@@ -64,7 +71,7 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
             }).ToList();
 
             Eligible = eligible.Select(a => new EligibleAdmission(a.Id, a.AdmissionNo,
-                patients.GetValueOrDefault(a.PatientId, "—"), a.State)).ToList();
+                patients.GetValueOrDefault(a.PatientId, "—"), a.State, KindsFor(a.State))).ToList();
             return 0;
         });
     }
@@ -72,12 +79,24 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
     public async Task<IActionResult> OnPostIssueAsync()
     {
         if (AdmissionId == 0) { await LoadAsync(); Fail("Pick the admission."); return Page(); }
+        long certId;
         try
         {
-            await tx.RunAsync(async s =>
+            certId = await tx.RunAsync(async s =>
             {
                 var admission = await s.Ipd.Admissions.AsNoTracking()
-                    .SingleAsync(a => a.Id == AdmissionId);
+                                    .SingleOrDefaultAsync(a => a.Id == AdmissionId)
+                                ?? throw new IpdException("Unknown admission.");
+                // Spec 0047: the same rules CertificateService enforces, phrased as guidance
+                // before the operator commits — the dropdown is filtered too (data-kinds), so
+                // this only fires on a stale or hand-crafted post.
+                if (Kind == "discharge" && admission.State is not
+                        (AdmissionState.FinanciallySettled or AdmissionState.Discharged))
+                    throw new IpdException("A discharge certificate needs a settled admission — "
+                                           + "finish settlement at the IPD billing counter first.");
+                if (Kind == "death" && admission.State != AdmissionState.Death)
+                    throw new IpdException("A death certificate needs a death-recorded admission.");
+
                 var patient = await s.Reg.Patients.AsNoTracking()
                     .SingleAsync(p => p.Id == admission.PatientId);
                 var body = JsonSerializer.Serialize(new
@@ -88,17 +107,21 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
                     admitted = Ui.Local(admission.AdmittedAt).ToString("dd MMM yyyy"),
                     closed = admission.DischargedAt is DateTimeOffset gone
                         ? Ui.Local(gone).ToString("dd MMM yyyy") : null,
-                    summary = admission.ClinicalSummary,
+                    summary = string.IsNullOrWhiteSpace(ClinicalSummary)
+                        ? admission.ClinicalSummary : ClinicalSummary.Trim(),
                     extra = string.IsNullOrWhiteSpace(Extra) ? null : Extra.Trim(),
+                    followUp = FollowUpOn?.ToString("dd MMM yyyy"),
                     issuedOn = Ui.Local(clock.GetUtcNow()).ToString("dd MMM yyyy"),
                 });
-                await certs.IssueAsync(s.Ipd, s.Kernel, BranchId, AdmissionId, Kind, body,
-                    ActorId, ActorName);
+                var cert = await certs.IssueAsync(s.Ipd, s.Kernel, BranchId, AdmissionId, Kind,
+                    body, ActorId, ActorName);
+                return cert.Id;
             });
         }
         catch (IpdException e) { await LoadAsync(); Fail(e.Message); return Page(); }
         Toast("Certificate issued with its sequential number", "verified");
-        return Redirect("/ipd/certificates");
+        // The screen IS the preview — land on the document, ready to print (spec 0047).
+        return Redirect($"/ipd/certificates/{certId}");
     }
 
     public async Task<IActionResult> OnPostReprintAsync()
@@ -109,6 +132,15 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
         }
         catch (IpdException e) { await LoadAsync(); Fail(e.Message); return Page(); }
         Toast("Reprint counted and audited", "print");
-        return Redirect("/ipd/certificates");
+        return Redirect($"/ipd/certificates/{CertificateId}");
     }
+
+    /// <summary>Which certificate kinds this admission state can legally receive (spec 0047) —
+    /// mirrors CertificateService's rules so the dropdown never offers a refused combination.</summary>
+    private static string KindsFor(string state) => state switch
+    {
+        AdmissionState.Death => "death birth",
+        AdmissionState.FinanciallySettled or AdmissionState.Discharged => "discharge birth",
+        _ => "birth",
+    };
 }

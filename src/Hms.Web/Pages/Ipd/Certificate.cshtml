@@ -1,0 +1,68 @@
+@page "/ipd/certificates/{Id:long}"
+@model Hms.Web.Pages.Ipd.CertificateModel
+@{
+    ViewData["Title"] = "Certificate";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (!Model.Missing)
+{
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="width:640px;max-width:100%">
+            @await Html.PartialAsync("_PrintTools", "/ipd/certificates")
+        </div>
+
+        <div class="sheet">
+            @await Html.PartialAsync("_Letterhead",
+                new Letterhead(Model.DocTitle, Model.CertNo, Model.IssuedAt))
+
+            <div class="sheet-info">
+                <div><span class="k">Patient:</span> <b>@(Model.Patient ?? "—")</b></div>
+                <div><span class="k">UHID:</span> @(Model.Uhid ?? "—")</div>
+                <div><span class="k">Admission no:</span> @(Model.AdmissionNo ?? "—")</div>
+                <div><span class="k">Admitted:</span> @(Model.Admitted ?? "—")</div>
+                @if (Model.Closed is not null)
+                {
+                    <div>
+                        <span class="k">@(Model.Kind == "death" ? "Expired:" : "Discharged:")</span>
+                        @Model.Closed
+                    </div>
+                }
+                <div><span class="k">Issued:</span> @(Model.IssuedOn ?? "—")</div>
+            </div>
+
+            <div class="sheet-words">
+                <b>Clinical summary</b><br />
+                @(Model.Summary ?? "Not recorded at discharge.")
+            </div>
+            @if (Model.Extra is not null)
+            {
+                <div class="sheet-words">@Model.Extra</div>
+            }
+            @if (Model.FollowUp is not null)
+            {
+                <div class="sheet-words"><b>Follow-up:</b> @Model.FollowUp</div>
+            }
+
+            <div class="sheet-signs">
+                <div class="sheet-sign">Prepared by</div>
+                <div class="sheet-sign">Medical Officer</div>
+            </div>
+
+            <div class="sheet-words" style="text-align:center;color:var(--muted-1)">
+                @Model.CertNo · print #@Model.PrintCount — the body froze at issue; reprints
+                are counted and audited, never recomputed.
+            </div>
+
+            @await Html.PartialAsync("_SheetFooter")
+        </div>
+    </div>
+}
