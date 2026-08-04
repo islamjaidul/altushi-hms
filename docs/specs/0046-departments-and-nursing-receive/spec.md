@@ -1,6 +1,6 @@
 # 0046 — Departments above wards, and the nurse who receives her own patients
 
-- **Status:** Approved
+- **Status:** Done
 - **Date:** 2026-08-04
 - **PRD ref:** §5 M6, §5A.2 R5, §7, §12
 - **MVP:** in scope — post-freeze Phase 2; extends the shipped R5 Nursing Station (0041/0042)

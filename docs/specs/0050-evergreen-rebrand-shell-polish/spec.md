@@ -1,6 +1,6 @@
 # 0050 — Sylhet Evergreen Hospital: rebrand, logo, login, and a sidebar that folds
 
-- **Status:** Approved
+- **Status:** Done
 - **Date:** 2026-08-04
 - **PRD ref:** §7 (operator UX; visual identity is deployment configuration, not PRD scope)
 - **MVP:** in scope — presentation readiness of shipped surfaces; no new product scope

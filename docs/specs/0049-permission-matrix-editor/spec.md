@@ -1,6 +1,6 @@
 # 0049 — Role permissions as a form, not five hundred buttons
 
-- **Status:** Approved
+- **Status:** Done
 - **Date:** 2026-08-04
 - **PRD ref:** §5 M21 (admin/user management), §12 (authorization), §7 (operator UX)
 - **MVP:** in scope — usability + trust defect in a shipped admin screen

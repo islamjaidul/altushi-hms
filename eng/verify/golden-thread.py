@@ -177,7 +177,12 @@ path = Session("farhana", "Demo#1234")
 step(7, "Pathologist verifies and e-signs")
 ver = path.get(f"/lis/verify?orderId={order_id}")
 check(">Low<" in ver or ">High<" in ver, "H/L flags computed against the reference range")
-url, html = path.post("/lis/verify", {"OrderId": order_id}, ver)
+# Spec 0044 / US9.3: a batch carrying a critical value releases only with the explicit
+# acknowledgement — the thread acknowledges exactly when the page asks for it.
+verify_fields = {"OrderId": order_id}
+if "CriticalAcknowledged" in ver:
+    verify_fields["CriticalAcknowledged"] = "true"
+url, html = path.post("/lis/verify", verify_fields, ver)
 check("/lis/report/" in url, "released to the report document")
 check("e-signed" in html, "e-signature attached")
 

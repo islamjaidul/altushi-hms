@@ -1,6 +1,6 @@
 # 0048 — An IPD bill counter that handles only IPD
 
-- **Status:** Approved
+- **Status:** Done
 - **Date:** 2026-08-04
 - **PRD ref:** §5 M4 (counters/sessions), §5 M6 (IPD billing), §12 (cash controls)
 - **MVP:** in scope — post-freeze Phase 2; separates money streams in shipped modules

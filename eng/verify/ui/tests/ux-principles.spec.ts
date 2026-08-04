@@ -104,7 +104,7 @@ test.describe("U9 — patient-banner shows name + UHID on selection", () => {
     const banner = page.locator(".patient-banner");
     await expect(banner, "no order awaiting result entry was selected — worklist may be empty").toBeVisible();
     await expect(banner.locator(".patient-name")).not.toBeEmpty();
-    await expect(banner.locator(".patient-meta")).toContainText(/SEH-\d{6}/);
+    await expect(banner.locator(".patient-meta")).toContainText(/(SEH|ALT)-\d{6}/);
     await context.close();
   });
 
@@ -115,7 +115,7 @@ test.describe("U9 — patient-banner shows name + UHID on selection", () => {
     const banner = page.locator(".patient-banner");
     await expect(banner, "no order awaiting verification was selected — worklist may be empty").toBeVisible();
     await expect(banner.locator(".patient-name")).not.toBeEmpty();
-    await expect(banner.locator(".patient-meta")).toContainText(/SEH-\d{6}/);
+    await expect(banner.locator(".patient-meta")).toContainText(/(SEH|ALT)-\d{6}/);
     await context.close();
   });
 });

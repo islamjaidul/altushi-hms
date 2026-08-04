@@ -1,6 +1,6 @@
 # 0047 — The discharge certificate that was never a document
 
-- **Status:** Approved
+- **Status:** Done
 - **Date:** 2026-08-04
 - **PRD ref:** §5 M6 (certificates `[M]`), §7 (print/preview pattern)
 - **MVP:** in scope — completes a shipped `[M]` capability
