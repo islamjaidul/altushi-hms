@@ -166,58 +166,70 @@
     <div class="card-head">
         Role permissions
         <span class="spacer"></span>
-        <span class="card-hint">§12 as data — a change applies within minutes, without a sign-out</span>
+        <span class="card-hint">tick and Save — unticked cells are revoked; every change is audited</span>
     </div>
-    <div class="table-wrap">
-        <table class="data">
-            <thead>
-            <tr>
-                <th style="position:sticky;left:0;background:var(--th-bg);min-width:320px">Permission</th>
-                @foreach (var r in Model.Roles)
-                {
-                    <th class="mid">@r.Name<div class="text-muted" style="font-weight:400">@r.Users user(s)</div></th>
-                }
-            </tr>
-            </thead>
-            <tbody>
-            @* Grouped by module, and drawn from the host's catalogue rather than from whatever
-               happens to be granted — so a permission nobody holds yet is still on screen to grant.
-               That is precisely what was missing: nine HR permissions existed, the seeded admin held
-               two, and there was no screen anywhere that listed the other seven. *@
-            @foreach (var group in Model.Catalog.ByGroup)
-            {
-                <tr class="total-row">
-                    <td colspan="@(Model.Roles.Count + 1)"
-                        style="position:sticky;left:0"><b>@group.Key</b></td>
+    @* Spec 0049: one form, checkboxes, one Save. The handler diffs the posted set against what
+       is held; the per-cell Permission handler remains as the verify scripts' API contract. *@
+    <form method="post" asp-page-handler="Matrix">
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th style="position:sticky;left:0;background:var(--th-bg);min-width:320px">Permission</th>
+                    @foreach (var r in Model.Roles)
+                    {
+                        <th class="mid">@r.Name<div class="text-muted" style="font-weight:400">@r.Users user(s)</div></th>
+                    }
                 </tr>
-                @foreach (var perm in group)
+                </thead>
+                <tbody>
+                @* Grouped by module, and drawn from the host's catalogue rather than from whatever
+                   happens to be granted — so a permission nobody holds yet is still on screen to
+                   grant. That is precisely what was missing: nine HR permissions existed, the
+                   seeded admin held two, and no screen listed the other seven. *@
+                @foreach (var group in Model.Catalog.ByGroup)
                 {
-                    <tr>
-                        <td style="position:sticky;left:0;background:var(--paper)">
-                            <b>@perm.Label</b>
-                            <div class="text-muted" style="font-size:0.6875rem">@perm.Claim</div>
-                        </td>
-                        @foreach (var r in Model.Roles)
-                        {
-                            var held = r.Permissions.Contains(perm.Claim);
-                            <td class="mid">
-                                <form method="post" asp-page-handler="Permission" class="inline-form"
-                                      style="justify-content:center">
-                                    <input type="hidden" name="roleId" value="@r.Id" />
-                                    <input type="hidden" name="permission" value="@perm.Claim" />
-                                    <input type="hidden" name="grant" value="@((!held).ToString().ToLowerInvariant())" />
-                                    <button type="submit" class="btn-icon @(held ? "primary" : "")"
-                                            title="@(held ? "Revoke" : "Grant") @perm.Claim for @r.Name"
-                                            aria-label="@(held ? "Revoke" : "Grant") @perm.Claim for @r.Name">
-                                        <span class="icon icon-sm" aria-hidden="true">@(held ? "check" : "add")</span>
-                                    </button>
-                                </form>
-                            </td>
-                        }
+                    <tr class="total-row">
+                        <td colspan="@(Model.Roles.Count + 1)"
+                            style="position:sticky;left:0"><b>@group.Key</b></td>
                     </tr>
+                    @foreach (var perm in group)
+                    {
+                        <tr>
+                            <td style="position:sticky;left:0;background:var(--paper)">
+                                <b>@perm.Label</b>
+                                <div class="text-muted" style="font-size:0.6875rem">@perm.Claim</div>
+                            </td>
+                            @foreach (var r in Model.Roles)
+                            {
+                                var held = r.Permissions.Contains(perm.Claim);
+                                <td class="mid">
+                                    <label class="check" style="justify-content:center"
+                                           title="@perm.Claim for @r.Name">
+                                        @if (held)
+                                        {
+                                            <input type="checkbox" name="Grants" value="@r.Id:@perm.Claim" data-role="@r.Name" checked="checked" />
+                                        }
+                                        else
+                                        {
+                                            <input type="checkbox" name="Grants" value="@r.Id:@perm.Claim" data-role="@r.Name" />
+                                        }
+                                    </label>
+                                </td>
+                            }
+                        </tr>
+                    }
                 }
-            }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-body" style="display:flex;align-items:center;gap:12px;justify-content:flex-end">
+            <span class="card-hint">
+                others pick changes up within a minute or at next sign-in — saving never signs you out
+            </span>
+            <button type="submit" class="btn btn-primary btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">save</span> Save changes
+            </button>
+        </div>
+    </form>
 </div>

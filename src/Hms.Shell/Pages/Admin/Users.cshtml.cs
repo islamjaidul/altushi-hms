@@ -28,6 +28,7 @@ public class UsersModel(
     IPlatformTx tx,
     UserManager<AppUser> userManager,
     RoleManager<AppRole> roleManager,
+    SignInManager<AppUser> signInManager,
     PermissionCatalog catalog,
     TimeProvider clock) : HmsPageModel
 {
@@ -312,6 +313,100 @@ public class UsersModel(
         Toast($"{(grant ? "Granted" : "Revoked")} {permission} — enforced within minutes", "admin_panel_settings");
         return Redirect("/admin/users");
     }
+
+    /// <summary>
+    /// Spec 0049: the whole matrix as one form — tick, untick, one Save, one reload showing
+    /// exactly what was saved. A rendered cell that comes back unticked is a revoke: the form
+    /// always renders the full catalogue for every role, so absence is meaningful. Every change
+    /// still lands as its own audited grant/revoke, and <see cref="OnPostPermissionAsync"/>
+    /// stays verbatim — it is a live API contract for the verify scripts (LC-ROLE-14,
+    /// grant-drift --fix).
+    /// </summary>
+    public async Task<IActionResult> OnPostMatrixAsync(List<string>? grants)
+    {
+        var posted = new HashSet<(long RoleId, string Claim)>();
+        foreach (var token in grants ?? [])
+        {
+            var cut = token.IndexOf(':');
+            if (cut <= 0 || !long.TryParse(token.AsSpan(0, cut), out var roleId)) continue;
+            var claim = token[(cut + 1)..];
+            if (catalog.Claims.Contains(claim)) posted.Add((roleId, claim));
+        }
+
+        int granted = 0, revoked = 0;
+        List<string> affectedRoles;
+        try
+        {
+            affectedRoles = await tx.RunAsync(async s =>
+            {
+                var roleNames = await s.Auth.Roles.AsNoTracking()
+                    .ToDictionaryAsync(r => r.Id, r => r.Name ?? "");
+                // Only claims this host ships are managed here; a stale row for a permission the
+                // catalogue no longer knows stays untouched rather than silently vanishing.
+                var held = (await s.Auth.Permissions.ToListAsync())
+                    .Where(p => catalog.Claims.Contains(p.Value))
+                    .ToDictionary(p => (p.RoleId, p.Value));
+
+                // Lockout guard: a save that leaves no role holding user management could never
+                // be undone from this screen. Refuse the whole save; write nothing.
+                if (held.Keys.Any(k => k.Item2 == PlatformPerm.UsersManage)
+                    && !posted.Any(k => k.Claim == PlatformPerm.UsersManage
+                                        && roleNames.ContainsKey(k.RoleId)))
+                    throw new MatrixLockoutException();
+
+                var affected = new HashSet<string>();
+                foreach (var key in posted.Where(k =>
+                             !held.ContainsKey((k.RoleId, k.Claim)) && roleNames.ContainsKey(k.RoleId)))
+                {
+                    var parts = key.Claim.Split('.', 2);
+                    s.Auth.Permissions.Add(new Permission
+                        { RoleId = key.RoleId, Module = parts[0], Action = parts[1] });
+                    await AuditAsync(s, "role.grant", "adm.permission", key.RoleId,
+                        new { roleId = key.RoleId, permission = key.Claim });
+                    affected.Add(roleNames[key.RoleId]);
+                    granted++;
+                }
+                foreach (var pair in held.Where(p => !posted.Contains(p.Key)).ToList())
+                {
+                    s.Auth.Permissions.Remove(pair.Value);
+                    await AuditAsync(s, "role.revoke", "adm.permission", pair.Key.RoleId,
+                        new { roleId = pair.Key.RoleId, permission = pair.Key.Item2 });
+                    if (roleNames.TryGetValue(pair.Key.RoleId, out var name)) affected.Add(name);
+                    revoked++;
+                }
+                await s.Auth.SaveChangesAsync();
+                return affected.ToList();
+            });
+        }
+        catch (MatrixLockoutException)
+        {
+            await LoadAsync();
+            Fail("This save would remove user management from every role — nobody could undo it. "
+                 + "Keep admin.users.manage ticked for at least one role.");
+            return Page();
+        }
+
+        if (granted + revoked == 0)
+        {
+            Toast("Nothing changed — the matrix already matches", "admin_panel_settings");
+            return Redirect("/admin/users");
+        }
+
+        // One stamp bump per affected role's holders: everyone else picks the change up at the
+        // next revalidation. The acting admin's own cookie is then refreshed in place, so
+        // saving never signs you out and your own sidebar shows the change immediately.
+        foreach (var roleName in affectedRoles)
+            foreach (var holder in await userManager.GetUsersInRoleAsync(roleName))
+                await userManager.UpdateSecurityStampAsync(holder);
+        var self = await userManager.FindByIdAsync(ActorId.ToString());
+        if (self is not null) await signInManager.RefreshSignInAsync(self);
+
+        Toast($"Saved {granted + revoked} change(s) — others pick this up within a minute or at next sign-in",
+            "admin_panel_settings");
+        return Redirect("/admin/users");
+    }
+
+    private sealed class MatrixLockoutException : Exception;
 
     private async Task AuditAsync(PlatformScope s, string action, string entity, long entityId, object after)
     {
