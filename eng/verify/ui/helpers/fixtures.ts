@@ -25,7 +25,7 @@ export async function registerPatient(
     // list), and the naive regex below would silently grab a stale id instead of failing loudly.
     DuplicatesAcknowledged: "true",
   });
-  const m = /ALT-\d{6}/.exec(text);
+  const m = /SEH-\d{6}/.exec(text);
   if (!m) throw new Error(`registration of "${fullName}" did not return a UHID (duplicate warning?): ${text.slice(0, 400)}`);
   return { uhid: m[0] };
 }

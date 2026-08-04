@@ -178,6 +178,33 @@
   }
 })();
 
+// Spec 0050 — sidebar groups fold. State is per browser (localStorage); the group holding the
+// active page always opens; with JS off nothing collapses (the server renders everything
+// expanded and the buttons are inert).
+(function () {
+  "use strict";
+  const groups = document.querySelectorAll("[data-nav-group]");
+  if (!groups.length) return;
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem("hms.nav.folds") || "{}"); } catch (e) { stored = {}; }
+  groups.forEach(function (g) {
+    const key = g.dataset.navGroup;
+    const btn = g.querySelector("[data-nav-toggle]");
+    if (!btn) return;
+    const hasActive = !!g.querySelector(".nav-item.active");
+    if (stored[key] && !hasActive) {
+      g.classList.add("collapsed");
+      btn.setAttribute("aria-expanded", "false");
+    }
+    btn.addEventListener("click", function () {
+      const folded = g.classList.toggle("collapsed");
+      btn.setAttribute("aria-expanded", folded ? "false" : "true");
+      stored[key] = folded;
+      try { localStorage.setItem("hms.nav.folds", JSON.stringify(stored)); } catch (e) { /* private mode */ }
+    });
+  });
+})();
+
 // Spec 0047 — the certificate form only offers admissions valid for the chosen kind. The
 // server enforces the same rule before issue; this removes the trap from the picker (§7 U7).
 (function () {

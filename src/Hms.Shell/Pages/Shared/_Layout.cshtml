@@ -42,6 +42,10 @@
     <title>@title — @Hospital.Name</title>
     <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" asp-append-version="true" />
+    @if (Hospital.LogoMark is { } favicon)
+    {
+        <link rel="icon" type="image/png" href="@favicon" asp-append-version="true" />
+    }
 </head>
 <body>
 <div class="shell">
@@ -49,29 +53,44 @@
     {
         <aside class="sidebar">
             <div class="brand">
-                <span class="brand-mark">@Hospital.Monogram</span>
+                <span class="brand-mark">
+                    @if (Hospital.LogoMark is { } mark)
+                    {
+                        <img src="@mark" alt="" asp-append-version="true" />
+                    }
+                    else
+                    {
+                        @Hospital.Monogram
+                    }
+                </span>
                 <span class="brand-text">
                     <span class="brand-name">@Hospital.Name</span>
                     <span class="brand-tagline">@Hospital.Tagline</span>
                 </span>
             </div>
             <nav class="rail-nav" aria-label="Modules">
+                @* Spec 0050: groups fold. The button + items wrapper degrade to a fully
+                   expanded rail with JS off; app.js persists per-group state per browser. *@
                 @foreach (var group in nav)
                 {
-                    <div class="nav-group">
-                        <div class="nav-group-title">
+                    <div class="nav-group" data-nav-group="@group.Label">
+                        <button type="button" class="nav-group-title" data-nav-toggle
+                                aria-expanded="true">
                             <span class="dept-dot" data-dept="@group.Module.ToLowerInvariant()"></span>
-                            @group.Label
+                            <span>@group.Label</span>
+                            <span class="icon nav-caret" aria-hidden="true">chevron_right</span>
+                        </button>
+                        <div class="nav-group-items">
+                            @foreach (var item in group.Items)
+                            {
+                                var active = path.Equals(item.Url, StringComparison.OrdinalIgnoreCase);
+                                <a class="nav-item @(active ? "active" : "")" href="@item.Url"
+                                   aria-current="@(active ? "page" : null)">
+                                    <span class="icon" aria-hidden="true">@item.Icon</span>
+                                    <span>@item.Title</span>
+                                </a>
+                            }
                         </div>
-                        @foreach (var item in group.Items)
-                        {
-                            var active = path.Equals(item.Url, StringComparison.OrdinalIgnoreCase);
-                            <a class="nav-item @(active ? "active" : "")" href="@item.Url"
-                               aria-current="@(active ? "page" : null)">
-                                <span class="icon" aria-hidden="true">@item.Icon</span>
-                                <span>@item.Title</span>
-                            </a>
-                        }
                     </div>
                 }
             </nav>

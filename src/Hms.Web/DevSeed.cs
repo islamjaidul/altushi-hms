@@ -115,8 +115,26 @@ public static class DevSeed
         var kdb = sp.GetRequiredService<KernelDbContext>();
         if (!await kdb.Branches.AnyAsync())
         {
-            kdb.Branches.Add(new Branch { Code = "MAIN", Name = "Altushi General Hospital" });
+            kdb.Branches.Add(new Branch { Code = "MAIN", Name = "Sylhet Evergreen Hospital" });
             await kdb.SaveChangesAsync();
+        }
+        // Spec 0050: the rebrand must reach databases seeded before it (the VM's MAIN row).
+        var legacyMain = await kdb.Branches.FirstOrDefaultAsync(
+            b => b.Code == "MAIN" && b.Name == "Altushi General Hospital");
+        if (legacyMain is not null)
+        {
+            legacyMain.Name = "Sylhet Evergreen Hospital";
+            await kdb.SaveChangesAsync();
+        }
+        // Spec 0050: the walk-in retail account predates the SEH- series on existing databases;
+        // PharmacySale looks it up by the new constant, so the old row is renamed in place
+        // (same patient id — sale history and dues-refusal stay attached).
+        var reg = sp.GetRequiredService<Hms.Registration.Data.RegDbContext>();
+        var legacyWalkIn = await reg.Patients.FirstOrDefaultAsync(p => p.Uhid == "ALT-WALKIN");
+        if (legacyWalkIn is not null)
+        {
+            legacyWalkIn.Uhid = PharmacySale.WalkInUhid;
+            await reg.SaveChangesAsync();
         }
 
         var roleMgr = sp.GetRequiredService<RoleManager<AppRole>>();

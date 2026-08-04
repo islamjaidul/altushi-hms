@@ -73,7 +73,7 @@ public class RegistrationTests : IAsyncLifetime
     {
         var a = await RegisterAsync(Cmd("Abdul Karim", "01711-000001", 40));
         var b = await RegisterAsync(Cmd("Rahima Begum", "01711-000002", 33));
-        Assert.StartsWith("ALT-", a.Uhid);
+        Assert.StartsWith("SEH-", a.Uhid);
         Assert.NotEqual(a.Uhid, b.Uhid);
 
         await using var kernel = CreateKernel(new NpgsqlConnection(_pg.ConnectionString));

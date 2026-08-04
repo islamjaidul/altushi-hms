@@ -21,17 +21,26 @@ public sealed record OrgIdentity(
     string Monogram,
     string FooterNote,
     string ProductName,
-    string DefaultShortcuts)
+    string DefaultShortcuts,
+    string? LogoMark = null,
+    string? LogoLockup = null)
 {
-    /// <summary>Reads <c>Org:*</c>, falling back to <c>Hospital:*</c>, then to the supplied defaults.</summary>
+    /// <summary>Reads <c>Org:*</c>, falling back to <c>Hospital:*</c>, then to the supplied defaults.
+    /// Spec 0050: <c>LogoMark</c>/<c>LogoLockup</c> are asset URLs the host supplies (or config
+    /// overrides); when null the text monogram renders instead — which is what the HRM SKU does,
+    /// so a hospital logo never appears on a payroll product (P27).</summary>
     public static OrgIdentity From(
         IConfiguration config,
         string defaultName,
         string defaultTagline,
         string productName = "Hospital ERP",
-        string shortcuts = "F2 New patient · F3 Item search · F10 Payment")
+        string shortcuts = "F2 New patient · F3 Item search · F10 Payment",
+        string? logoMark = null,
+        string? logoLockup = null)
     {
         string Value(string key, string fallback)
+            => config[$"Org:{key}"] ?? config[$"Hospital:{key}"] ?? fallback;
+        string? Optional(string key, string? fallback)
             => config[$"Org:{key}"] ?? config[$"Hospital:{key}"] ?? fallback;
 
         var name = Value("Name", defaultName);
@@ -39,13 +48,15 @@ public sealed record OrgIdentity(
         return new OrgIdentity(
             name,
             Value("Tagline", defaultTagline),
-            Value("Address", "VIP Road, Sheikhghat, Sylhet-3100"),
-            Value("Phone", "0821-719944, 01700-000000"),
+            Value("Address", "Evergreen Tower, Airport Road, Ambarkhana, Sylhet-3100"),
+            Value("Phone", "0821-728844, 01300-000000"),
             Value("Monogram", Initial(name)),
             Value("FooterNote",
                 "This is a computer generated document — no signature required for receipts."),
             productName,
-            shortcuts);
+            shortcuts,
+            Optional("LogoMark", logoMark),
+            Optional("LogoLockup", logoLockup));
     }
 
     /// <summary>

@@ -20,7 +20,7 @@ public static class PharmacySale
 
     /// <summary>The standing patient for anonymous retail. Credit (a due) is refused on it —
     /// an anonymous due can never be followed up.</summary>
-    public const string WalkInUhid = "ALT-WALKIN";
+    public const string WalkInUhid = "SEH-WALKIN";   // renamed with the series (spec 0050); DevSeed migrates the old row
 
     public static async Task<long> EnsureWalkInPatientAsync(TxScope s, long branchId, long actorId)
     {

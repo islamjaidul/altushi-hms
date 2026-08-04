@@ -1,7 +1,14 @@
 @model Letterhead
 @inject OrgIdentity Hospital
 <div class="sheet-head">
-    <span class="sheet-mark">@Hospital.Monogram</span>
+    @if (Hospital.LogoMark is { } mark)
+    {
+        <img class="sheet-logo" src="@mark" alt="" asp-append-version="true" />
+    }
+    else
+    {
+        <span class="sheet-mark">@Hospital.Monogram</span>
+    }
     <span>
         <div class="sheet-hospital">@Hospital.Name</div>
         <div class="sheet-contact">@Hospital.Address · @Hospital.Phone</div>

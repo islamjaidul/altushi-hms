@@ -55,7 +55,7 @@ url, html = recep.post("/registration/new", {
     "Phone": "01711223344", "Area": "Zindabazar", "PatientType": "general",
     "action": "save",
 })
-m = re.search(r"ALT-\d{6}", html)
+m = re.search(r"SEH-\d{6}", html)
 uhid = m.group(0) if m else None
 check(uhid is not None, f"UHID issued: {uhid}")
 

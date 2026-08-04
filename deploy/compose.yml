@@ -38,6 +38,8 @@ services:
       ConnectionStrings__Hms: "Host=db;Database=hms;Username=hms_migrator;Password=${HMS_DB_MIGRATOR_PASSWORD:-dev-only-migrator}"
       HMS_SMS_MODE: "${HMS_SMS_MODE:-simulation}"
       Seed__DevUsers: "${HMS_SEED:-false}"
+      # Spec 0049: permission edits propagate to signed-in users within a minute.
+      Auth__RevalidationMinutes: "1"
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
       interval: 10s

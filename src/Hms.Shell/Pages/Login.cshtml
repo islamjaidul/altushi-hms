@@ -16,12 +16,23 @@
        that has the old file cached. Without it a UI change is invisible until a hard refresh. *@
     <link rel="stylesheet" href="/_content/Hms.Shell/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="/_content/Hms.Shell/css/app.css" asp-append-version="true" />
+    @if (Org.LogoMark is { } favicon)
+    {
+        <link rel="icon" type="image/png" href="@favicon" asp-append-version="true" />
+    }
 </head>
 <body>
 <div class="login-wrap">
     <div class="login-shell">
         <aside class="login-aside">
-            <span class="brand-mark">@Org.Monogram</span>
+            @if (Org.LogoLockup is { } lockup)
+            {
+                <img class="login-logo" src="@lockup" alt="@Org.Name" asp-append-version="true" />
+            }
+            else
+            {
+                <span class="brand-mark">@Org.Monogram</span>
+            }
             <h1>@Org.Name</h1>
             <div class="tagline">@Org.Tagline</div>
             <div class="rule"></div>

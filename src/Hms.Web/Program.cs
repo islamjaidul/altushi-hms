@@ -179,7 +179,9 @@ builder.Services.AddSingleton<IRecurringJob, DailyJobScheduler>();
 builder.Services.AddSingleton<IJobHandler, DueRemindersHandler>();
 builder.Services.AddSingleton<IJobHandler, EodDigestHandler>();
 builder.Services.AddSingleton(OrgIdentity.From(
-    builder.Configuration, "Altushi General Hospital", "Hospital ERP"));
+    builder.Configuration, "Sylhet Evergreen Hospital", "Hospital ERP",
+    logoMark: "/_content/Hms.Shell/img/logo-mark.png",
+    logoLockup: "/_content/Hms.Shell/img/logo-lockup.png"));
 
 var app = builder.Build();
 

@@ -147,4 +147,11 @@
   --radius-pill: 2px;
   --sidebar-w: 226px;              /* measured off the reference, not its default prop */
   --content-min: 1080px;             /* 1366×768 first (§16.1 A2) */
+
+  /* ---- Evergreen brand (spec 0050) — sampled from the supplied logo --- */
+  --ev-green-deep: #06392b;
+  --ev-green: #0f9a5f;
+  --ev-teal: #0a6474;
+  --ev-teal-deep: #07414d;
+  --brand-chip-bg: #ffffff;
 }

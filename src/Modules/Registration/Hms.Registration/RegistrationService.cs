@@ -48,7 +48,7 @@ public sealed class RegistrationService(NumberSeriesService numbers, AuditWriter
     /// <summary>UHID series never fiscal-resets (ADR-0004) — scope key is the literal "ALL".</summary>
     public const string UhidSeries = "uhid";
     public const string UhidScope = "ALL";
-    public const string UhidFormat = "ALT-{n:D6}";
+    public const string UhidFormat = "SEH-{n:D6}";   // Sylhet Evergreen Hospital (spec 0050)
 
     /// <summary>
     /// Same phone OR (phonetic name match AND age band ±2y) → candidates (03 §2).

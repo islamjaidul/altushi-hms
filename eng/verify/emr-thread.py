@@ -86,7 +86,7 @@ check(len(hits) > 0, f"patient registered ({name})")
 if not hits:
     sys.exit(1)
 patient_id = str(hits[0]["value"])
-uhid = re.search(r"ALT-\d{6}", hits[0]["label"]).group(0)
+uhid = re.search(r"SEH-\d{6}", hits[0]["label"]).group(0)
 
 # The counter needs an open session before it can bill.
 session_html = counter.get("/billing/session")
