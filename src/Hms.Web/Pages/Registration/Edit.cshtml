@@ -1,8 +1,7 @@
-@page "/registration/new"
-@model Hms.Web.Pages.Registration.NewModel
-@inject OrgIdentity Hospital
+@page "/registration/{id:long}/edit"
+@model Hms.Web.Pages.Registration.EditModel
 @{
-    ViewData["Title"] = "New Patient";
+    ViewData["Title"] = Model.WasUnknown ? "Complete Patient Identity" : "Correct Patient Details";
     ViewData["Crumb"] = "Front Desk";
     ViewData["FKeys"] = "Enter advances · Tab to move · Alt+S saves";
 }
@@ -15,9 +14,20 @@
     </div>
 }
 
+@if (Model.WasUnknown)
+{
+    <div class="alert info">
+        <span class="icon icon-sm" aria-hidden="true">info</span>
+        <span>
+            <b>This patient was registered as unknown</b> — an emergency case, admitted before
+            anyone could say who he was. Filling the name in here keeps the same
+            <b>@Model.Uhid</b>: the same record, the same history, the same admission.
+            Never register him a second time.
+        </span>
+    </div>
+}
+
 @{
-    // Spec 0043: a name match and a shared household phone are different findings and are said
-    // differently. Only the first is a duplicate warning; the second is information.
     var likely = Model.LikelyDuplicates.ToList();
     var sharedPhone = Model.SharedPhone.ToList();
 }
@@ -28,15 +38,15 @@
         <span class="icon icon-sm" aria-hidden="true">warning</span>
         <span>
             <b>@likely.Count possible duplicate@(likely.Count == 1 ? "" : "s")</b> —
-            this patient may already be registered. Use the existing record if it is the same person,
-            otherwise continue below.
+            this name is already on another record. If it is the same person, these two records
+            need merging rather than one of them renamed. Continue below only if they are
+            different people.
             <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
                 @foreach (var d in likely)
                 {
                     <a class="btn-tint" href="/registration?q=@d.Uhid">
                         @d.FullName · @d.Uhid ·
                         @Ui.SexWord(d.Sex)@(d.AgeYears is { } y ? ", " + y : "")
-                        @(d.Phone is null ? "" : "· " + d.Phone)
                     </a>
                 }
             </div>
@@ -50,13 +60,13 @@
         <span class="icon icon-sm" aria-hidden="true">info</span>
         <span>
             <b>Someone else already uses this number</b> — family members often share one mobile.
-            Nothing is wrong; continue below if this is a different person.
+            Continue below if this is a different person.
             <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
                 @foreach (var d in sharedPhone)
                 {
                     <a class="btn-tint" href="/registration?q=@d.Uhid">
                         @d.FullName · @d.Uhid ·
-                        @Ui.SexWord(d.Sex)@(d.AgeYears is { } y ? ", " + y : "")
+                        @Ui.SexWord(d.Sex)@(d.AgeYears is { } y2 ? ", " + y2 : "")
                     </a>
                 }
             </div>
@@ -67,23 +77,29 @@
 <form method="post" class="grid grid-main-side">
     <div class="card">
         <div class="card-head">
-            New patient registration
+            @(Model.WasUnknown ? "Complete this patient's identity" : "Correct these details")
             <span class="spacer"></span>
             <span class="card-hint">Fields marked <span class="req">*</span> are required</span>
         </div>
 
         <div class="field-grid cols-3" style="padding:4px 20px 16px">
+            <div class="field">
+                <span class="field-label">Hospital ID</span>
+                @* Never an input: this is the identity every other module refers to. *@
+                <input class="input" value="@Model.Uhid" disabled />
+                <span class="help-text">Permanent — it cannot be changed.</span>
+            </div>
             <label class="field span-2">
                 <span class="field-label">Full name <span class="req">*</span></span>
                 <input class="input" asp-for="FullName" data-advance autofocus
                        placeholder="Patient's full name" autocomplete="off" />
             </label>
+
             <label class="field">
                 <span class="field-label">Age or date of birth <span class="req">*</span></span>
                 <input class="input" asp-for="AgeOrDob" data-advance placeholder="45  ·  8 months  ·  12/03/1980" />
                 <span class="help-text">Years, months or a date — all accepted.</span>
             </label>
-
             <label class="field">
                 <span class="field-label">Sex <span class="req">*</span></span>
                 <select class="select" asp-for="Sex" data-advance>
@@ -91,11 +107,13 @@
                     <option value="F">Female</option>
                     <option value="O">Other</option>
                 </select>
+                <span class="help-text">Used to pick the lab's reference range — worth getting right.</span>
             </label>
             <label class="field">
                 <span class="field-label">Mobile number</span>
                 <input class="input" asp-for="Phone" data-advance placeholder="01XXX-XXXXXX" inputmode="numeric" />
             </label>
+
             <label class="field">
                 <span class="field-label">Blood group</span>
                 <select class="select" asp-for="BloodGroup" data-advance>
@@ -106,13 +124,6 @@
                     }
                 </select>
             </label>
-
-            <label class="field">
-                <span class="field-label">Known allergies</span>
-                <input class="input" asp-for="Allergies" data-advance
-                       placeholder="penicillin, NSAIDs… (leave blank if none stated)" />
-            </label>
-
             <label class="field">
                 <span class="field-label">Guardian / attendant</span>
                 <input class="input" asp-for="Guardian" data-advance placeholder="Name (relation)" />
@@ -120,6 +131,12 @@
             <label class="field">
                 <span class="field-label">Area / Thana</span>
                 <input class="input" asp-for="Area" data-advance placeholder="e.g. Zindabazar" />
+            </label>
+
+            <label class="field span-2">
+                <span class="field-label">Known allergies</span>
+                <input class="input" asp-for="Allergies" data-advance
+                       placeholder="penicillin, NSAIDs… (leave blank if none stated)" />
             </label>
             <label class="field">
                 <span class="field-label">Patient type</span>
@@ -135,88 +152,36 @@
                 <span class="field-label">Full address</span>
                 <input class="input" asp-for="Address" data-advance placeholder="House, road, post office…" />
             </label>
-
-            <label class="field span-3 row" style="gap:8px">
-                <input type="checkbox" asp-for="UnknownIdentity" style="width:18px;height:18px" />
-                <span>
-                    <b>Identity unknown</b> — unconscious emergency case.
-                    <span class="help-text" style="display:inline">
-                        The system issues a UHID immediately; details are filled in later.
-                    </span>
-                </span>
-            </label>
         </div>
 
         <div class="row" style="padding:0 20px 18px;gap:10px">
-            <button type="submit" name="action" value="print" class="btn btn-primary btn-cta">
-                <span class="icon icon-sm" aria-hidden="true">badge</span> Register &amp; print ID card
+            <button type="submit" class="btn btn-primary btn-cta">
+                <span class="icon icon-sm" aria-hidden="true">save</span>
+                @(Model.WasUnknown ? "Save identity & print card" : "Save changes")
             </button>
-            <button type="submit" name="action" value="save" class="btn">Save only</button>
-            @* Spec 0043: the override is as loud as the finding behind it. Overriding a name
-               match is a real decision and stays red; confirming a shared household phone is
-               routine, so it is an ordinary button. *@
-            @if (likely.Count > 0)
+            @if (likely.Count > 0 || sharedPhone.Count > 0)
             {
-                <button type="submit" name="DuplicatesAcknowledged" value="true" class="btn btn-danger">
-                    Not a duplicate — register anyway
+                <button type="submit" name="DuplicatesAcknowledged" value="true"
+                        class="btn @(likely.Count > 0 ? "btn-danger" : "btn-primary")">
+                    @(likely.Count > 0 ? "Not a duplicate — save anyway" : "Yes, a different person — save")
                 </button>
             }
-            else if (sharedPhone.Count > 0)
-            {
-                <button type="submit" name="DuplicatesAcknowledged" value="true" class="btn btn-primary">
-                    Yes, a different person — register
-                </button>
-            }
+            <a class="btn" href="/registration/@Model.Id/card">Cancel</a>
             <span class="spacer"></span>
-            <span class="card-hint">A UHID and barcode ID card are generated on save.</span>
+            <span class="card-hint">Every change is recorded with your name and the time.</span>
         </div>
     </div>
 
     <div class="stack">
         <div class="card card-body">
-            <div style="font-weight:700;font-size:0.875rem;margin-bottom:10px">Photo &amp; fingerprint</div>
-            <div class="row" style="gap:10px">
-                <span class="dropzone">
-                    <span class="icon icon-xl" aria-hidden="true">person_add</span>
-                    Capture photo
-                </span>
-                <span class="dropzone">
-                    <span class="icon icon-xl" aria-hidden="true">badge</span>
-                    Scan finger
-                </span>
-            </div>
-            <div class="help-text">Biometric devices are not installed yet (§9A.3) — the fields are ready.</div>
-        </div>
-
-        <div class="idcard-panel">
-            <div class="idcard-cap">
-                <span class="icon icon-sm" aria-hidden="true">badge</span> ID card preview
-            </div>
-            <div class="idcard">
-                <div class="idcard-hosp">
-                    <span class="idcard-mark">@Hospital.Monogram</span>
-                    <span style="font-size:0.75rem;font-weight:800">@Hospital.Name</span>
-                </div>
-                <div class="idcard-name" data-card-name>Patient name</div>
-                <div class="idcard-reg">UHID issued on save</div>
-                <div class="barcode-preview"></div>
-                <div class="barcode-text">ALT ⋅ ⋅ ⋅ ⋅ ⋅ ⋅</div>
-            </div>
+            <div class="card-head" style="padding:0 0 10px">What this does not change</div>
+            <ul style="margin:0 0 0 18px;font-size:0.8125rem;line-height:1.7">
+                <li>The <b>hospital ID</b> stays the same, for life.</li>
+                <li>Every invoice, report and admission already issued keeps the name it was
+                    issued under — history is never rewritten.</li>
+                <li>Lab results already released keep the reference range they were judged
+                    against, even if the sex or age changes here.</li>
+            </ul>
         </div>
     </div>
 </form>
-
-@section Scripts {
-<script>
-  // Live card preview — the operator sees what will print before it prints (05 §4 doc+preview).
-  (function () {
-    const name = document.getElementById("FullName");
-    const out = document.querySelector("[data-card-name]");
-    if (name && out) {
-      name.addEventListener("input", () => {
-        out.textContent = name.value.trim() || "Patient name";
-      });
-    }
-  })();
-</script>
-}

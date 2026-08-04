@@ -161,6 +161,9 @@ ROUTES = {
     "/registration": "registration.read",
     "/registration/1/card": "registration.read",
     "/registration/new": "registration.create",
+    # Spec 0045: completing an unknown patient's identity is the front desk's own job, so it
+    # rides `registration.create` rather than inventing a permission every deployment must grant.
+    "/registration/1/edit": "registration.create",
 }
 
 # The one screen each role opens first — its core duty, asserted positively.

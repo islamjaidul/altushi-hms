@@ -105,6 +105,68 @@ public class RegistrationTests : IAsyncLifetime
         Assert.Contains(candidates, c => c.Phone == "01755-555555");
     }
 
+    /// <summary>
+    /// Spec 0043. One household, one mobile: registering a wife on her husband's number must not
+    /// be presented as "this patient may already be registered". The row still comes back — it is
+    /// how a returning patient without a card is found — but it carries why it matched, so the
+    /// screen can say "family member" instead of "duplicate".
+    /// </summary>
+    [Fact]
+    public async Task A_shared_household_phone_is_matched_on_phone_only()
+    {
+        await RegisterAsync(Cmd("Jidul Islam", "01726-688748", 40));
+
+        await using var reg = CreateReg(null);
+        var candidates = await _svc.FindDuplicatesAsync(reg, "Jannatul Ferdous", "01726-688748", 36);
+
+        var husband = Assert.Single(candidates, c => c.FullName == "Jidul Islam");
+        Assert.True(husband.PhoneMatch);
+        Assert.False(husband.NameMatch);
+        Assert.True(husband.IsPhoneOnly);       // → the calm "someone else uses this number" block
+    }
+
+    /// <summary>The other half of the same rule: a real name match is still a real duplicate.</summary>
+    [Fact]
+    public async Task A_phonetic_name_match_is_reported_as_a_duplicate_not_a_family_member()
+    {
+        await RegisterAsync(Cmd("Mohammed Rahman", "01744-444444", 50));
+
+        await using var reg = CreateReg(null);
+        var candidates = await _svc.FindDuplicatesAsync(reg, "Muhammad Rahman", "01799-888888", 51);
+
+        var same = Assert.Single(candidates, c => c.FullName == "Mohammed Rahman");
+        Assert.True(same.NameMatch);
+        Assert.False(same.PhoneMatch);          // different number entirely
+        Assert.False(same.IsPhoneOnly);         // → keeps the red warning and the override
+    }
+
+    /// <summary>Same person, same number: both branches fire, and a duplicate outranks a family member.</summary>
+    [Fact]
+    public async Task A_name_and_phone_match_together_is_never_demoted_to_a_shared_phone()
+    {
+        await RegisterAsync(Cmd("Rafiqul Islam", "01766-777777", 34));
+
+        await using var reg = CreateReg(null);
+        var candidates = await _svc.FindDuplicatesAsync(reg, "Rofiqul Islam", "01766-777777", 34);
+
+        var same = Assert.Single(candidates, c => c.FullName == "Rafiqul Islam");
+        Assert.True(same.NameMatch);
+        Assert.True(same.PhoneMatch);
+        Assert.False(same.IsPhoneOnly);
+    }
+
+    /// <summary>The sex the screen prints beside a candidate has to be the stored one.</summary>
+    [Fact]
+    public async Task A_candidate_carries_the_sex_the_screen_shows()
+    {
+        await RegisterAsync(Cmd("Shahana Begum", "01777-333333", 29) with { Sex = 'F' });
+
+        await using var reg = CreateReg(null);
+        var candidates = await _svc.FindDuplicatesAsync(reg, "Anyone Else", "01777-333333", 60);
+
+        Assert.Equal('F', Assert.Single(candidates).Sex);
+    }
+
     [Fact]
     public async Task Unknown_emergency_registers_without_identity()
     {
@@ -203,5 +265,128 @@ public class RegistrationTests : IAsyncLifetime
     {
         var p = await RegisterAsync(Cmd("Nurul Islam", "01766-000015", age: 30));
         Assert.Equal("general", (await ReloadAsync(p.Id)).PatientType);
+    }
+
+    // ---- spec 0045: US1.4's second half, "details completed later" ----
+
+    private UpdatePatientCommand Upd(long id, string? name, char sex = 'M', short? age = null,
+        string? phone = null, DateOnly? dob = null) =>
+        new(id, name, sex, dob, age, null, false, phone, null, "Sylhet", null,
+            null, null, 7, "Jashim");
+
+    /// <summary>
+    /// The case that named the spec: a casualty registered with no name, given one an hour later
+    /// when his brother arrives. Before this, the only way to record the name was a second UHID.
+    /// </summary>
+    [Fact]
+    public async Task An_unknown_casualty_can_be_given_his_name_on_the_same_record()
+    {
+        var casualty = await RegisterAsync(Cmd("", phone: null, age: null, unknown: true));
+        Assert.StartsWith("UNKNOWN", casualty.FullName);
+        var uhid = casualty.Uhid;
+
+        await UpdateAsync(Upd(casualty.Id, "Shahidul Mia", age: 41, phone: "01712-345678"));
+
+        var after = await ReloadAsync(casualty.Id);
+        Assert.Equal("Shahidul Mia", after.FullName);
+        Assert.Equal(uhid, after.Uhid);              // same identity, for life (§5 M1)
+        Assert.False(after.UnknownIdentity);         // he is no longer a casualty on paper
+        Assert.Equal((short)41, after.AgeYears);
+        Assert.Equal("01712-345678", after.Phone);
+    }
+
+    /// <summary>One patient, one record — the whole point of not registering him twice.</summary>
+    [Fact]
+    public async Task Completing_an_identity_creates_no_second_patient()
+    {
+        var before = await CountPatientsAsync();
+        var casualty = await RegisterAsync(Cmd("", phone: null, age: null, unknown: true));
+        // Phonetically distinct from every other fixture in this file on purpose: these tests
+        // share one database, and dmetaphone encodes the START of a name, so "Rafiqul Bepari"
+        // would collide with the spec-0043 "Rafiqul Islam" case and break its Assert.Single.
+        await UpdateAsync(Upd(casualty.Id, "Delwar Sardar", age: 33));
+
+        Assert.Equal(before + 1, await CountPatientsAsync());
+    }
+
+    [Fact]
+    public async Task A_correction_records_what_the_value_used_to_be()
+    {
+        var p = await RegisterAsync(Cmd("Mistyped Nam", "01711-000111", 30));
+        await UpdateAsync(Upd(p.Id, "Corrected Name", age: 30, phone: "01711-000111"));
+
+        await using var kernel = CreateKernel(new NpgsqlConnection(_pg.ConnectionString));
+        await kernel.Database.OpenConnectionAsync();
+        var ev = await kernel.AuditEvents
+            .Where(e => e.Entity == "reg.patient" && e.EntityId == p.Id && e.Action == "patient.update")
+            .OrderByDescending(e => e.Id).FirstOrDefaultAsync();
+
+        Assert.NotNull(ev);
+        Assert.Contains("Corrected Name", ev!.After);
+        Assert.Contains("Mistyped Nam", ev.After);      // the PREVIOUS value, not only the new one
+        Assert.Contains("full_name", ev.After);
+    }
+
+    /// <summary>The identity every other module refers to is not on the command at all.</summary>
+    [Fact]
+    public async Task The_uhid_cannot_be_changed()
+    {
+        var p = await RegisterAsync(Cmd("Keeps His Id", "01711-000222", 44));
+        var uhid = p.Uhid;
+        await UpdateAsync(Upd(p.Id, "Still Keeps It", age: 44));
+
+        Assert.Equal(uhid, (await ReloadAsync(p.Id)).Uhid);
+    }
+
+    [Fact]
+    public async Task An_identified_patient_cannot_have_his_name_removed()
+    {
+        var p = await RegisterAsync(Cmd("Has A Name", "01711-000333", 25));
+        await Assert.ThrowsAsync<ArgumentException>(() => UpdateAsync(Upd(p.Id, "")));
+    }
+
+    /// <summary>An unknown record may still be saved nameless — the ER path is not a one-shot.</summary>
+    [Fact]
+    public async Task An_unknown_patient_may_be_updated_while_still_nameless()
+    {
+        var casualty = await RegisterAsync(Cmd("", phone: null, age: null, unknown: true));
+        await UpdateAsync(Upd(casualty.Id, "", phone: "01799-556677"));
+
+        var after = await ReloadAsync(casualty.Id);
+        Assert.StartsWith("UNKNOWN", after.FullName);
+        Assert.True(after.UnknownIdentity);          // still unknown — only a name clears it
+        Assert.Equal("01799-556677", after.Phone);   // but the attendant's number is captured
+    }
+
+    /// <summary>A DOB supersedes both age columns here exactly as it does at registration.</summary>
+    [Fact]
+    public async Task A_date_of_birth_supersedes_an_age_on_correction()
+    {
+        var p = await RegisterAsync(Cmd("Age Then Dob", "01711-000444", 50));
+        await UpdateAsync(Upd(p.Id, "Age Then Dob", dob: new DateOnly(1980, 3, 12)));
+
+        var after = await ReloadAsync(p.Id);
+        Assert.Equal(new DateOnly(1980, 3, 12), after.Dob);
+        Assert.Null(after.AgeYears);
+    }
+
+    private async Task<Patient> UpdateAsync(UpdatePatientCommand cmd)
+    {
+        await using var conn = new NpgsqlConnection(_pg.ConnectionString);
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+        await using var reg = CreateReg(conn);
+        await using var kernel = CreateKernel(conn);
+        await reg.Database.UseTransactionAsync(tx);
+        await kernel.Database.UseTransactionAsync(tx);
+        var p = await _svc.UpdateAsync(reg, kernel, cmd);
+        await tx.CommitAsync();
+        return p;
+    }
+
+    private async Task<int> CountPatientsAsync()
+    {
+        await using var reg = CreateReg(null);
+        return await reg.Patients.CountAsync();
     }
 }

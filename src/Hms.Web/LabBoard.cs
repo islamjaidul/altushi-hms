@@ -13,7 +13,11 @@ public sealed record LabCard(
     char Sex, short? AgeYears,
     IReadOnlyList<LabTest> Tests, IReadOnlyList<LabSample> Samples,
     string Stage, long Due, DateTimeOffset PromisedAt, DateTimeOffset CreatedAt,
-    IReadOnlyList<string> Departments)
+    IReadOnlyList<string> Departments,
+    // US9.3, spec 0044: "I focus attention where it matters" has to be true of the QUEUE, not
+    // only of an order once it is opened. Derived from flags already stored with the values, so
+    // it costs no extra query.
+    bool HasCritical = false)
 {
     public bool Held => Due > 0;
     public string TestList => string.Join(" · ", Tests.Select(t => t.Name));
@@ -123,6 +127,13 @@ public static class LabBoard
             var patient = patients.GetValueOrDefault(order.PatientId);
             var due = order.InvoiceId is { } inv ? dues.GetValueOrDefault(inv) : 0;
 
+            // Spec 0044: read the flags already stored with the values (§7 U12) rather than
+            // re-judging them — a released report must keep the flag it was signed with.
+            var hasCritical = results
+                .Where(r => myIds.Contains(r.OrderTestId))
+                .Any(r => ResultValues.Parse(r.Values).Values
+                    .Any(v => ResultFlags.IsCritical(v.Flag)));
+
             cards.Add(new LabCard(
                 order.Id, "LB-" + order.Id.ToString("D5"),
                 patient?.FullName ?? "(unknown)", patient?.Uhid ?? "—", patient?.Phone,
@@ -131,7 +142,8 @@ public static class LabBoard
                 StageOf(order.Id, tests, mySamples, delivered),
                 due, order.PromisedAt, order.CreatedAt,
                 mine.Select(ot => catalog.TryGetValue(ot.TestCatalogId, out var c) ? c.Dept : "Other")
-                    .Distinct().OrderBy(d => d).ToList()));
+                    .Distinct().OrderBy(d => d).ToList(),
+                hasCritical));
         }
         return cards;
     }

@@ -12,6 +12,8 @@ namespace Hms.Web.Pages.Registration;
 [Authorize(Policy = Perm.RegistrationRead)]
 public class CardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
 {
+    /// <summary>Spec 0045: the card links to the edit screen, so it needs the patient's id.</summary>
+    public long Id { get; private set; }
     public string Uhid { get; private set; } = "";
     public string FullName { get; private set; } = "";
     public string Age { get; private set; } = "";
@@ -49,6 +51,7 @@ public class CardModel(HmsTx tx, TimeProvider clock) : HmsPageModel
         });
         if (patient is null) return NotFound();
 
+        Id = patient.Id;
         Uhid = patient.Uhid;
         FullName = patient.FullName;
         Sex = patient.Sex;

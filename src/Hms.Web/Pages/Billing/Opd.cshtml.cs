@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Hms.Admin;
+using Hms.Appointments.Data;
 using Hms.Billing;
 using Hms.Billing.Data;
 using Hms.Kernel.Approvals;
@@ -13,6 +14,23 @@ namespace Hms.Web.Pages.Billing;
 public sealed record CatalogItem(long Id, string Code, string Name, string Dept, long Price, long RateVersionId);
 public sealed record CartLine(long CatalogId, string Name, long Price);
 public sealed record UnbilledLine(string Description, long Amount, string Source);
+
+/// <summary>
+/// Today's serial for the selected patient, and the consultation it implies (spec 0043). The
+/// receptionist already recorded patient → doctor → serial; without this the cashier searched the
+/// whole hospital catalogue for a line the hospital had already decided on.
+/// <para>
+/// <paramref name="ServiceId"/> is null when the doctor has no consultation service configured
+/// (<c>/admin/people</c>) or has no rate effective today — the banner then names the doctor and
+/// offers no button, rather than guessing a charge.
+/// </para>
+/// </summary>
+public sealed record ApptSuggestion(
+    int SerialNo, string DoctorName, string State,
+    long? ServiceId, string? ServiceName, long Price)
+{
+    public bool CanAdd => ServiceId is > 0;
+}
 
 /// <summary>
 /// 05 §5 screen 4 — the POS template. The cart lives in the form, not in the database: nothing
@@ -50,6 +68,8 @@ public class OpdModel(
     public long ApprovedDiscountId { get; private set; }
     public long ApprovedDiscountAmount { get; private set; }
     public bool DiscountPending { get; private set; }
+    /// <summary>Set when this patient holds a live serial today (spec 0043).</summary>
+    public ApptSuggestion? Suggestion { get; private set; }
 
     public long CartTotal => Cart.Sum(c => c.Price);
     public long UnbilledTotal => Unbilled.Sum(u => u.Amount);
@@ -155,9 +175,73 @@ public class OpdModel(
                 DiscountPending = await s.Kernel.ApprovalRequests.AnyAsync(a =>
                     a.Type == "discount" && a.SourceTable == "reg.patient" && a.SourceId == pid
                     && a.State == ApprovalState.Pending);
+
+                Suggestion = await BuildSuggestionAsync(s, pid, today, byId);
             }
             return 0;
         });
+    }
+
+    /// <summary>
+    /// The seam this screen was missing (spec 0043): the appointments module is written to by the
+    /// receptionist and, until now, read by nobody downstream — so the cashier re-selected by hand
+    /// the consultation the hospital had already named. Same principle as <see cref="Unbilled"/>
+    /// above: the operator never re-types what the hospital already knows.
+    /// <para>
+    /// Suggest-only. Nothing enters the cart without the cashier pressing the button, because a
+    /// charge that appears on its own is a charge nobody chose.
+    /// </para>
+    /// </summary>
+    private async Task<ApptSuggestion?> BuildSuggestionAsync(
+        TxScope s, long patientId, DateOnly today, IReadOnlyDictionary<long, CatalogItem> catalogById)
+    {
+        // A serial that is done, cancelled or a no-show is not a consultation waiting to be paid
+        // for. `done` is excluded deliberately: the doctor has seen the patient, and on this
+        // product's flow that only happens after billing, so re-offering it would double-charge.
+        string[] live = [AppointmentState.Booked, AppointmentState.Arrived, AppointmentState.InChamber];
+
+        var appt = await s.Appt.Appointments.AsNoTracking()
+            .Where(a => a.PatientId == patientId && a.OnDate == today && live.Contains(a.State))
+            .OrderByDescending(a => a.Id)
+            .FirstOrDefaultAsync();
+        if (appt is null) return null;
+
+        var doctor = await s.Appt.Doctors.AsNoTracking()
+            .SingleOrDefaultAsync(d => d.Id == appt.DoctorId);
+        // The schedule carries the display snapshot; fall back to it so an appointment always
+        // renders a name even if the master row was deactivated.
+        var name = doctor?.Name
+            ?? (await s.Appt.Schedules.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.DoctorId == appt.DoctorId))?.DoctorName
+            ?? "Doctor";
+
+        if (doctor?.ConsultationServiceId is not { } serviceId)
+            return new ApptSuggestion(appt.SerialNo, name, appt.State, null, null, 0);
+
+        // Already in the cart, or already raised by another counter and sitting in Unbilled —
+        // either way the patient is being charged for it once, and offering it again is how a
+        // double charge gets made by an operator who trusts the screen.
+        if (Items.Contains(serviceId)) return null;
+
+        if (!catalogById.TryGetValue(serviceId, out var item))
+            // Inactive, or no rate effective today. Name the doctor, offer nothing.
+            return new ApptSuggestion(appt.SerialNo, name, appt.State, null, null, 0);
+
+        if (Unbilled.Any(u => u.Description == item.Name)) return null;
+
+        return new ApptSuggestion(appt.SerialNo, name, appt.State, item.Id, item.Name, item.Price);
+    }
+
+    /// <summary>
+    /// Accepting the suggestion. Deliberately not <see cref="OnPostAddAsync"/>: same effect, but a
+    /// distinct handler means the audit trail can tell a line the system proposed from one the
+    /// cashier hunted down, which is the only way to know later whether this helped.
+    /// </summary>
+    public async Task<IActionResult> OnPostAddSuggestionAsync(long catalogId)
+    {
+        Items.Add(catalogId);
+        await LoadAsync();
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAddAsync(long catalogId)

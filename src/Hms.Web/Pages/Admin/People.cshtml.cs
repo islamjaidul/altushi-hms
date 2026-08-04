@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Hms.Admin;
 using Hms.Admin.Data;
 using Hms.Appointments.Data;
 using Microsoft.AspNetCore.Authorization;
@@ -7,9 +8,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Hms.Web.Pages.Admin;
 
-public sealed record DoctorRow(long DoctorId, string Name, string? Room, int MaxSerials, TimeOnly From, TimeOnly To);
+public sealed record DoctorRow(
+    long DoctorId, string Name, string? Room, int MaxSerials, TimeOnly From, TimeOnly To,
+    long? ConsultationServiceId, string? ConsultationLabel);
 public sealed record ReferrerRow(long Id, string Code, string Name, string Kind, string? Area, string? Phone, short Commission, bool Active);
 public sealed record ConsultantRow(long Id, string Name, string Degrees, string? Bmdc, string Departments, bool Active);
+
+/// <summary>A consultation service an administrator can attach to a doctor, at today's rate.</summary>
+public sealed record ConsultOption(long Id, string Code, string Name, long Price);
 
 /// <summary>
 /// The people masters the MVP needs: doctors whose schedules issue serials (§5 M3 [M]),
@@ -18,12 +24,14 @@ public sealed record ConsultantRow(long Id, string Name, string Degrees, string?
 /// on an issued document has to stay readable (§8 N5).
 /// </summary>
 [Authorize(Policy = Perm.AdminMastersManage)]
-public class PeopleModel(HmsTx tx) : HmsPageModel
+public class PeopleModel(HmsTx tx, RateResolver rates, TimeProvider clock) : HmsPageModel
 {
     [BindProperty, StringLength(Bounds.Name)] public string? Name { get; set; }
     [BindProperty, StringLength(Bounds.Code)] public string? Room { get; set; }
     [BindProperty, Range(1, 500, ErrorMessage = "Serials per day must be between 1 and 500")]
     public int MaxSerials { get; set; } = 40;
+    /// <summary>Spec 0043: what the OPD counter should offer for this doctor. 0 = leave unset.</summary>
+    [BindProperty] public long ConsultationServiceId { get; set; }
     [BindProperty, StringLength(Bounds.Code)] public string? Code { get; set; }
     [BindProperty, StringLength(Bounds.Code)] public string Kind { get; set; } = "doctor";
     [BindProperty, StringLength(Bounds.Name)] public string? Area { get; set; }
@@ -36,17 +44,48 @@ public class PeopleModel(HmsTx tx) : HmsPageModel
     public IReadOnlyList<DoctorRow> Doctors { get; private set; } = [];
     public IReadOnlyList<ReferrerRow> Referrers { get; private set; } = [];
     public IReadOnlyList<ConsultantRow> Consultants { get; private set; } = [];
+    public IReadOnlyList<ConsultOption> ConsultOptions { get; private set; } = [];
 
     public async Task OnGetAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
+        var today = DateOnly.FromDateTime(Ui.Local(clock.GetUtcNow()).DateTime);
+
         (Doctors, Referrers, Consultants) = await tx.RunAsync(async s =>
         {
+            // Spec 0043: the consultation services a doctor can be pointed at, priced at today's
+            // rate so the administrator picks by what the patient will actually pay. A service
+            // with no rate today is not offered — same rule as the OPD catalogue (§7 U7, edge 11).
+            var consultServices = await s.Adm.Services.AsNoTracking()
+                .Where(x => x.Active && x.Kind == "consult")
+                .OrderBy(x => x.Name).ToListAsync();
+            var options = new List<ConsultOption>();
+            foreach (var svc in consultServices)
+            {
+                try
+                {
+                    var rate = await rates.ResolveAsync(s.Adm, "service", svc.Id, today);
+                    options.Add(new ConsultOption(svc.Id, svc.Code, svc.Name, rate.Price));
+                }
+                catch (RateResolutionException) { }
+            }
+            ConsultOptions = options;
+            var labelById = options.ToDictionary(o => o.Id, o => $"{o.Name} — {Ui.Money(o.Price)}");
+
+            var doctorFees = await s.Appt.Doctors.AsNoTracking()
+                .ToDictionaryAsync(d => d.Id, d => d.ConsultationServiceId);
+
             var docs = (await s.Appt.Schedules.AsNoTracking().ToListAsync())
                 .GroupBy(x => x.DoctorId)
-                .Select(g => new DoctorRow(g.Key, g.First().DoctorName, g.First().Room,
-                    g.First().MaxSerials, g.First().SlotFrom, g.First().SlotTo))
+                .Select(g =>
+                {
+                    var serviceId = doctorFees.GetValueOrDefault(g.Key);
+                    return new DoctorRow(g.Key, g.First().DoctorName, g.First().Room,
+                        g.First().MaxSerials, g.First().SlotFrom, g.First().SlotTo,
+                        serviceId,
+                        serviceId is { } id ? labelById.GetValueOrDefault(id) : null);
+                })
                 .OrderBy(d => d.Name).ToList();
 
             var refs = await s.Adm.Referrers.AsNoTracking().OrderBy(r => r.Name)
@@ -72,7 +111,12 @@ public class PeopleModel(HmsTx tx) : HmsPageModel
             // two administrators adding doctors at the same moment get two distinct identities
             // by construction. The doctor row must exist before the schedule row: the schedule
             // carries a foreign key to it.
-            var doctor = new Doctor { Name = Name!.Trim() };
+            var doctor = new Doctor
+            {
+                Name = Name!.Trim(),
+                // 0 is the "— not set —" option, not a service id (spec 0043).
+                ConsultationServiceId = ConsultationServiceId > 0 ? ConsultationServiceId : null,
+            };
             s.Appt.Doctors.Add(doctor);
             await s.Appt.SaveChangesAsync();
 
@@ -86,6 +130,29 @@ public class PeopleModel(HmsTx tx) : HmsPageModel
             return 0;
         });
         Toast($"{Name} added — serials can be issued now", "person_add");
+        return Redirect("/admin/people");
+    }
+
+    /// <summary>
+    /// Spec 0043: point an existing doctor at the consultation the OPD counter should offer.
+    /// Separate from the add form because the four seeded doctors — and any created before this
+    /// existed — would otherwise be unreachable without SQL, which AC3 forbids.
+    /// </summary>
+    public async Task<IActionResult> OnPostDoctorFeeAsync(long doctorId)
+    {
+        var name = await tx.RunAsync(async s =>
+        {
+            var doctor = await s.Appt.Doctors.SingleOrDefaultAsync(d => d.Id == doctorId);
+            if (doctor is null) return null;
+            doctor.ConsultationServiceId = ConsultationServiceId > 0 ? ConsultationServiceId : null;
+            await s.Appt.SaveChangesAsync();
+            return doctor.Name;
+        });
+
+        if (name is null) { await LoadAsync(); Fail("That doctor no longer exists."); return Page(); }
+        Toast(ConsultationServiceId > 0
+            ? $"{name}'s consultation fee set — the OPD counter will offer it"
+            : $"{name}'s consultation fee cleared", "payments");
         return Redirect("/admin/people");
     }
 

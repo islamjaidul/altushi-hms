@@ -307,6 +307,35 @@ public static class DevSeed
         }
         if (backfilled > 0) await adm.SaveChangesAsync();
 
+        // Spec 0043: point each doctor at the consultation the OPD counter should offer. It runs
+        // here, not with the doctors above, because adm.service does not exist yet at that point —
+        // and it is a backfill (`is null`) so a database seeded by an earlier build gains the link
+        // on its next boot rather than staying silently unset.
+        var consultCodes = await adm.Services.AsNoTracking()
+            .Where(x => x.Kind == "consult")
+            .ToDictionaryAsync(x => x.Code, x => x.Id);
+        if (consultCodes.Count > 0)
+        {
+            // Two specialists and two generalists, so the counter's behaviour is exercised on both
+            // rates rather than looking correct because everything costs the same.
+            var byName = new Dictionary<string, string>
+            {
+                ["Dr. Kamrul Hasan"] = "CON-GEN",       // Medicine
+                ["Dr. Nusrat Jahan"] = "CON-SPC",       // Gynae & Obs
+                ["Dr. Sohel Rana"] = "CON-SPC",         // Cardiology
+                ["Dr. Ashraf Ali"] = "CON-GEN",         // Paediatrics
+            };
+            var linked = 0;
+            foreach (var doc in await appt.Doctors.Where(d => d.ConsultationServiceId == null).ToListAsync())
+            {
+                var code = byName.GetValueOrDefault(doc.Name, "CON-GEN");
+                if (!consultCodes.TryGetValue(code, out var serviceId)) continue;
+                doc.ConsultationServiceId = serviceId;
+                linked++;
+            }
+            if (linked > 0) await appt.SaveChangesAsync();
+        }
+
         await SeedPharmacyAsync(sp, kdb);
         await SeedIpdAsync(sp, kdb);
         await SeedOtAsync(sp);

@@ -47,6 +47,60 @@ public class NavComposerTests
         Assert.Equal(3, nav.Count);
         Assert.Equal(5, nav.Sum(g => g.Items.Count));
     }
+
+    // ---- spec 0043: grouping is by the label the operator reads, not by module ----
+
+    /// <summary>
+    /// The shape that produced the defect: one module leads with an item labelled for a
+    /// *different* group. Grouping by module and titling from Items[0] gave that module's
+    /// remaining labels away.
+    /// </summary>
+    private static readonly NavItem[] Mixed =
+    [
+        new("Registration", "New Patient", "/registration/new", "p", "i", "Front Desk"),
+        new("Ipd", "Help Desk", "/frontdesk", "p", "i", "Front Desk"),
+        new("Ipd", "Ward Board", "/ipd/board", "p", "i", "Indoor (IPD)"),
+        new("Ipd", "Certificates", "/ipd/certificates", "p", "i", "Indoor (IPD)"),
+    ];
+
+    [Fact]
+    public void A_group_label_is_never_shown_twice()
+    {
+        var nav = NavComposer.Compose(Mixed, ["p"], ["Registration", "Ipd"]);
+
+        Assert.Equal(nav.Select(g => g.Label).Distinct(), nav.Select(g => g.Label));
+    }
+
+    [Fact]
+    public void An_items_own_label_survives_a_module_that_leads_with_another()
+    {
+        var nav = NavComposer.Compose(Mixed, ["p"], ["Registration", "Ipd"]);
+
+        // Before the fix both of these failed: every Ipd item landed under "Front Desk".
+        var indoor = Assert.Single(nav, g => g.Label == "Indoor (IPD)");
+        Assert.Equal(["Ward Board", "Certificates"], indoor.Items.Select(i => i.Title));
+
+        var front = Assert.Single(nav, g => g.Label == "Front Desk");
+        Assert.Equal(["New Patient", "Help Desk"], front.Items.Select(i => i.Title));
+    }
+
+    [Fact]
+    public void Groups_keep_registry_order()
+        => Assert.Equal(
+            ["Front Desk", "Indoor (IPD)"],
+            NavComposer.Compose(Mixed, ["p"], ["Registration", "Ipd"]).Select(g => g.Label));
+
+    [Fact]
+    public void Merging_two_modules_into_one_label_still_respects_entitlement()
+    {
+        // Ipd unlicensed: "Front Desk" must survive with the Registration item only, never
+        // gaining Help Desk because it shares the heading (ADR-0016 — merging is cosmetic).
+        var nav = NavComposer.Compose(Mixed, ["p"], ["Registration"]);
+
+        var front = Assert.Single(nav);
+        Assert.Equal("Front Desk", front.Label);
+        Assert.Equal(["New Patient"], front.Items.Select(i => i.Title));
+    }
 }
 
 public class PermissionPolicyTests

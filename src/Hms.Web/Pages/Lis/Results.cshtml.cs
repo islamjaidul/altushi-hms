@@ -9,7 +9,10 @@ namespace Hms.Web.Pages.Lis;
 
 public sealed record EntryParameter(
     string Code, string Name, string Unit, string Range, string BandLabel,
-    decimal? Low, decimal? High, string? Existing);
+    decimal? Low, decimal? High, string? Existing,
+    // Spec 0044: the panic bounds travel to the grid so the technologist sees a critical value
+    // as they type it, not at verification an hour later.
+    decimal? CriticalLow = null, decimal? CriticalHigh = null);
 public sealed record EntryTest(
     long OrderTestId, string Name, bool HasResult, bool NarrativeOnly,
     IReadOnlyList<EntryParameter> Parameters, string? Narrative);
@@ -67,7 +70,8 @@ public class ResultsModel(HmsTx tx, LisService lis) : HmsPageModel
                         var band = p.BandFor(Selected!.Sex, Selected.AgeYears);
                         return new EntryParameter(p.Code, p.Name, p.Unit,
                             band?.Text ?? "—", band?.Label ?? "", band?.Low, band?.High,
-                            stored.TryGetValue(p.Code, out var v) ? v.Value : null);
+                            stored.TryGetValue(p.Code, out var v) ? v.Value : null,
+                            band?.CriticalLow, band?.CriticalHigh);
                     })
                     .ToList();
 

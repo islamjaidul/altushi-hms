@@ -40,6 +40,19 @@ public class NewModel(
     public IReadOnlyList<DuplicateCandidate> Duplicates { get; private set; } = [];
     public string NextUhidHint { get; private set; } = "";
 
+    /// <summary>
+    /// The rows whose <em>name</em> matched — the ones that really may be this patient already.
+    /// These keep the red warning and the "register anyway" override.
+    /// </summary>
+    public IEnumerable<DuplicateCandidate> LikelyDuplicates => Duplicates.Where(d => d.NameMatch);
+
+    /// <summary>
+    /// Matched on the phone alone (spec 0043). A husband, a wife, a son on one household mobile —
+    /// shown so the operator can spot a genuine mistake, but never called a duplicate, because
+    /// nine times out of ten it is not one and a warning that cries wolf stops being read.
+    /// </summary>
+    public IEnumerable<DuplicateCandidate> SharedPhone => Duplicates.Where(d => d.IsPhoneOnly);
+
     public void OnGet() { }
 
     /// <summary>
@@ -128,6 +141,12 @@ public class NewModel(
                 registration.FindDuplicatesAsync(s.Reg, FullName, phone, years));
             if (Duplicates.Count > 0) return Page();
         }
+
+        // A submit button carries one name/value pair, and the confirm buttons spend theirs on
+        // DuplicatesAcknowledged — so `action` arrived null and the ID card silently never
+        // printed for any patient who tripped the duplicate check. Confirming *is* the decision
+        // to register this patient, and a registered patient gets a card (spec 0043).
+        if (DuplicatesAcknowledged && string.IsNullOrEmpty(action)) action = "print";
 
         try
         {

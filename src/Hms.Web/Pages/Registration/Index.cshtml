@@ -93,6 +93,11 @@
                             <a class="btn-icon" href="/registration/@p.Id/card" title="Reprint ID card">
                                 <span class="icon icon-sm" aria-hidden="true">badge</span>
                             </a>
+                            @* Spec 0045: correcting a misheard name, or naming a casualty who
+                               was registered unknown, without creating a second UHID. *@
+                            <a class="btn-icon" href="/registration/@p.Id/edit" title="Correct details">
+                                <span class="icon icon-sm" aria-hidden="true">edit_note</span>
+                            </a>
                         </span>
                     </td>
                 </tr>

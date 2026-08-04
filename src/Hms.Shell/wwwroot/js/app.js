@@ -102,13 +102,25 @@
   const inputs = document.querySelectorAll("[data-flag-for]");
   if (!inputs.length) return;
 
+  // Critical is judged before abnormal and independently of the normal range, exactly as
+  // ResultTemplates.Flag does on the server (spec 0044). The technologist typing the number is
+  // the first person who can pick up a phone, so they must see it here, not only at verification.
   function paint(input) {
     const out = document.getElementById("flag-" + input.dataset.flagFor);
     if (!out) return;
     const low = parseFloat(input.dataset.low);
     const high = parseFloat(input.dataset.high);
+    const critLow = parseFloat(input.dataset.critLow);
+    const critHigh = parseFloat(input.dataset.critHigh);
     const value = parseFloat(input.value);
-    if (isNaN(value) || isNaN(low) || isNaN(high)) {
+    if (isNaN(value)) { out.className = "flag none"; out.textContent = "—"; return; }
+    if (!isNaN(critLow) && value <= critLow) {
+      out.className = "pill bad"; out.textContent = "C-LOW"; return;
+    }
+    if (!isNaN(critHigh) && value >= critHigh) {
+      out.className = "pill bad"; out.textContent = "C-HIGH"; return;
+    }
+    if (isNaN(low) || isNaN(high)) {
       out.className = "flag none"; out.textContent = "—"; return;
     }
     if (value < low) { out.className = "flag low"; out.textContent = "Low"; }

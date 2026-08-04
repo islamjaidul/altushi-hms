@@ -3,6 +3,7 @@ using System;
 using Hms.Appointments.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hms.Appointments.Data.Migrations
 {
     [DbContext(typeof(ApptDbContext))]
-    partial class ApptDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803101819_DoctorConsultationService0043")]
+    partial class DoctorConsultationService0043
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

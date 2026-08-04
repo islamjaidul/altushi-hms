@@ -81,6 +81,41 @@
             </div>
         </div>
 
+        @* Spec 0043: the receptionist already recorded patient → doctor → serial. Offer that
+           consultation instead of making the cashier find it in a catalogue of every service the
+           hospital sells. Suggest-only — nothing is charged until this button is pressed. *@
+        @if (Model.Suggestion is { } appt)
+        {
+            <div class="alert info">
+                <span class="icon icon-sm" aria-hidden="true">confirmation_number</span>
+                <span class="row" style="gap:12px;align-items:center;flex-wrap:wrap;width:100%">
+                    <span>
+                        <b>Serial @appt.SerialNo today</b> — @appt.DoctorName
+                        @if (appt.CanAdd)
+                        {
+                            <span>· @appt.ServiceName</span>
+                            <b>@Ui.Money(appt.Price)</b>
+                        }
+                        else
+                        {
+                            <span class="help-text" style="display:inline">
+                                — no consultation fee is set for this doctor, so pick the service
+                                below. An administrator can set it under Doctors &amp; Referrers.
+                            </span>
+                        }
+                    </span>
+                    <span class="spacer"></span>
+                    @if (appt.CanAdd)
+                    {
+                        <button type="submit" class="btn btn-primary" asp-page-handler="AddSuggestion"
+                                name="catalogId" value="@appt.ServiceId">
+                            <span class="icon icon-sm" aria-hidden="true">add</span> Add to bill
+                        </button>
+                    }
+                </span>
+            </div>
+        }
+
         <div class="card card-clip">
             <div class="cat-toolbar">
                 <span class="icon" aria-hidden="true">search</span>

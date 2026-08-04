@@ -76,12 +76,16 @@
                         <tbody>
                         @foreach (var v in part.Values)
                         {
-                            var abnormal = v.Flag is "H" or "L";
+                            @* Spec 0044: on paper too, a panic value must not look like a mild
+                               one. Critical carries the full words — a printed report is read by
+                               people who will never see this screen's legend. *@
+                            var critical = ResultFlags.IsCritical(v.Flag);
+                            var abnormal = ResultFlags.IsAbnormal(v.Flag);
                             <tr style="@(abnormal ? "font-weight:800" : "")">
                                 <td>@v.Name</td>
                                 <td class="num">@v.Value</td>
-                                <td class="@(v.Flag == "H" ? "text-danger" : v.Flag == "L" ? "text-primary" : "text-muted")">
-                                    @(v.Flag == "H" ? "High" : v.Flag == "L" ? "Low" : "—")
+                                <td class="@(critical ? "text-danger" : v.Flag == ResultFlags.High ? "text-danger" : v.Flag == ResultFlags.Low ? "text-primary" : "text-muted")">
+                                    @(abnormal ? ResultFlags.Label(v.Flag) : "—")
                                 </td>
                                 <td>@v.Unit</td>
                                 <td class="tabular">@v.Range</td>

@@ -19,6 +19,24 @@ public class Doctor
     public long Id { get; set; }
     public required string Name { get; set; }
     public bool Active { get; set; } = true;
+
+    /// <summary>
+    /// The <c>adm.service</c> this doctor's consultation is billed as — a general consultation for
+    /// one clinician, a specialist consultation for another (spec 0043). The OPD counter reads it
+    /// to offer the right line instead of making the cashier hunt the catalogue for what the
+    /// appointment already named.
+    /// <para>
+    /// A <b>reference, never a price</b> (hard rule 5): the amount always comes from
+    /// <c>RateResolver</c> at the transaction date, so raising a fee re-prices future
+    /// consultations and leaves every historical invoice reproducing its own.
+    /// </para>
+    /// <para>
+    /// No foreign key — <c>adm.service</c> belongs to another module's schema and ADR-0028 keeps
+    /// keys intra-schema. Null means nobody has set one; the counter degrades to naming the doctor
+    /// and offering no line, which is why it is nullable rather than defaulted to something wrong.
+    /// </para>
+    /// </summary>
+    public long? ConsultationServiceId { get; set; }
 }
 
 public class DoctorSchedule

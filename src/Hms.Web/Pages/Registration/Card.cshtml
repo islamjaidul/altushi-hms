@@ -9,6 +9,13 @@
 <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
     <div style="width:640px;max-width:100%">
         @await Html.PartialAsync("_PrintTools", "/registration?q=" + Model.Uhid)
+        @* Spec 0045 (US1.4): where the operator is standing when the family arrives with a
+           name — the card is printed, and the details on it are wrong or missing. *@
+        <div class="row no-print" style="justify-content:flex-end;margin-top:8px">
+            <a class="btn" href="/registration/@Model.Id/edit">
+                <span class="icon icon-sm" aria-hidden="true">edit_note</span> Correct these details
+            </a>
+        </div>
     </div>
 
     <div class="sheet">

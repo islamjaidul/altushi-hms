@@ -29,7 +29,10 @@
             </div>
             <div class="table-wrap">
                 <table class="data">
-                    <thead><tr><th>Doctor</th><th>Chamber</th><th>Hours</th><th class="num">Daily capacity</th></tr></thead>
+                    <thead><tr>
+                        <th>Doctor</th><th>Chamber</th><th>Hours</th><th class="num">Daily capacity</th>
+                        <th>Consultation fee</th>
+                    </tr></thead>
                     <tbody>
                     @foreach (var d in Model.Doctors)
                     {
@@ -38,11 +41,29 @@
                             <td>@(d.Room ?? "—")</td>
                             <td class="tabular">@d.From.ToString("HH:mm") – @d.To.ToString("HH:mm")</td>
                             <td class="num">@d.MaxSerials</td>
+                            @* Spec 0043: what the OPD counter offers when this doctor's patient
+                               reaches the cash counter. Editable in place — the four seeded
+                               doctors would otherwise need SQL to change. *@
+                            <td>
+                                <form method="post" asp-page-handler="DoctorFee" class="row" style="gap:6px">
+                                    <input type="hidden" name="doctorId" value="@d.DoctorId" />
+                                    <select class="select" name="ConsultationServiceId" style="min-width:210px">
+                                        <option value="0">— not set —</option>
+                                        @foreach (var o in Model.ConsultOptions)
+                                        {
+                                            <option value="@o.Id" selected="@(d.ConsultationServiceId == o.Id)">
+                                                @o.Name — @Ui.Money(o.Price)
+                                            </option>
+                                        }
+                                    </select>
+                                    <button type="submit" class="btn btn-sm">Save</button>
+                                </form>
+                            </td>
                         </tr>
                     }
                     @if (Model.Doctors.Count == 0)
                     {
-                        <tr><td colspan="4"><div class="empty-state">
+                        <tr><td colspan="5"><div class="empty-state">
                             <span class="icon" aria-hidden="true">stethoscope</span>
                             No doctors yet — add one to start issuing serials.
                         </div></td></tr>
@@ -131,6 +152,20 @@
                 <label class="field">
                     <span class="field-label">Daily serial capacity</span>
                     <input class="input input-num" asp-for="MaxSerials" inputmode="numeric" data-advance />
+                </label>
+                <label class="field">
+                    <span class="field-label">Consultation fee</span>
+                    <select class="select" asp-for="ConsultationServiceId" data-advance>
+                        <option value="0">— not set —</option>
+                        @foreach (var o in Model.ConsultOptions)
+                        {
+                            <option value="@o.Id">@o.Name — @Ui.Money(o.Price)</option>
+                        }
+                    </select>
+                    <span class="help-text">
+                        What the cash counter offers when this doctor's patient arrives. It can be
+                        set later, and the price always follows the service, never a copy of it.
+                    </span>
                 </label>
                 <button type="submit" class="btn btn-primary btn-block">Add doctor</button>
             </div>

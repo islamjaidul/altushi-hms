@@ -116,6 +116,8 @@
                                                    data-advance inputmode="decimal" autocomplete="off"
                                                    data-low="@(p.Low?.ToString() ?? "")"
                                                    data-high="@(p.High?.ToString() ?? "")"
+                                                   data-crit-low="@(p.CriticalLow?.ToString() ?? "")"
+                                                   data-crit-high="@(p.CriticalHigh?.ToString() ?? "")"
                                                    data-flag-for="@fieldId" />
                                         </td>
                                         <td class="mid">

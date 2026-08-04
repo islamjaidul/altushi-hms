@@ -45,6 +45,12 @@
                 <div class="board-card stage-@key" data-barcode="@(c.Samples.FirstOrDefault()?.Barcode)">
                     <div class="top">
                         <span class="board-id">@c.OrderNo</span>
+                        @* Spec 0044: a critical result is visible from the bench, not only once
+                           the order is opened for verification. *@
+                        @if (c.HasCritical)
+                        {
+                            <span class="pill bad" style="padding:1px 6px">CRITICAL</span>
+                        }
                         <span class="board-time tabular">@Ui.Time(c.CreatedAt)</span>
                     </div>
                     <div class="board-patient">@c.PatientName</div>

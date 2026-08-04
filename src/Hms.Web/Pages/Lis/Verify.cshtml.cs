@@ -23,6 +23,12 @@ public class VerifyModel(
     [BindProperty(SupportsGet = true)] public long? OrderId { get; set; }
     /// <summary>5A-R1 [Must]: which reporting consultant's block prints on the release.</summary>
     [BindProperty] public long? ConsultantId { get; set; }
+    /// <summary>
+    /// US9.3 AC (spec 0044): the pathologist's explicit acknowledgement that they have seen the
+    /// critical values on this order. Deliberately a separate control from the verify button —
+    /// pressing the same button twice is not an acknowledgement of anything.
+    /// </summary>
+    [BindProperty] public bool CriticalAcknowledged { get; set; }
 
     public IReadOnlyList<LabCard> Worklist { get; private set; } = [];
     public LabCard? Selected { get; private set; }
@@ -30,6 +36,25 @@ public class VerifyModel(
     public IReadOnlyList<ConsultantPick> Consultants { get; private set; } = [];
 
     public sealed record ConsultantPick(long Id, string Label);
+
+    /// <summary>A critical value awaiting the pathologist's eye, with the test it came from.</summary>
+    public sealed record CriticalFinding(string TestName, VerifyValue Value)
+    {
+        public string Sentence =>
+            $"{Value.Name} {Value.Value}{(string.IsNullOrWhiteSpace(Value.Unit) ? "" : " " + Value.Unit)}"
+          + $" — {ResultFlags.Label(Value.Flag)} (ref {Value.Range})";
+    }
+
+    /// <summary>
+    /// Every critical value on the tests **still to be verified**. Already-verified tests are
+    /// excluded: their acknowledgement was given when they were released, and re-demanding it
+    /// would block the rest of a part-verified order forever.
+    /// </summary>
+    public IReadOnlyList<CriticalFinding> Criticals =>
+        Tests.Where(t => !t.Verified)
+             .SelectMany(t => t.Values.Where(v => ResultFlags.IsCritical(v.Flag))
+                               .Select(v => new CriticalFinding(t.Name, v)))
+             .ToList();
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -108,6 +133,23 @@ public class VerifyModel(
         var pending = Tests.Where(t => !t.Verified).ToList();
         if (pending.Count == 0) { Fail("Everything on this order is already verified."); return Page(); }
 
+        // US9.3 AC (spec 0044): a panic value must not be releasable with the same single click
+        // as a normal one. The pathologist is the last person between this result and a patient
+        // who goes home, so the refusal names the value rather than saying "tick the box".
+        var criticals = Criticals;
+        if (criticals.Count > 0 && !CriticalAcknowledged)
+        {
+            Fail(criticals.Count == 1
+                ? $"This report carries a critical value — {criticals[0].Sentence}. "
+                + "Confirm you have seen it before releasing the report."
+                : $"This report carries {criticals.Count} critical values — "
+                + string.Join("; ", criticals.Select(c => c.Sentence))
+                + ". Confirm you have seen them before releasing the report.");
+            return Page();
+        }
+        var ackNote = criticals.Count == 0 ? null
+            : string.Join(" | ", criticals.Select(c => $"{c.TestName}: {c.Sentence}"));
+
         try
         {
             await tx.RunAsync(async s =>
@@ -121,6 +163,16 @@ public class VerifyModel(
                         // the report can always reproduce who signed it and their credentials.
                         var row = await s.Lis.Results.SingleAsync(r => r.Id == t.ResultId);
                         row.SignatureImageRef = $"consultant:{cid}";
+                    }
+                    if (ackNote is not null)
+                    {
+                        // Recorded on every version released under this acknowledgement, with the
+                        // values it covered — what an audit asks is what was on screen, not that
+                        // a box was ticked.
+                        var row = await s.Lis.Results.SingleAsync(r => r.Id == t.ResultId);
+                        row.CriticalAckBy = ActorId;
+                        row.CriticalAckAt = DateTimeOffset.UtcNow;
+                        row.CriticalAckNote = ackNote;
                     }
                 }
                 await s.Lis.SaveChangesAsync();

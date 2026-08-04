@@ -66,6 +66,21 @@ public class Result
     public string? SignatureImageRef { get; set; }
     public long? AmendApprovalId { get; set; }
     public int? SupersedesVersion { get; set; }
+
+    /// <summary>
+    /// US9.3's acceptance criterion — "critical values require explicit acknowledgment"
+    /// (spec 0044). Verification is refused while a critical value on this result is
+    /// unacknowledged.
+    /// <para>
+    /// The note records <em>what</em> was acknowledged ("HB 3.1 g/dL — CRITICAL LOW"), not merely
+    /// that a box was ticked: an audit asks what the pathologist was looking at, and a boolean
+    /// cannot answer that. It lives on the result version rather than in a side table because an
+    /// amendment produces v2 with its own values, which must be acknowledged on their own merits.
+    /// </para>
+    /// </summary>
+    public long? CriticalAckBy { get; set; }
+    public DateTimeOffset? CriticalAckAt { get; set; }
+    public string? CriticalAckNote { get; set; }
 }
 
 public class LisDbContext(DbContextOptions<LisDbContext> options) : DbContext(options)
