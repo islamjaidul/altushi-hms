@@ -3,6 +3,7 @@ using System;
 using Hms.Ipd.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hms.Ipd.Data.Migrations
 {
     [DbContext(typeof(IpdDbContext))]
-    partial class IpdDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260804124222_DepartmentsAndWardDepartment0046")]
+    partial class DepartmentsAndWardDepartment0046
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

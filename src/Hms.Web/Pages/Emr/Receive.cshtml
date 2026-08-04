@@ -1,0 +1,121 @@
+@page "/emr/receive/{AdmissionId:long}"
+@model Hms.Web.Pages.Emr.ReceiveModel
+@{
+    ViewData["Title"] = "Receive Patient";
+    ViewData["Crumb"] = "Indoor (IPD)";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        @Model.Patient
+        @if (Model.Allergies is not null)
+        {
+            <span class="pill bad">
+                <span class="icon icon-sm" aria-hidden="true">warning</span> @Model.Allergies
+            </span>
+        }
+        @if (Model.ReceivedAt is not null)
+        {
+            <span class="pill info">received @Ui.Time(Model.ReceivedAt.Value) — saving updates the same record</span>
+        }
+        <span class="spacer"></span>
+        <a class="btn-tint" href="/ipd/station">Back to station</a>
+    </div>
+    <div class="card-body">
+        <div class="chip-row">
+            <span class="pill">@Model.AdmissionNo</span>
+            @if (Model.AgeSex is not null)
+            {
+                <span class="pill">@Model.AgeSex</span>
+            }
+            <span class="pill info">@Model.WardName · bed @Model.Bed</span>
+            @if (Model.DepartmentName is not null)
+            {
+                <span class="pill info">@Model.DepartmentName</span>
+            }
+            @if (Model.Diagnosis is not null)
+            {
+                <span class="card-hint">@Model.Diagnosis</span>
+            }
+        </div>
+    </div>
+</div>
+
+@if (!Model.Blocked)
+{
+    <form method="post" class="stack">
+        <div class="card">
+            <div class="card-head">Vitals on arrival</div>
+            <div class="card-body">
+                <div class="field-grid cols-4">
+                    <label class="field">
+                        <span class="field-label">BP systolic</span>
+                        <input class="input input-num" name="Systolic" inputmode="numeric"
+                               value="@Model.Systolic" data-advance />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">BP diastolic</span>
+                        <input class="input input-num" name="Diastolic" inputmode="numeric"
+                               value="@Model.Diastolic" data-advance />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Pulse (/min)</span>
+                        <input class="input input-num" name="Pulse" inputmode="numeric"
+                               value="@Model.Pulse" data-advance />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">SpO₂ (%)</span>
+                        <input class="input input-num" name="SpO2" inputmode="numeric"
+                               value="@Model.SpO2" data-advance />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Temperature (°C)</span>
+                        <input class="input input-num" name="Temperature" inputmode="decimal"
+                               placeholder="37.0" value="@Model.Temperature" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Weight (kg)</span>
+                        <input class="input input-num" name="Weight" inputmode="decimal"
+                               value="@Model.Weight" />
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">Handover</div>
+            <div class="card-body">
+                <div class="field-grid cols-2">
+                    <label class="field">
+                        <span class="field-label">Received from</span>
+                        <input class="input" name="ReceivedFrom" value="@Model.ReceivedFrom"
+                               placeholder="e.g. Emergency trolley · attendant name" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Belongings</span>
+                        <input class="input" name="Belongings" value="@Model.Belongings"
+                               placeholder="handed to attendant / kept at station" />
+                    </label>
+                    <label class="field" style="grid-column:1/-1">
+                        <span class="field-label">Condition on arrival / nursing note</span>
+                        <textarea class="input" name="Condition" rows="3"
+                                  placeholder="conscious, oriented, on IV fluids…">@Model.Condition</textarea>
+                    </label>
+                </div>
+                <div class="chip-row" style="justify-content:end">
+                    <button type="submit" class="btn btn-primary btn-cta">
+                        <span class="icon icon-sm" aria-hidden="true">save</span> Receive patient
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+}

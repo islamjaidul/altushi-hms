@@ -102,6 +102,7 @@ public static class DevSeed
         ("moinul", "Moinul Haque", "Radiology Technician"),
         ("farid", "Farid Ahmed", "HR Officer"),                 // persona P12
         ("shirin", "Shirin Begum", "Department Head"),
+        ("rehana", "Rehana Begum", "Nurse"),                    // spec 0046 — Critical Care station
     ];
 
     public const string DevPassword = "Demo#1234";   // on the demo card (07 §1)
@@ -546,6 +547,54 @@ public static class DevSeed
             Beds(wards[1], "GWF", 4, "IPD-BED-GEN");
             Beds(wards[2], "CAB", 3, "IPD-BED-CAB");
             Beds(wards[3], "ICU", 2, "IPD-BED-ICU");
+            await ipd.SaveChangesAsync();
+        }
+
+        // Spec 0046: departments above wards + nursing assignments. Additive like the pharmacy
+        // counter — an upgraded database gains the departments, existing wards get grouped by
+        // name, and the demo nurses get their stations scoped. Each block re-checks its own
+        // precondition so a database seeded before 0046 converges at next boot.
+        if (!await ipd.Departments.AnyAsync())
+        {
+            ipd.Departments.AddRange(
+                new Hms.Ipd.Data.Department { BranchId = 1, Name = "Medicine" },
+                new Hms.Ipd.Data.Department { BranchId = 1, Name = "Critical Care" },
+                new Hms.Ipd.Data.Department { BranchId = 1, Name = "Private Wing" },
+                new Hms.Ipd.Data.Department { BranchId = 1, Name = "Surgery" },
+                new Hms.Ipd.Data.Department { BranchId = 1, Name = "Gynae & Obstetrics" },
+                new Hms.Ipd.Data.Department { BranchId = 1, Name = "Paediatrics" });
+            await ipd.SaveChangesAsync();
+        }
+        var deptIds = await ipd.Departments.ToDictionaryAsync(d => d.Name, d => d.Id);
+        var wardDept = new Dictionary<string, string>
+        {
+            ["General Ward (Male)"] = "Medicine",
+            ["General Ward (Female)"] = "Medicine",
+            ["ICU"] = "Critical Care",
+            ["Cabin Block"] = "Private Wing",
+        };
+        foreach (var ward in await ipd.Wards.Where(w => w.DepartmentId == null).ToListAsync())
+            if (wardDept.TryGetValue(ward.Name, out var deptName)
+                && deptIds.TryGetValue(deptName, out var deptId))
+                ward.DepartmentId = deptId;
+        await ipd.SaveChangesAsync();
+
+        if (!await ipd.DepartmentStaff.AnyAsync())
+        {
+            var users = sp.GetRequiredService<AuthDbContext>();
+            async Task AssignAsync(string userName, string deptName)
+            {
+                var user = await users.Users.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserName == userName);
+                if (user is not null && deptIds.TryGetValue(deptName, out var deptId))
+                    ipd.DepartmentStaff.Add(new Hms.Ipd.Data.DepartmentStaff
+                    {
+                        BranchId = 1, DepartmentId = deptId, UserId = user.Id,
+                        StaffName = user.DisplayName.Length > 0 ? user.DisplayName : userName,
+                    });
+            }
+            await AssignAsync("nasrin", "Medicine");
+            await AssignAsync("rehana", "Critical Care");
             await ipd.SaveChangesAsync();
         }
 

@@ -91,7 +91,9 @@ def main() -> int:
     record("patient", patient_id)
 
     admit = desk.get("/ipd/admit")
-    bed = fixture(re.search(r'<option value="(\d+)">(GW[MF]|CAB|ICU)', admit),
+    # Spec 0046: the thread's nurse (nasrin) is scoped to Medicine — admit into a general ward
+    # (GWM/GWF) so the patient lands on her department's station.
+    bed = fixture(re.search(r'<option value="(\d+)">(GW[MF])', admit),
                   "no free bed anywhere in the hospital",
                   "a thread that admits must discharge; reset the database if a run was killed")
     url, _ = desk.post("/ipd/admit", {

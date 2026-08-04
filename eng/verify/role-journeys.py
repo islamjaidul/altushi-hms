@@ -98,6 +98,8 @@ ROUTES = {
     "/diagnostics/order": "diagnostics.order.create",
     "/diagnostics/order/1": "diagnostics.order.create",
     "/emr/charts": "emr.chart.record",
+    "/emr/receive/1": "emr.vitals.record",
+    "/ipd/certificates/1": "ipd.settle",
     "/emr/consult/1": "emr.note.write",
     "/emr/history": "emr.read",
     "/emr/indoor": "emr.note.write",

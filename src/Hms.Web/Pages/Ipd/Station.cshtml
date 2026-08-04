@@ -16,9 +16,17 @@
 <div class="card">
     <div class="card-head">
         Ward monitor
+        @if (Model.MyDepartments.Count > 0)
+        {
+            <span class="pill info">@string.Join(" · ", Model.MyDepartments)</span>
+        }
         <span class="pill @(Model.TotalOverdue > 0 ? "bad" : "good")">
             @Model.TotalOverdue overdue
         </span>
+        @if (Model.AwaitingCount > 0)
+        {
+            <span class="pill warn">@Model.AwaitingCount awaiting receive</span>
+        }
         <span class="spacer"></span>
         <span class="card-hint">@Model.TotalPatients patient(s) in view</span>
     </div>
@@ -74,6 +82,10 @@
                                 <td class="id-cell">@p.Bed</td>
                                 <td>
                                     <b>@p.Patient</b>
+                                    @if (p.AwaitingReceive)
+                                    {
+                                        <span class="pill warn">NEW</span>
+                                    }
                                     @if (p.Allergies is not null)
                                     {
                                         <span class="pill bad">
@@ -129,6 +141,10 @@
                                     }
                                 </td>
                                 <td class="num">
+                                    @if (p.AwaitingReceive && Model.Can("emr.vitals.record"))
+                                    {
+                                        <a class="btn-tint" href="/emr/receive/@p.AdmissionId">Receive</a>
+                                    }
                                     <a class="btn-tint" href="/emr/charts/@p.AdmissionId">Chart</a>
                                     <a class="btn-tint" href="/emr/tasks/@p.AdmissionId">Tasks</a>
                                     <a class="btn-tint" href="/ipd/folio/@p.AdmissionId">Folio</a>

@@ -17,11 +17,40 @@ public static class BedState
     public const string OutOfService = "out_of_service";
 }
 
+/// <summary>
+/// Spec 0046: the clinical unit above wards — Medicine, Critical Care, Private Wing… A ward
+/// belongs to at most one department; nursing staff are scoped to departments via
+/// <see cref="DepartmentStaff"/>. Lives in ipd (P27: ward vocabulary is module-owned), and
+/// membership is read per request rather than baked into a cookie claim, so an assignment
+/// change takes effect on the next page load.
+/// </summary>
+public class Department
+{
+    public long Id { get; set; }
+    public long BranchId { get; set; }
+    public required string Name { get; set; }
+    public bool Active { get; set; } = true;
+}
+
+/// <summary>A user's standing assignment to a department (spec 0046). Same posture as
+/// <see cref="DutyAssignment"/>: user_id is an adm scalar with no FK (ADR-0003), staff_name is
+/// a snapshot so the row reads without joining adm, removal is deactivate, never delete.</summary>
+public class DepartmentStaff
+{
+    public long Id { get; set; }
+    public long BranchId { get; set; }
+    public long DepartmentId { get; set; }
+    public long UserId { get; set; }                   // adm.app_user — cross-schema, no FK
+    public required string StaffName { get; set; }
+    public bool Active { get; set; } = true;
+}
+
 /// <summary>Ward classes per PRD §5 M6 / US2.1.</summary>
 public class Ward
 {
     public long Id { get; set; }
     public long BranchId { get; set; }
+    public long? DepartmentId { get; set; }            // spec 0046 — null = not yet grouped
     public required string Name { get; set; }
     public required string Class { get; set; }         // general|cabin|icu|ccu|hdu|nicu
     public bool Active { get; set; } = true;
@@ -242,6 +271,8 @@ public class IpdDbContext(DbContextOptions<IpdDbContext> options) : DbContext(op
     /// from the ambient request scope at construction; every entity carrying a BranchId is
     /// filtered to it structurally — see BranchIsolation.</summary>
     public long CurrentBranch { get; set; } = Hms.Kernel.Data.BranchScope.Current;
+    public DbSet<Department> Departments => Set<Department>();
+    public DbSet<DepartmentStaff> DepartmentStaff => Set<DepartmentStaff>();
     public DbSet<Ward> Wards => Set<Ward>();
     public DbSet<Bed> Beds => Set<Bed>();
     public DbSet<Admission> Admissions => Set<Admission>();
@@ -280,11 +311,28 @@ public class IpdDbContext(DbContextOptions<IpdDbContext> options) : DbContext(op
         //   CREATE UNIQUE INDEX ux_admission_open_per_patient ON ipd.admission (patient_id)
         //     WHERE state NOT IN ('discharged','death','absconded');
         b.HasDefaultSchema("ipd");
+        b.Entity<Department>(e =>
+        {
+            e.ToTable("department");
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.HasIndex(x => new { x.BranchId, x.Name }).IsUnique();
+        });
+        b.Entity<DepartmentStaff>(e =>
+        {
+            e.ToTable("department_staff");
+            e.Property(x => x.StaffName).HasMaxLength(200);
+            // One active assignment per user per department; deactivate-then-reassign is legal
+            // (the history keeps both rows — same shape as duty_assignment).
+            e.HasIndex(x => new { x.DepartmentId, x.UserId }).IsUnique().HasFilter("active");
+            e.HasIndex(x => x.UserId);                   // the station's hottest predicate
+            e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId);
+        });
         b.Entity<Ward>(e =>
         {
             e.ToTable("ward");
             e.Property(x => x.Name).HasMaxLength(200);
             e.Property(x => x.Class).HasMaxLength(40);
+            e.HasOne<Department>().WithMany().HasForeignKey(x => x.DepartmentId);
         });
         b.Entity<Bed>(e =>
         {
