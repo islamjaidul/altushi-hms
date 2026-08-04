@@ -12,8 +12,10 @@
     <div class="alert warn">
         <span class="icon icon-sm" aria-hidden="true">lock</span>
         <span>
-            <b>Your counter is closed.</b> Receipts are attributed to a counter session, so billing
-            starts by opening yours.
+            <b>Your counter is closed.</b>
+            @(Model.IpdOnlySession
+                ? "Your open drawer is the IPD counter, and it handles IPD only — open an OPD counter for outdoor billing."
+                : "Receipts are attributed to a counter session, so billing starts by opening yours.")
             <a href="/billing/session" style="margin-left:6px">Open counter →</a>
         </span>
     </div>

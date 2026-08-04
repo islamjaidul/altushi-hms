@@ -172,6 +172,13 @@ public static class DevSeed
             bill.Counters.Add(new Counter { BranchId = 1, Name = "Pharmacy Counter", Kind = "pharmacy" });
             await bill.SaveChangesAsync();
         }
+        // Spec 0048: the IPD money stream gets its own drawer — settlement requires a session
+        // on this counter. Additive for upgraded databases, exactly like pharmacy above.
+        if (!await bill.Counters.AnyAsync(c => c.Kind == "ipd"))
+        {
+            bill.Counters.Add(new Counter { BranchId = 1, Name = "IPD Billing Counter", Kind = "ipd" });
+            await bill.SaveChangesAsync();
+        }
 
         if (!await kdb.ApprovalPolicies.AnyAsync())
         {

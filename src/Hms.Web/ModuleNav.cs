@@ -28,6 +28,9 @@ public static class ModuleNav
         new("Billing", "Counter Session", "/billing/session", "billing.session.open", "lock", "Billing & Cash"),
         new("Billing", "Counter Day-Close", "/billing/day-close", "billing.session.close", "savings", "Billing & Cash"),
         new("Billing", "Collection Reports", "/billing/reports", "billing.session.close", "bar_chart", "Billing & Cash"),
+        // Spec 0048: the IPD cashier's workspace — /billing prefix keeps module ownership with
+        // Billing; the permission is ipd.settle because that is the right being exercised.
+        new("Billing", "IPD Billing", "/billing/ipd", "ipd.settle", "receipt_long", "Billing & Cash"),
 
         new("Diagnostics", "Diagnostic Order", "/diagnostics/order", "diagnostics.order.create", "receipt_long", "Diagnostics"),
         new("Diagnostics", "Report Delivery", "/diagnostics/delivery", "diagnostics.order.create", "send", "Diagnostics"),

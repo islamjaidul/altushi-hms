@@ -18,6 +18,10 @@ public sealed record ClosedRow(long SummaryId, DateOnly BusinessDay, string Coun
 public class DayCloseModel(HmsTx tx, DayCloseService dayClose) : HmsPageModel
 {
     [BindProperty] public long CountedCash { get; set; }
+    /// <summary>Spec 0048: two drawers can be open at once (outdoor + IPD). Default closes the
+    /// outdoor one; ?Kind=ipd closes the IPD drawer. The form posts back to the same URL, so
+    /// the query survives the POST.</summary>
+    [BindProperty(SupportsGet = true)] public string? Kind { get; set; }
 
     public OpenSession? Session { get; private set; }
     public long OpeningFloat { get; private set; }
@@ -37,7 +41,10 @@ public class DayCloseModel(HmsTx tx, DayCloseService dayClose) : HmsPageModel
     {
         await tx.RunAsync(async s =>
         {
-            Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+            Session = Kind == CounterContext.IpdKind
+                ? await CounterContext.FindOpenIpdAsync(s.Bill, ActorId)
+                : await CounterContext.FindOpenOutdoorAsync(s.Bill, ActorId)
+                  ?? await CounterContext.FindOpenIpdAsync(s.Bill, ActorId);
 
             if (Session is not null)
             {

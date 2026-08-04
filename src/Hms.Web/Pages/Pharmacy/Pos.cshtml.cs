@@ -110,7 +110,7 @@ public class PosModel(
 
         await tx.RunAsync(async s =>
         {
-            Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+            Session = await CounterContext.FindOpenOutdoorAsync(s.Bill, ActorId);   // spec 0048: never the IPD drawer
             Outlets = await s.Pharm.Outlets.AsNoTracking().Where(o => o.Active).OrderBy(o => o.Id).ToListAsync();
             OutletId ??= Outlets.FirstOrDefault()?.Id;
 

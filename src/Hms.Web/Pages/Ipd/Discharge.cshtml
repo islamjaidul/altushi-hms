@@ -137,7 +137,7 @@ else if (admission.State == AdmissionState.ClinicallyCleared && folio is not nul
                         <div class="card-body stack" style="gap:10px;padding-top:0">
                             @if (Model.Session is null)
                             {
-                                <div class="card-hint">Open your counter session first — advances and change move through the drawer.</div>
+                                <div class="card-hint">Open the IPD billing counter first — advances and change move through its drawer.</div>
                                 <a class="btn" href="/billing/session">Open counter…</a>
                             }
                             else
@@ -301,7 +301,7 @@ else if (admission.State is AdmissionState.Death or AdmissionState.Absconded
                 </div>
                 @if (Model.Session is null)
                 {
-                    <div class="card-hint">Open your counter session first — any advance refund moves through the drawer.</div>
+                    <div class="card-hint">Open the IPD billing counter first — any advance refund moves through its drawer.</div>
                     <a class="btn" href="/billing/session">Open counter…</a>
                 }
                 else

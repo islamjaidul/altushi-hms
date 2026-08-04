@@ -88,6 +88,7 @@ ROUTES = {
     "/billing/day-close": "billing.session.close",
     "/billing/dues": "billing.receipt.create",
     "/billing/invoice/1": "registration.read",
+    "/billing/ipd": "ipd.settle",
     "/billing/opd": "billing.invoice.create",
     "/billing/refund": "billing.receipt.create",
     "/billing/reports": "billing.session.close",

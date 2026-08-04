@@ -33,8 +33,8 @@ import urllib.parse
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from _harness import (BASE, Session, case, check, fixture, grant_cells, guard,   # noqa: E402
-                      on_exit, open_counter, record, report, settle_and_discharge,
-                      step, tag)
+                      ensure_ipd_counter, on_exit, open_counter, record, report,
+                      settle_and_discharge, step, tag)
 
 guard("t1")
 
@@ -51,6 +51,7 @@ lab = Session("ripon")          # the bench
 path = Session("farhana")       # verification and amendment
 
 open_counter(op)
+ensure_ipd_counter(op)                    # spec 0048: settlements ride the IPD drawer
 
 
 def register(prefix):
@@ -313,6 +314,7 @@ check("Rasel" in audit, "attributed to the operator who withdrew it")
 
 case("LC-DIS-04", "Discharge with a due needs a typed reason, audited at tier 2", op)
 step(2, "settle again, leave the balance owing, and try to discharge without a reason")
+ensure_ipd_counter(op)                    # a day-close case may have shut the IPD drawer
 dis = op.get(f"/ipd/discharge/{d_adm}")
 op.post(f"/ipd/discharge/{d_adm}?handler=Prepare", {"AdmissionId": d_adm}, dis)
 dis = op.get(f"/ipd/discharge/{d_adm}")

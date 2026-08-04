@@ -72,7 +72,8 @@ public class DischargeModel(
                 .SingleOrDefaultAsync(f => f.AdmissionId == AdmissionId);
             PatientName = await s.Reg.Patients.AsNoTracking()
                 .Where(p => p.Id == Admission.PatientId).Select(p => p.FullName).FirstOrDefaultAsync();
-            Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+            // Spec 0048: settlement money moves only through the IPD counter's drawer.
+            Session = await CounterContext.FindOpenIpdAsync(s.Bill, ActorId);
 
             OpenDoses = await s.Emr.MarDoses.AsNoTracking().CountAsync(d =>
                 d.AdmissionId == AdmissionId && d.State == Hms.Emr.Data.DoseState.Scheduled);
@@ -200,7 +201,8 @@ public class DischargeModel(
     {
         if (!CanSettle) return Forbid();
         await LoadAsync();
-        if (Session is null) return await Reshow("Open your counter before settling — money moves here.");
+        if (Session is null) return await Reshow(
+            "Open the IPD billing counter before settling — inpatient money moves through its own drawer.");
 
         var discount = Math.Max(0, Math.Min(Gross, DiscountFlat));
         long? approvalId = null;

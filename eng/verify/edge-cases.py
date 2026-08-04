@@ -102,8 +102,20 @@ def free_bed(bed_id):
     fd.post("/ipd/board?handler=CleaningDone", {"BedId": bed_id}, board)
 
 
+def ensure_ipd_counter(sess, float_amt="1000"):
+    # Spec 0048: settlement needs the IPD drawer open; re-posting open for an already-open
+    # counter fails server-side, which is fine (sessions are unique per counter).
+    page = sess.get("/billing/session")
+    if "IPD counter open" in page:
+        return
+    m = re.search(r'value="(\d+)"[^>]*>[^<]*IPD', page)
+    if m:
+        sess.post("/billing/session", {"CounterId": m.group(1), "OpeningFloat": float_amt}, page)
+
+
 def close_bill(admission_id):
     """Prepare + confirm a settlement, carrying the submission token as the browser does."""
+    ensure_ipd_counter(op)                # spec 0048: settlement rides the IPD drawer
     page = op.get(f"/ipd/discharge/{admission_id}")
     op.post(f"/ipd/discharge/{admission_id}?handler=Prepare", {"AdmissionId": admission_id}, page)
     page = op.get(f"/ipd/discharge/{admission_id}")
@@ -292,6 +304,7 @@ token = SUBMIT_RE.search(page)
 confirm_fields = {"AdmissionId": adm, "DiscountFlat": "0"}
 if token:
     confirm_fields["SubmissionToken"] = token.group(1)
+ensure_ipd_counter(op)                    # spec 0048: settlement rides the IPD drawer
 url, _ = op.post(f"/ipd/discharge/{adm}?handler=Confirm", confirm_fields, page)
 check("/billing/invoice/" in url, "the prepared settlement still confirms while blocked")
 check(collect_everything(name), "the patient pays in full")

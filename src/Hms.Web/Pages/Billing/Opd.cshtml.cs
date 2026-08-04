@@ -59,6 +59,8 @@ public class OpdModel(
     [BindProperty] public Guid SubmissionToken { get; set; }
 
     public OpenSession? Session { get; private set; }
+    /// <summary>Spec 0048: true when the operator's only open drawer is the IPD counter.</summary>
+    public bool IpdOnlySession { get; private set; }
     public IReadOnlyList<CatalogItem> Catalog { get; private set; } = [];
     public IReadOnlyList<CartLine> Cart { get; private set; } = [];
     public IReadOnlyList<UnbilledLine> Unbilled { get; private set; } = [];
@@ -94,7 +96,12 @@ public class OpdModel(
 
         await tx.RunAsync(async s =>
         {
-            Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+            // Spec 0048: outdoor billing never rides the IPD drawer — that counter handles
+            // only IPD money. An operator whose sole open session is the IPD counter sees
+            // the closed-counter callout with the reason.
+            Session = await CounterContext.FindOpenOutdoorAsync(s.Bill, ActorId);
+            IpdOnlySession = Session is null
+                && await CounterContext.FindOpenIpdAsync(s.Bill, ActorId) is not null;
 
             var services = await s.Adm.Services.AsNoTracking()
                 .Where(x => x.Active)
@@ -262,7 +269,13 @@ public class OpdModel(
     {
         await LoadAsync();
 
-        if (Session is null) { Fail("Open your counter before billing."); return Page(); }
+        if (Session is null)
+        {
+            Fail(IpdOnlySession
+                ? "This counter handles IPD only — open an OPD counter for outdoor billing."
+                : "Open your counter before billing.");
+            return Page();
+        }
         if (PatientId is null or 0) { Fail("Select a patient first."); return Page(); }
         if (Cart.Count == 0 && Unbilled.Count == 0) { Fail("Add at least one service."); return Page(); }
         // The displayed cart is Items filtered to the sellable catalogue; a mismatch means the

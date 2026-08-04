@@ -14,6 +14,7 @@
 }
 
 <div class="grid grid-main-side narrow">
+    <div class="stack">
     @if (Model.Current is { } open)
     {
         <div class="card">
@@ -44,7 +45,35 @@
             </div>
         </div>
     }
-    else
+    @if (Model.CurrentIpd is { } ipdOpen)
+    {
+        <div class="card">
+            <div class="card-head">
+                IPD counter open
+                <span class="spacer"></span>
+                <span class="pill good">Open</span>
+            </div>
+            <div class="card-body" style="padding-top:0">
+                <div class="sheet-info" style="margin:0">
+                    <div><span class="k">Counter:</span> <b>@ipdOpen.CounterName</b></div>
+                    <div><span class="k">Business day:</span> @Ui.DateLong(ipdOpen.BusinessDay)</div>
+                    <div><span class="k">Opening float:</span> @Ui.Money(ipdOpen.OpeningFloat)</div>
+                </div>
+                <div class="btn-row" style="margin-top:16px">
+                    <a class="btn btn-primary" href="/billing/ipd">
+                        <span class="icon icon-sm" aria-hidden="true">receipt_long</span> IPD billing
+                    </a>
+                    @if (Model.Can("billing.session.close"))
+                    {
+                        <a class="btn" href="/billing/day-close?Kind=ipd">
+                            <span class="icon icon-sm" aria-hidden="true">savings</span> Close IPD counter
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    @if (Model.Current is null || Model.CurrentIpd is null)
     {
         <form method="post" class="card">
             <div class="card-head">
@@ -59,9 +88,11 @@
                         <option value="0">— Select counter —</option>
                         @foreach (var c in Model.Counters)
                         {
-                            @* Error-proofing by absence (§7 U7): a counter someone else holds is
-                               not selectable, so the "already open" error can never be reached. *@
-                            <option value="@c.Id" disabled="@(c.OpenBy is not null)">
+                            @* Error-proofing by absence (§7 U7): a counter someone else holds —
+                               or a slot this operator already filled (one outdoor + one IPD,
+                               spec 0048) — is not selectable. *@
+                            <option value="@c.Id" disabled="@(c.OpenBy is not null
+                                || (c.Kind == "ipd" ? Model.CurrentIpd is not null : Model.Current is not null))">
                                 @c.Name@(c.OpenBy is null ? "" : $" — in use by {c.OpenBy}")
                             </option>
                         }
@@ -81,6 +112,7 @@
             </div>
         </form>
     }
+    </div>
 
     <div class="card">
         <div class="card-head">All counters</div>

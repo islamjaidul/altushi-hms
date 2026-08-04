@@ -7,7 +7,7 @@ script is dirty-database-tolerant and usable by the upgrade gate (ADR-0022)."""
 import http.cookiejar, json, os, pathlib, re, sys, time, urllib.parse, urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from _harness import (ensure_demo_stock, fixture, on_exit, record,   # noqa: E402
+from _harness import (ensure_demo_stock, ensure_ipd_counter, fixture, on_exit, record,   # noqa: E402
                        release_bed, settle_and_discharge, tag)
 
 BASE = os.environ.get("BASE_URL", "http://localhost:5199").rstrip("/")
@@ -246,6 +246,7 @@ fd.post(f"/ipd/discharge/{adm}?handler=Initiate",
         {"AdmissionId": adm, "ClinicalSummary": "Recovered. Advice: rest, antacids."}, dis)
 dis = fd.get(f"/ipd/discharge/{adm}")
 fd.post(f"/ipd/discharge/{adm}?handler=Clear", {"AdmissionId": adm}, dis)
+ensure_ipd_counter(op)                    # spec 0048: settlement rides the IPD drawer
 dis = op.get(f"/ipd/discharge/{adm}")
 op.post(f"/ipd/discharge/{adm}?handler=Prepare", {"AdmissionId": adm}, dis)
 dis = op.get(f"/ipd/discharge/{adm}")

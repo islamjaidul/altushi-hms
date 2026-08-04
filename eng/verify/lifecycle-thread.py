@@ -58,6 +58,17 @@ def open_counter(sess, kind="Front Desk", float_amt="2000"):
               {"CounterId": m.group(1) if m else "1", "OpeningFloat": float_amt}, page)
 
 
+def ensure_ipd_counter(sess, float_amt="1000"):
+    # Spec 0048: settlement needs the IPD drawer open; re-posting open for an already-open
+    # counter fails server-side, which is fine (sessions are unique per counter).
+    page = sess.get("/billing/session")
+    if "IPD counter open" in page:
+        return
+    m = re.search(r'value="(\d+)"[^>]*>[^<]*IPD', page)
+    if m:
+        sess.post("/billing/session", {"CounterId": m.group(1), "OpeningFloat": float_amt}, page)
+
+
 print("PATIENT LIFECYCLE THREAD (cross-module seams, spec 0020)")
 
 fd = Session("jashim", "Demo#1234")     # front desk
@@ -186,6 +197,7 @@ case_check("/registration/new" in refused_url and "Patient name is required" in 
 # 2 — OPD visit ------------------------------------------------------------
 step(2, "OPD consultation: bill, pay, and the money spine records it")
 open_counter(op)
+ensure_ipd_counter(op)                    # spec 0048: settlements later ride the IPD drawer
 opd = op.get(f"/billing/opd?PatientId={pid}")
 svc = re.search(r'name="catalogId" value="(\d+)"', opd)
 opd = op.post("/billing/opd?handler=Add", {"catalogId": svc.group(1), "PatientId": pid}, opd)[1]
@@ -277,6 +289,7 @@ fd.post(f"/ipd/discharge/{adm}?handler=Initiate",
         {"AdmissionId": adm, "ClinicalSummary": "recovered"}, dis)
 dis = fd.get(f"/ipd/discharge/{adm}")
 fd.post(f"/ipd/discharge/{adm}?handler=Clear", {"AdmissionId": adm}, dis)
+ensure_ipd_counter(op)                    # spec 0048: settlement rides the IPD drawer
 dis = op.get(f"/ipd/discharge/{adm}")
 op.post(f"/ipd/discharge/{adm}?handler=Prepare", {"AdmissionId": adm}, dis)
 dis = op.get(f"/ipd/discharge/{adm}")
@@ -365,6 +378,7 @@ fd.post(f"/ipd/folio/{adm2}?handler=Absconded", {"AdmissionId": adm2},
         fd.get(f"/ipd/folio/{adm2}"))
 dis2 = op.get(f"/ipd/discharge/{adm2}")
 check("Close the bill" in dis2, "the screen offers to close an absconded patient's bill")
+ensure_ipd_counter(op)                    # spec 0048: a day-close case may have shut the drawer
 op.post(f"/ipd/discharge/{adm2}?handler=Prepare", {"AdmissionId": adm2}, dis2)
 dis2 = op.get(f"/ipd/discharge/{adm2}")
 tok2 = re.search(r'name="SubmissionToken" value="([0-9a-fA-F-]+)"', dis2)

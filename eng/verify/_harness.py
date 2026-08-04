@@ -274,19 +274,16 @@ def report(title: str, require_all_roles: bool = False) -> int:
 def grant_cells(html: str) -> list[tuple[str, str, str, bool]]:
     """`(role, permission, role_id, held)` for every cell of `/admin/users`' §12 matrix.
 
-    The matrix is the only place a deployment's grants can be read without a new endpoint, and
-    the four values of a cell sit in four separate tags. Matching them one at a time across a
-    character window picks up the *neighbouring* role's id — the cells are adjacent — so the
-    whole tuple is matched in one pass or not at all.
+    Spec 0049 made the matrix one form of checkboxes: a cell is a single
+    `<input type="checkbox" name="Grants" value="{roleId}:{claim}" data-role="{role}">`
+    with `checked="checked"` when held — the whole tuple lives in one tag, matched in one pass.
     """
     out = []
     for m in re.finditer(
-            r'name="roleId" value="(\d+)"\s*/>\s*'
-            r'<input type="hidden" name="permission" value="([a-z][a-z.]+)"\s*/>\s*'
-            r'<input type="hidden" name="grant" value="(?:true|false)"\s*/>[\s\S]{0,200}?'
-            r'title="(Revoke|Grant) [a-z.]+ for ([^"]+)"', html):
-        role_id, perm, verb, role = m.groups()
-        out.append((role, perm, role_id, verb == "Revoke"))
+            r'<input type="checkbox" name="Grants" value="(\d+):([a-z][a-z.]+)"'
+            r' data-role="([^"]+)"( checked="checked")?', html):
+        role_id, perm, role, checked = m.groups()
+        out.append((role, perm, role_id, checked is not None))
     return out
 
 
@@ -411,6 +408,7 @@ def settle_and_discharge(make, admission_id, bed_ids=()) -> None:
                 {"AdmissionId": admission_id}, page)
 
         open_counter(op)
+        ensure_ipd_counter(op)
         page = op.get(f"/ipd/discharge/{admission_id}")
         op.post(f"/ipd/discharge/{admission_id}?handler=Prepare",
                 {"AdmissionId": admission_id}, page)
@@ -434,6 +432,19 @@ def open_counter(sess: Session, kind: str = "Front Desk", float_amt: str = "2000
     m = re.search(r'value="(\d+)"[^>]*>[^<]*' + kind, page)
     sess.post("/billing/session",
               {"CounterId": m.group(1) if m else "1", "OpeningFloat": float_amt}, page)
+
+
+def ensure_ipd_counter(sess: Session, float_amt: str = "1000") -> None:
+    """Spec 0048: discharge settlement needs an open session on the IPD counter — the outdoor
+    drawer no longer qualifies. Sessions are unique per counter (not per operator), so blindly
+    posting open is safe: if this operator's IPD session already exists, the post fails
+    server-side and that failure is the good case."""
+    page = sess.get("/billing/session")
+    if "IPD counter open" in page:
+        return
+    m = re.search(r'value="(\d+)"[^>]*>[^<]*IPD', page)
+    if m:
+        sess.post("/billing/session", {"CounterId": m.group(1), "OpeningFloat": float_amt}, page)
 
 
 def find_patient(sess: Session, term: str) -> str | None:

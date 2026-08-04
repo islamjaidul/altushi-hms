@@ -1,0 +1,113 @@
+@page "/billing/ipd"
+@model Hms.Web.Pages.Billing.IpdModel
+@{
+    ViewData["Title"] = "IPD Billing";
+    ViewData["Crumb"] = "Billing & Cash";
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.Session is null)
+{
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">lock</span>
+        <span>
+            <b>The IPD counter is closed.</b> Discharge settlements move through its own drawer —
+            open it before settling.
+            <a href="/billing/session" style="margin-left:6px">Open counter →</a>
+        </span>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-head">
+            @Model.Session.CounterName
+            <span class="pill good">Open</span>
+            <span class="spacer"></span>
+            <span class="card-hint">
+                business day @Ui.DateLong(Model.Session.BusinessDay)
+                · float @Ui.Money(Model.Session.OpeningFloat)
+            </span>
+            <a class="btn-tint" href="/billing/day-close?Kind=ipd">Close IPD counter</a>
+        </div>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="card card-clip">
+        <div class="card-head">
+            Discharge pipeline
+            <span class="spacer"></span>
+            <span class="card-hint">@Model.Queue.Count admission(s) — this counter handles only IPD</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Admission</th><th>Patient</th><th>Stage</th>
+                    <th class="num">Unbilled</th><th class="num">Advance held</th>
+                    <th class="num">Due</th><th class="num"></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Queue)
+                {
+                    <tr>
+                        <td class="id-cell">@r.AdmissionNo</td>
+                        <td><b>@r.Patient</b></td>
+                        <td>
+                            <span class="pill @(r.State == "financially_settled" ? "good" : "info")">
+                                @Ui.Humanize(r.State)
+                            </span>
+                        </td>
+                        <td class="num">@Ui.Money(r.DraftCharges)</td>
+                        <td class="num">@Ui.Money(r.AdvanceHeld)</td>
+                        <td class="num">@(r.SettledDue > 0 ? Ui.Money(r.SettledDue) : "—")</td>
+                        <td class="num">
+                            <a class="btn-tint" href="/ipd/folio/@r.AdmissionId">Folio</a>
+                            <a class="btn-tint" href="/ipd/discharge/@r.AdmissionId">
+                                @(r.State == "clinically_cleared" ? "Settle" : "Discharge")
+                            </a>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Queue.Count == 0)
+                {
+                    <tr><td colspan="7" class="empty">No admissions in the discharge pipeline.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">Recent IPD invoices</div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>No.</th><th>Patient</th><th class="num">Net</th><th class="num">Balance</th></tr></thead>
+                <tbody>
+                @foreach (var i in Model.Invoices)
+                {
+                    <tr>
+                        <td class="id-cell"><a href="/billing/invoice/@i.Id">@i.InvoiceNo</a></td>
+                        <td>@i.Patient</td>
+                        <td class="num">@Ui.Money(i.Net)</td>
+                        <td class="num">@(i.Balance > 0 ? Ui.Money(i.Balance) : "—")</td>
+                    </tr>
+                }
+                @if (Model.Invoices.Count == 0)
+                {
+                    <tr><td colspan="4" class="empty">No settlement invoices yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

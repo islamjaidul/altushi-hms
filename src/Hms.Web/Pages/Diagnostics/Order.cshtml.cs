@@ -71,7 +71,7 @@ public class OrderModel(
 
         await tx.RunAsync(async s =>
         {
-            Session = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+            Session = await CounterContext.FindOpenOutdoorAsync(s.Bill, ActorId);   // spec 0048: never the IPD drawer
 
             var tests = await s.Adm.TestCatalog.AsNoTracking()
                 .Where(t => t.Active).OrderBy(t => t.Dept).ThenBy(t => t.Name).ToListAsync();

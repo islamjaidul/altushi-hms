@@ -19,6 +19,9 @@ public class SessionModel(HmsTx tx, BillingService billing) : HmsPageModel
     [BindProperty] public long OpeningFloat { get; set; }
 
     public OpenSession? Current { get; private set; }
+    /// <summary>Spec 0048: the IPD drawer is its own slot — one outdoor and one IPD session
+    /// may be open for the same operator at once (sessions are unique per counter).</summary>
+    public OpenSession? CurrentIpd { get; private set; }
     public IReadOnlyList<CounterOption> Counters { get; private set; } = [];
     public long TakenToday { get; private set; }
     public int InvoicesToday { get; private set; }
@@ -27,9 +30,10 @@ public class SessionModel(HmsTx tx, BillingService billing) : HmsPageModel
 
     private async Task LoadAsync()
     {
-        (Current, Counters, TakenToday, InvoicesToday) = await tx.RunAsync(async s =>
+        (Current, CurrentIpd, Counters, TakenToday, InvoicesToday) = await tx.RunAsync(async s =>
         {
-            var current = await CounterContext.FindOpenAsync(s.Bill, ActorId);
+            var current = await CounterContext.FindOpenOutdoorAsync(s.Bill, ActorId);
+            var currentIpd = await CounterContext.FindOpenIpdAsync(s.Bill, ActorId);
 
             var openStates = new[] { SessionState.Active, SessionState.Opened, SessionState.Reopened };
             var busy = await s.Bill.Sessions
@@ -58,7 +62,7 @@ public class SessionModel(HmsTx tx, BillingService billing) : HmsPageModel
                     .SumAsync(r => (long?)r.Amount) ?? 0;
                 count = await s.Bill.Invoices.CountAsync(i => i.CounterSessionId == current.Id);
             }
-            return (current, (IReadOnlyList<CounterOption>)options, taken, count);
+            return (current, currentIpd, (IReadOnlyList<CounterOption>)options, taken, count);
         });
     }
 
@@ -79,10 +83,17 @@ public class SessionModel(HmsTx tx, BillingService billing) : HmsPageModel
 
         try
         {
-            var session = await tx.RunAsync(s =>
-                billing.OpenSessionAsync(s.Bill, BranchId, CounterId, ActorId, OpeningFloat));
+            var (session, kind) = await tx.RunAsync(async s =>
+            {
+                var opened = await billing.OpenSessionAsync(
+                    s.Bill, BranchId, CounterId, ActorId, OpeningFloat);
+                var counterKind = await s.Bill.Counters.AsNoTracking()
+                    .Where(c => c.Id == CounterId).Select(c => c.Kind).FirstOrDefaultAsync();
+                return (opened, counterKind);
+            });
             Toast($"Counter open — float {Ui.Money(session.OpeningFloat)}", "lock");
-            return Redirect("/billing/opd");
+            // Spec 0048: an IPD drawer lands on the IPD workspace, not the OPD till.
+            return Redirect(kind == CounterContext.IpdKind ? "/billing/ipd" : "/billing/opd");
         }
         catch (BillingException e)
         {
