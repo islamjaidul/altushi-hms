@@ -13,6 +13,12 @@ Architecture's per-module ports/adapters would multiply indirection this team do
 Do not "modernise" toward MediatR/CQRS, a repository layer over EF, or per-module hosts. If you
 think a change needs one, that is an ADR (`adr-write`), not a refactor.
 
+**Sibling skills, each owning a concern this one does not restate:** `domain-modelling` (where an
+invariant belongs, aggregates, SOLID/DDD here) · `schema-and-indexing` (table shape, constraints,
+which columns are indexed) · `crud-completeness` (when a screen is finished) · `cross-module-flow`
+(what a module owes another) · `tdd-loop` (test-first order and tier choice) ·
+`security-guardrails` (authz, PHI, audit).
+
 ## Layout
 
 ```
@@ -124,7 +130,7 @@ unguarded.
 | `eng/check-no-external-hosts.sh` | a CDN or external host is referenced — fonts/icons are vendored |
 | `eng/check-no-native-date.sh` | a native `type="date"` appears |
 | `eng/check-additive-migrations.sh` | a destructive migration op is generated |
-| `eng/check-fkeys.sh` | a foreign key crosses a module schema boundary |
+| `eng/check-fkeys.sh` | a screen rebinds a reserved **function** key (F2 New Patient, F3 Item Search, F9 Hold/Recall, F10 Payment) to another purpose. Despite the name this is nothing to do with foreign keys — **no guard enforces the no-cross-schema-FK rule**; that one is on review (`schema-and-indexing`) |
 | `eng/check-lifecycle-traceability.sh` | a lifecycle case cites a script or **xUnit class** that does not exist, a user absent from the seeded cast, or the route table drifts from `[Authorize]` |
 | `ModuleBoundaryTests` / `CrossContextQueryTests` / `HandlerPermissionTests` / `ViewGuardPermissionTests` | boundary, cross-context join, unguarded handler, guard/policy mismatch |
 

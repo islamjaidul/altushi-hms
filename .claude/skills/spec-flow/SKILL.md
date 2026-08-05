@@ -22,7 +22,7 @@ ls docs/specs/                              # next free ID
 mkdir -p docs/specs/0007-opd-billing-screen
 ```
 Write `spec.md` (template below). Status `Draft`. Add a row to the index table in `docs/specs/README.md`.
-Check MVP scope first with the `mvp-scope-check` skill — if it's out of scope, the spec records the deferral instead of the build.
+Route the scope first with the `scope-routing` skill — if no §5/§5A requirement covers it, the spec records the question to the PM instead of the build.
 
 **2. On plan approval — archive the plan**
 
@@ -45,7 +45,7 @@ Set Status `Done`, confirm acceptance criteria are met (state how each was verif
 - **Status:** Draft | Approved | In Progress | Done | Superseded by NNNN | Abandoned
 - **Date:** YYYY-MM-DD
 - **PRD ref:** §<n> (the requirement this serves)
-- **MVP:** in scope | deferred (per §9A.2)
+- **Scope:** in scope (§5 M<n>) | defect repair | question for the PM (see `scope-routing`)
 
 ## Problem
 What is wrong or missing, and who feels it. No solution here.

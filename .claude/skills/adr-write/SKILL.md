@@ -40,7 +40,7 @@ The specific signal that would make us revisit this.
 - **Cite the PRD** for the requirement being served (`§8 N2`, `§12`, `§9A.2`) rather than restating it.
 - **State measurement honestly.** Mark estimates as estimates; if you benchmarked, say how. Never assert a library capability or version you haven't verified.
 - **`Reversal trigger` is mandatory.** A decision with no reversal condition hasn't been thought through.
-- Business/scope questions do **not** belong in ADRs — route them to the PM (see `mvp-scope-check`).
+- Business/scope questions do **not** belong in ADRs — route them to the PM (see `scope-routing`).
 
 ## Required coverage
 

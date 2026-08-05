@@ -102,4 +102,5 @@ A spec cites the PRD section it implements; an ADR records a decision the spec s
 | [0048-ipd-bill-counter](0048-ipd-bill-counter/spec.md) | A dedicated IPD billing counter: settlement requires an IPD session, the IPD session cannot bill OPD, plus an IPD cashier workspace | Done | §5 M4, §5 M6, §12 | 2026-08-04 |
 | [0049-permission-matrix-editor](0049-permission-matrix-editor/spec.md) | Role permissions as checkboxes + one Save; no self-signout, no lockout, instant self-refresh | Done | §5 M21, §12, §7 | 2026-08-04 |
 | [0050-evergreen-rebrand-shell-polish](0050-evergreen-rebrand-shell-polish/spec.md) | Sylhet Evergreen Hospital rebrand (name, logo, favicon, SEH- series), blurred login, collapsible sidebar groups | Done | §7 | 2026-08-04 |
+| [0051-engineering-skill-set](0051-engineering-skill-set/spec.md) | Engineering skill set for production-grade delivery — TDD, schema/indexing, CRUD completeness, cross-module flow, domain modelling; scope gate corrected off the lifted MVP freeze | Done | §5, §7, §8 N1, §11, §12, §16 | 2026-08-06 |
 <!-- Add one row per spec, newest last. Keep Status in sync with the spec's own header. -->

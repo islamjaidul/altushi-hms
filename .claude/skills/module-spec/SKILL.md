@@ -39,4 +39,4 @@ Match the existing PRD style exactly — the doc is a handoff artifact and incon
 1. If you added a module, update the §5 domain map, the §10 data dictionary (owner/readers), §11 states if it introduces any, and §12 permissions.
 2. If it introduces a workflow state, add it to §11 and mark approval-gated transitions with `⚿`.
 3. Bump the changelog table at the top of the PRD.
-4. Check the MVP boundary — a new module is almost certainly **not** in MVP scope (see `mvp-scope-check`).
+4. Check what requirement it serves — a module the PRD does not describe is new scope for the PM, not ours to invent (see `scope-routing`).
