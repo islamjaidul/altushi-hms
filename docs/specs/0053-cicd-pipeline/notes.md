@@ -56,10 +56,19 @@ untouched by uptime. Payroll migrations from 0052 applied to the live database a
 - **The rollback path has never fired.** Rehearse it: deploy an image whose `/health` fails, on the
   demo/HRM stack rather than the ERP, and confirm the previous digest comes back. Until that is
   done, §8 N6's guarantee is a claim about code that has not been run.
-- **The CI key is root-equivalent.** It gets a shell in the `docker` group, and docker group
-  membership can mount `/` into a container. Restricting `authorized_keys` to
-  `command="…deploy-remote.sh"` was offered and not taken up; it is the difference between a
-  leaked key restarting the app and a leaked key owning the host. Recommend doing it.
+- ~~**The CI key is root-equivalent.**~~ **Done** — `hms-deploy-gate.sh` is a forced command
+  (`no-pty`, no forwarding) that accepts one thing: `<registry-user> <image>`, where the image must
+  start with our own GHCR prefix and carry a 40-character sha tag. `:latest` is refused because a
+  moving tag is not a reviewed commit.
+
+  The load-bearing half is not the forced command but the ownership change beside it. A forced
+  command is worthless if the account can rewrite the script the command runs — or `compose.yml`,
+  which can mount `/` into a container just as well as `docker run` can. `deploy/` is therefore
+  now `root:deploy` with group write removed, and CI no longer scps into it. **Consequence:**
+  changing `deploy-remote.sh` or the compose files requires a root `git pull` plus a re-run of
+  `vm-harden-deploy-key.sh` on the VM. That is the cost of the key not being root, and it is worth
+  it. Requires one root command to install (`deploy/vm-harden-deploy-key.sh`); until that is run,
+  the new CI protocol will fail at the deploy step — safely, at the gate, not in production.
 - **`VM_USER` is the secret `deploy`**, so GitHub masks the word "deploy" everywhere in the run
   log — "Pre-*** backup taken". Harmless but it degrades the log. Make it a variable, not a secret;
   a username on a host that already exposes SSH is not the sensitive part.

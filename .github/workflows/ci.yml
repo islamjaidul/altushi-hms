@@ -282,34 +282,28 @@ jobs:
           # Pinned host key — never StrictHostKeyChecking=no, that accepts any MITM (§8 N5).
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
 
-      - name: Ship the deploy script and the compose files
-        env:
-          VM_HOST: ${{ secrets.VM_HOST }}
-          VM_USER: ${{ secrets.VM_USER }}
-          VM_PATH: ${{ secrets.VM_PATH }}
-        run: |
-          set -euo pipefail
-          scp -i ~/.ssh/id_deploy -P "${{ secrets.VM_SSH_PORT || 22 }}" \
-            deploy/deploy-remote.sh deploy/compose.yml deploy/compose.vm.yml \
-            "${VM_USER}@${VM_HOST}:${VM_PATH}/deploy/"
-
+      # No scp. The deploy script and the compose files live root-owned on the VM and are updated
+      # by a root `git pull` there — because anything CI could write into deploy/ is a root
+      # escalation: `compose.yml` can mount / into a container exactly like `docker run` can.
+      # Pushing those files and forcing a single command are mutually exclusive; the forced
+      # command wins. Update them with deploy/vm-harden-deploy-key.sh after a pull.
       - name: Deploy, health-check, roll back on failure
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
           VM_USER: ${{ secrets.VM_USER }}
-          VM_PATH: ${{ secrets.VM_PATH }}
           VM_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
           IMAGE: ${{ needs.image.outputs.image }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY_USER: ${{ github.actor }}
         run: |
           set -euo pipefail
-          # The token goes over stdin, never as an argv element: anything on the remote command
-          # line is readable in `ps` by every other tenant of this shared box (§8 N5).
+          # The remote end is a forced command (hms-deploy-gate): this string arrives as
+          # SSH_ORIGINAL_COMMAND and is validated there, never evaluated by a shell. The token
+          # goes over stdin, never as an argv element — anything on the remote command line is
+          # readable in `ps` by every other tenant of this shared box (§8 N5).
           printf '%s' "$REGISTRY_TOKEN" | ssh -i ~/.ssh/id_deploy -p "$VM_PORT" \
-            "${VM_USER}@${VM_HOST}" \
-            "docker login ghcr.io -u '${REGISTRY_USER}' --password-stdin \
-             && HMS_DEPLOY_DIR='${VM_PATH}/deploy' bash '${VM_PATH}/deploy/deploy-remote.sh' '${IMAGE}'"
+            -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" "${REGISTRY_USER} ${IMAGE}"
 
       - name: Record what is now running
         if: always()
