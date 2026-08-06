@@ -14,9 +14,18 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A newer commit supersedes an in-flight PR run. Never cancel a main run: it may be mid-deploy.
+# A newer commit supersedes an in-flight PR run. Main runs get a group of their own per run, so
+# they never queue behind each other.
+#
+# The obvious version of this — one group per ref, cancel-in-progress false on main — deadlocked
+# the whole pipeline: a run parked in `waiting` for a deploy approval holds the group, so every
+# later push queued behind a human decision that might never come. Two runs were cancelled and a
+# third sat pending for ten minutes before anyone looked.
+#
+# Serialising *deploys* is still right, and that belongs on the deploy jobs (they carry their own
+# `concurrency: deploy-production`), not on the build. Builds are independent; deploys are not.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
