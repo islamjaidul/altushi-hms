@@ -7,10 +7,11 @@
 | **Prepared by** | ERP Project Manager (20 yrs, Hospital ERP domain) |
 | **Audience** | Principal Software Architect & Engineering Design Team |
 | **Date** | 26 July 2026 |
-| **Status** | Draft v1.2 — v1.1 enriched with live-system walkthrough of both competitor products; v1.2 adds R5 Nursing Station |
+| **Status** | Draft v1.3 — v1.1 enriched with live-system walkthrough of both competitor products; v1.2 adds R5 Nursing Station; v1.3 expands M16 HR & Payroll to an industry-standard module PRD |
 | **Scope discipline** | This document contains **business requirements only**. All technology decisions (stack, database, architecture style, deployment) are explicitly delegated to the Software Architect — see §16 Handoff Checklist. |
 
 **Changelog**
+- **v1.3 (06 Aug 2026)** — **M16 HR & Payroll raised to an industry-standard module**, expanded into its own architect-facing brief at `docs/m16-hr-payroll-prd.md` (Module PRD v1.0): gap analysis against the shipped module, reports & registers inventory, a single calendar-driven period standard binding on every report/dashboard/log, three audience-specific dashboards, the **employee timeline / service record**, the employment lifecycle (probation → separation → clearance → final settlement), compensation processes (bonus, increment, promotion, variance review, disbursement), loans/PF/tax/welfare surfaces, and full employee & manager self-service. §5 M16 rewritten to match; §11 amended so leave approval tiers are employer configuration (1–3, default 2), resolving the §11-vs-§5A-16 contradiction. Added US16.4–US16.10 here and US16.11–US16.16 in the module PRD. No statutory rate, slab or entitlement is authored by us (hard rule 3). Spec `docs/specs/0054-hr-payroll-industry-standard/`.
 - **v1.2 (03 Aug 2026)** — Added §5A.2 **R5 Nursing Station** (ward nursing console: ward monitor, prescription-driven Medicine Chart schedule with overdue visibility, attributable care tasks, ward duty assignment — fills M6's duty-assignment `[S]` item and the 2026-08 audit's missed-dose visibility gap). Added US5.5, US6.5, US6.6.
 - **v1.1 (26 Jul 2026)** — Added §2.4 live-system walkthrough findings from authenticated access to **MEDISpa** (full menu + form crawl) and structural extraction of **PrimeMIS** (complete Angular route/API map). Added §3.4 Bangladesh financial rails (BEFTN/TDS/VAT). Added §5A live-observed module enrichments (46 verified additions across modules + 4 new sub-modules). Extended §11 state machines, §12/§16. Every added item is source-tagged `[obs: MEDISpa]` / `[obs: PrimeMIS]`.
 - **v1.0 (26 Jul 2026)** — Initial PRD from the two written vendor proposals + Bangladesh industry research.
@@ -663,23 +664,44 @@ All personas share a base profile: **age 30–55, non-technical, moderate Englis
 
 ### Module 16 — HR & Payroll
 
-**Responsibility:** Employee lifecycle, biometric attendance, shift rosters, leave, and an auto-generated payroll that reconciles with attendance.
+**Responsibility:** The full employment relationship — offer accepted to final settlement paid: employee lifecycle, biometric attendance, shift rosters, leave, an auto-generated payroll that reconciles with attendance, and the reporting, dashboards and service record that make all of it answerable.
+
+> **Expanded in `docs/m16-hr-payroll-prd.md` (Module PRD v1.0).** M16 is the one module also sold standalone (the HRM SKU, ADR-0025), so its requirements outgrew a §5 entry. The module PRD is the architect's brief for M16: gap analysis against the shipped module, full requirements, state machines, permission set, UX and reporting standards, and phasing. This section remains the summary; the module PRD governs where they differ.
 
 **Sub-features**
-- [M] Employee records (personal, official, salary grade, department, designation, document attachments)
-- [M] Biometric attendance capture (live punch feed from devices) + admin review/correction with reason
-- [M] Shift & roster management (hospital = 24/7 rotating shifts)
-- [M] Leave management: types, balances, applications, approvals; without-pay handling
-- [M] Payroll: auto salary sheet from attendance (late/absent/OT/deduction rules), bonus entry, pay slips; posts to Accounts (M15)
-- [S] Loan/advance entry with installment deduction; provident fund setup, employee PF history & PF ledger (PrimeMIS)
-- [S] Online leave application (self-service)
-- [C] Birthday/anniversary lists; honor-duty tracking (PrimeMIS)
+- [M] Employee records (personal, official, **employment type**, salary grade, department, designation, document attachments with expiry, **dependants & nominees**, **professional licence** `[hospital]`)
+- [M] Biometric attendance capture (live punch feed from devices) + admin review/correction with reason + **employee-raised regularization**
+- [M] Shift & roster management (hospital = 24/7 rotating shifts) with **templates, rotation patterns and coverage warnings**
+- [M] Leave management: types, balances, applications, approvals (**1–3 configurable tiers**), without-pay handling, **leave calendar**, **year-end close**, encashment
+- [M] Payroll: auto salary sheet from attendance (late/absent/OT/deduction rules), **variance review before approval**, bonus, **increment & promotion runs**, pay slips as documents, **disbursement (bank file / cash / cheque)**; posts to Accounts (M15)
+- [M] **Employment lifecycle**: probation confirmation, separation with clearance, **final settlement** (dues, encashment, gratuity, recovery), and generated letters (appointment, confirmation, experience, termination — §5A-17)
+- [M] **Reports & registers** — muster roll, salary sheet, leave register, headcount movement, PF/tax/welfare statements and the rest of the module PRD §13 inventory — all on one calendar-driven period selector (day/week/month/quarter/year/custom)
+- [M] **Dashboards** for three audiences (HR administrator, manager, employee), every figure drilling through to its rows
+- [M] **Employee timeline** — one chronological service record of everything that ever happened to a person, printable
+- [M] **Activity log** — every HR write, by employee, actor, action and calendar period
+- [S] Loan/advance entry with installment deduction; provident fund setup, employee PF history & PF ledger (PrimeMIS); welfare & tax ledgers; PF withdrawal
+- [S] Online leave application and full **employee/manager self-service** (own attendance, payslips, requests; team approvals and roster)
+- [S] Appraisal cycle feeding increments; training & certification records with expiry
+- [C] Birthday/anniversary lists; honor-duty tracking (PrimeMIS); notice board; expense claims
+
+**Out of scope for M16:** recruitment/applicant tracking (candidate M23), learning-management delivery, succession planning, and a native mobile app — see module PRD §2.3.
+
+**Statutory neutrality:** no Bangladesh leave entitlement, tax slab, PF rate or gratuity formula is authored by this product. All are effective-dated employer configuration, supplied and signed off by the customer's counsel (module PRD D2, hard rule 3).
 
 **User stories**
 - **US16.1** As an HR Officer, I want the monthly salary sheet to generate from attendance with all exceptions pre-listed for my review, so that payroll takes a day, not a week.
   **AC:** Every deduction line traceable to attendance events or entries; sheet locks after approval; posts to M15.
 - **US16.2** As a Department Head, I want to approve my team's leave requests from a pending list, so that approvals don't chase paper.
 - **US16.3** As an HR Officer, I want live punch data visible in the software, so that "the machine didn't take my punch" disputes are checked in seconds.
+- **US16.4** As an HR Administrator, I want to pick any day, month, quarter or year from a calendar and see everything that happened in that period, so that answering a question never requires knowing which screen it lives on. → module PRD §12.3
+- **US16.5** As an HR Officer, I want the dashboard to tell me what needs me today and let me act from it, so that I start work without hunting. → module PRD §14.1
+- **US16.6** As an HR Officer, I want one screen showing everything that ever happened to an employee, in order, so that a query about a person is answered by reading rather than remembering. → module PRD §15
+- **US16.7** As an HR Officer, I want to see what changed since last month before I send payroll for approval, so that I never explain a mistake after it is paid.
+- **US16.8** As an Accounts Officer, I want the approved payroll to produce a bank transfer file, a cash sheet and a cheque list, so that paying 200 people is one upload and two signatures. → §3.4, §5A-15
+- **US16.9** As an Employee, I want to raise a correction for a day the device got wrong and see it decided, so that I do not lose pay by argument.
+- **US16.10** As an HR Officer, I want a separation to walk a clearance and produce one settlement statement, so that nothing is discovered after the person has gone.
+
+*(US16.11–US16.16 — roster building, leave clash, self-service money, cost by department, the activity log, and licence expiry — are stated in full in the module PRD §8.)*
 
 ---
 
@@ -1185,8 +1207,12 @@ The states the architect turns into state machines. Transitions marked ⚿ requi
 | **Blood Unit** | Collected → Screening Pending → Screened-Clear / Reactive(→ Quarantined → Discarded, logged) → In Stock → Reserved(crossmatch) → Issued → Transfused/Returned · Expired → Discarded |
 | **Blood Request** | Requested → Approved → Crossmatched → Issued → Closed |
 | **Voucher** | Drafted → Pending Approval → Approved⚿(posted) / Rejected · correction = Reversal voucher |
-| **Leave Application** | Applied → Recommended(dept head) → Approved/Rejected(HR) → Availed |
-| **Payroll Run** | Generated → Exceptions Reviewed → Approved⚿ → Locked → Posted to Accounts |
+| **Leave Application** | Applied → Recommended(tier 1) → *(Recommended, tier 2)* → Approved⚿/Rejected → Availed → *(Cancelled / Withdrawn⚿ — restores balance)* · **approval tiers are employer configuration, 1–3, default 2** — resolves the §5A-16 three-tier variant as data rather than a second workflow (module PRD D1) |
+| **Payroll Run** | Generated → Exceptions Reviewed → **Variance Reviewed** → Approved⚿ → Locked → Posted to Accounts → **Disbursed** · off-path: Cancelled(before lock), Reversed⚿(after lock, via a referencing reversal run) |
+| **Employment** | Offer accepted → Joined → Probation → Confirmed⚿ *(or Probation Extended⚿ → Confirmed⚿)* → Notice Served → In Clearance → Relieved → Settled⚿ · terminal: Terminated⚿ · Retired · Contract Ended · Deceased · re-entry: Rehired (a **new** employment linked to the same person) `[module PRD §9]` |
+| **Attendance Day** | Derived → *(Exception)* → Reviewed → Corrected⚿(reason required) → Locked-by-payroll → *(post-cut-off correction → Arrears Pending → Arrears Paid)* |
+| **Loan / Advance** | Requested → Approved⚿ → Disbursed → Recovering *(installments; deferred where the net-pay floor bites)* → Closed · off-path: Foreclosed⚿ · Written Off⚿ |
+| **Final Settlement** | Initiated → Clearance In Progress → Computed → Approved⚿ → Paid → Documents Issued |
 | **Consultant/Referrer payout** | Accrued → Statement Generated → Approved⚿ → Paid → Posted |
 | **SMS** | Queued → Sent → Delivered / Failed(→ Retried) |
 
