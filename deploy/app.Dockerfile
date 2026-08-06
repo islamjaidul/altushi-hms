@@ -1,7 +1,10 @@
 # hms-app image (ADR-0001): multi-stage, chiseled runtime, multi-arch.
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Build toolchain pinned to the SDK global.json names, so the image is compiled by the same
+# compiler that ran the tests. A floating sdk:10.0 meant CI could prove one binary and ship
+# another (spec 0053 AC7).
+FROM mcr.microsoft.com/dotnet/sdk:10.0.302 AS build
 WORKDIR /src
-COPY hms-erp.slnx Directory.Build.props nuget.config* ./
+COPY global.json hms-erp.slnx Directory.Build.props nuget.config* ./
 COPY src/ src/
 RUN dotnet publish src/Hms.Web -c Release -o /out /p:TreatWarningsAsErrors=true
 

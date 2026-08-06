@@ -1,0 +1,11 @@
+{
+  "//": "Pinned so --locked-mode can only fail because a dependency moved, never because the",
+  "//2": "GitHub runner image did (spec 0053 AC7). 10.0.302 is the SDK that produced the first",
+  "//3": "green runs. latestPatch keeps the 10.0.3xx feature band and accepts servicing fixes;",
+  "//4": "a jump to 10.0.4xx is a deliberate edit here, with a CI run to prove it.",
+  "sdk": {
+    "version": "10.0.302",
+    "rollForward": "latestPatch",
+    "allowPrerelease": false
+  }
+}

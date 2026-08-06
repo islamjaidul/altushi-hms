@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          global-json-file: global.json   # install exactly what the repo pins, not "latest 10.0"
       - name: Record the SDK this run resolved
         # --locked-mode failing because the runner image moved, rather than because a dependency
         # moved, is otherwise invisible. Pin here once a known-good version is established.
@@ -200,7 +200,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          global-json-file: global.json   # install exactly what the repo pins, not "latest 10.0"
       - name: Cache NuGet packages
         uses: actions/cache@v6
         with:
@@ -215,9 +215,63 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: dev-only-super
 
+  # The deploy's recovery path, exercised for real: a throwaway stack, a registry, a healthy
+  # deploy, then an image that never answers /health. It caught a rollback that could not work at
+  # all (compose was being handed an image ID where a reference belongs), which had already been
+  # through review and one production deploy without anyone noticing. Recovery code that is never
+  # run is a hypothesis, so it runs on every change to the deploy path.
+  deploy-drill:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rollback drill
+        run: bash eng/verify/deploy-rollback-drill.sh
+
+  # The single required status check. It exists because build-test is conditional: a docs-only
+  # commit skips it, and a *skipped* required check never reports, so branch protection would wait
+  # on it forever. This job always runs and decides what "skipped" meant — legitimately filtered,
+  # or a real failure upstream.
+  gate:
+    needs: [changes, build-test, upgrade-path, deploy-drill]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Did every gate that should have run, pass?
+        run: |
+          set -euo pipefail
+          CODE="${{ needs.changes.outputs.code }}"
+          BT="${{ needs.build-test.result }}"
+          UP="${{ needs.upgrade-path.result }}"
+          DR="${{ needs.deploy-drill.result }}"
+          echo "code-relevant=$CODE  build-test=$BT  upgrade-path=$UP  deploy-drill=$DR"
+          {
+            echo "### Gate"
+            echo "| job | result |"; echo "|---|---|"
+            echo "| changes (code relevant) | \`$CODE\` |"
+            echo "| build-test | \`$BT\` |"
+            echo "| upgrade-path | \`$UP\` |"
+            echo "| deploy-drill | \`$DR\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CODE" != "true" ]; then
+            # Nothing the build has an opinion about changed. Skipped is the correct outcome.
+            [ "$BT" = "skipped" ] && [ "$UP" = "skipped" ] && [ "$DR" = "skipped" ] && {
+              echo "Docs-only commit — gates correctly skipped."; exit 0; }
+            echo "::error::Docs-only commit but a gate did not skip ($BT/$UP/$DR) — filter is wrong."
+            exit 1
+          fi
+          # Code changed: both must have actually succeeded. "skipped" here means a dependency
+          # died, and treating that as success is how a broken gate reports green.
+          [ "$BT" = "success" ] && [ "$UP" = "success" ] && [ "$DR" = "success" ] || {
+            echo "::error::A required gate did not succeed (build-test=$BT upgrade-path=$UP deploy-drill=$DR)"
+            exit 1; }
+          echo "All gates passed."
+
   # Built only from a commit that passed every gate above, and only on main.
   image:
-    needs: [changes, build-test, upgrade-path]
+    needs: [changes, build-test, upgrade-path, deploy-drill]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40

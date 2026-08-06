@@ -27,13 +27,24 @@ log() { printf '\n=== %s\n' "$*"; }
 cd "$DEPLOY_DIR"
 
 # ---------------------------------------------------------------- 1. record the rollback point
-# The digest actually running right now, not the tag we think is running — a tag can be moved.
-PREVIOUS_IMAGE="$(docker inspect --format '{{.Image}}' hms-app-1 2>/dev/null \
-  || docker inspect --format '{{.Image}}' "$("${COMPOSE[@]}" ps -q app 2>/dev/null)" 2>/dev/null \
-  || true)"
+# TWO different things, and conflating them broke rollback until the drill caught it:
+#
+#   .Config.Image  the reference the container was started FROM  (ghcr.io/…/app:<sha>, hms-app:dev)
+#   .Image         the image ID it resolved to                   (sha256:…)
+#
+# Rollback must re-run `up` with the *reference*. Feeding compose the bare `sha256:…` ID makes it
+# treat that as an image name, fail to resolve it, and leave the broken container in place — the
+# rollback reports failure and the site stays down, which is the one outcome it exists to prevent.
+# The ID is still worth capturing: it is what we verify against, because a tag can be moved.
+CID="$("${COMPOSE[@]}" ps -q app 2>/dev/null || true)"
+PREVIOUS_REF=""; PREVIOUS_DIGEST=""
+if [ -n "$CID" ]; then
+  PREVIOUS_REF="$(docker inspect --format '{{.Config.Image}}' "$CID" 2>/dev/null || true)"
+  PREVIOUS_DIGEST="$(docker inspect --format '{{.Image}}' "$CID" 2>/dev/null || true)"
+fi
 
-if [ -n "$PREVIOUS_IMAGE" ]; then
-  log "Currently running: $PREVIOUS_IMAGE"
+if [ -n "$PREVIOUS_REF" ]; then
+  log "Currently running: $PREVIOUS_REF ($PREVIOUS_DIGEST)"
 else
   log "No app container running — this is a first deploy, no rollback point"
 fi
@@ -89,7 +100,10 @@ log "Swapping app to $IMAGE"
 if HMS_APP_IMAGE="$IMAGE" "${COMPOSE[@]}" up -d --no-deps app && wait_healthy; then
   log "Healthy on $IMAGE"
   docker inspect --format 'running digest: {{.Image}}' "$("${COMPOSE[@]}" ps -q app)"
-  docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
+  # Dangling layers older than a week. Opt-out exists so the rollback drill cannot touch images
+  # on whatever machine it runs on (eng/verify/deploy-rollback-drill.sh).
+  [ "${HMS_SKIP_PRUNE:-0}" = "1" ] \
+    || docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
   exit 0
 fi
 
@@ -98,14 +112,21 @@ echo "!! New image did not become healthy within ${HEALTH_TIMEOUT}s" >&2
 log "Last 50 log lines from the failed container"
 "${COMPOSE[@]}" logs --tail=50 app >&2 || true
 
-if [ -z "$PREVIOUS_IMAGE" ]; then
+if [ -z "$PREVIOUS_REF" ]; then
   echo "!! No previous image to roll back to — the stack is DOWN and needs a human" >&2
   exit 1
 fi
 
-log "Rolling back to $PREVIOUS_IMAGE"
-if HMS_APP_IMAGE="$PREVIOUS_IMAGE" "${COMPOSE[@]}" up -d --no-deps app && wait_healthy; then
-  echo "Rolled back to $PREVIOUS_IMAGE and healthy. The deploy is a failure; the site is up." >&2
+log "Rolling back to $PREVIOUS_REF"
+# No pull: that image is already on this host, which is precisely why it is the rollback point.
+if HMS_APP_IMAGE="$PREVIOUS_REF" "${COMPOSE[@]}" up -d --no-deps app && wait_healthy; then
+  NOW="$(docker inspect --format '{{.Image}}' "$("${COMPOSE[@]}" ps -q app)" 2>/dev/null || true)"
+  if [ -n "$PREVIOUS_DIGEST" ] && [ "$NOW" != "$PREVIOUS_DIGEST" ]; then
+    echo "!! Rolled back to $PREVIOUS_REF and healthy, but the digest is $NOW, not the" >&2
+    echo "   $PREVIOUS_DIGEST that was running. The tag moved under us — verify before trusting." >&2
+    exit 1
+  fi
+  echo "Rolled back to $PREVIOUS_REF and healthy. The deploy is a failure; the site is up." >&2
   exit 1
 fi
 
