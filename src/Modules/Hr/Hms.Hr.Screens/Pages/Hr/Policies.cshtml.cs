@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Hms.Hr.Data;
+using Hms.Kernel.Audit;
+using Hms.Kernel.Time;
 using Hms.Kernel.Money;
 using Hms.Shell;
 using Microsoft.AspNetCore.Authorization;
@@ -18,7 +20,7 @@ public sealed record SetupItem(string Name, int Count, string Why, string? Link)
 /// payroll will refuse until it is filled in.
 /// </summary>
 [Authorize(Policy = HrPerm.PolicyManage)]
-public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
+public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit) : HmsPageModel
 {
     public IReadOnlyList<SetupItem> Structure { get; private set; } = [];
     public IReadOnlyList<SetupItem> PayRules { get; private set; } = [];
@@ -118,7 +120,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
         {
             await tx.RunAsync(async s =>
             {
-                var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
+                var today = Dhaka.DateOf(DateTimeOffset.UtcNow);
                 await body(s, today);
             });
         }
@@ -160,7 +162,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
         {
             await tx.RunAsync(async s =>
             {
-                var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
+                var today = Dhaka.DateOf(DateTimeOffset.UtcNow);
                 var open = await s.Hr.PayrollPolicies
                     .Where(p => p.BranchId == BranchId && p.EffectiveTo == null)
                     .OrderByDescending(p => p.EffectiveFrom)
@@ -176,6 +178,14 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
                     // branch threw an HrException nobody caught: a 500 on the second Save.
                     if (open.EffectiveFrom == today)
                     {
+                        // Spec 0055: the other five policy tables go through PolicyResolver, which
+                        // audits. This one is written here and was recorded nowhere, so a change to
+                        // the minimum-net-pay floor left no trace at all.
+                        audit.Append(s.Kernel, BranchId, ActorId, ActorName,
+                            "hr.policy.payroll.set", "hr.payroll_policy", open.Id,
+                            before: new { open.DayCountConvention, open.MinimumNetPayTaka },
+                            after: new { DayCountConvention = DayCount, MinimumNetPayTaka = MinimumNetPay },
+                            tier: 1);
                         open.DayCountConvention = DayCount;
                         open.MinimumNetPayTaka = MinimumNetPay;
                         return;
@@ -187,7 +197,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
                     open.EffectiveTo = today.AddDays(-1);
                 }
 
-                s.Hr.PayrollPolicies.Add(new PayrollPolicy
+                var added = s.Hr.PayrollPolicies.Add(new PayrollPolicy
                 {
                     BranchId = BranchId,
                     EffectiveFrom = today,
@@ -195,7 +205,13 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
                     MinimumNetPayTaka = MinimumNetPay,
                     CreatedAt = DateTimeOffset.UtcNow,
                     CreatedBy = ActorId,
-                });
+                }).Entity;
+
+                await s.Hr.SaveChangesAsync();
+                audit.Append(s.Kernel, BranchId, ActorId, ActorName,
+                    "hr.policy.payroll.set", "hr.payroll_policy", added.Id,
+                    after: new { EffectiveFrom = today, DayCountConvention = DayCount, MinimumNetPayTaka = MinimumNetPay },
+                    tier: 1);
             });
         }
         catch (HrException e)
@@ -211,7 +227,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies) : HmsPageModel
 
     private async Task LoadAsync(bool fillForm = false) => await tx.RunAsync(async s =>
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
+        var today = Dhaka.DateOf(DateTimeOffset.UtcNow);
 
         var units = await s.Hr.OrgUnits.CountAsync(x => x.BranchId == BranchId && x.Active);
         var designations = await s.Hr.Designations.CountAsync(x => x.BranchId == BranchId && x.Active);

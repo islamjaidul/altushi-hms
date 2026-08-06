@@ -1,0 +1,16 @@
+@model Hms.Shell.Reporting.ReportHead
+@*
+    §12.4.1 — every report states its name, the question it answers, the resolved period, who ran it
+    and when. On print the letterhead sits above this, so a sheet found on a desk in six months still
+    says what it is.
+*@
+<div class="report-head">
+    <h2>@Model.Name</h2>
+    <p class="report-question">@Model.Question</p>
+</div>
+<div class="report-meta">
+    <span>@Model.PeriodWords</span>
+    <span>Run by @Model.RunBy</span>
+    <span>@Model.RunAt</span>
+    <span>@Model.RowCount.ToString("N0") row(s)</span>
+</div>

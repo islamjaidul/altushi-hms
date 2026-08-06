@@ -1,51 +1,47 @@
 @page "/hr"
 @model Hms.Hr.Screens.Pages.Hr.IndexModel
 @{
-    ViewData["Title"] = "HR Dashboard";
-    ViewData["Crumb"] = HrNav.Group;
+    ViewData["Title"] = "HR dashboard";
+    ViewData["Crumb"] = "Dashboard";
 }
 
+<partial name="_PeriodBar" model="Model.Bar" />
+
+@* Row 1 — action required. §14.1: the panel that decides whether the module is useful at 9am. *@
+<div class="card card-clip">
+    <div class="card-head">Needs you</div>
+    @if (Model.Actions.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="icon icon-sm" aria-hidden="true">task_alt</span>
+            Nothing needs you today — no attendance exceptions, no leave waiting, no payroll open.
+        </div>
+    }
+    else
+    {
+        <div class="report-list">
+            @foreach (var action in Model.Actions)
+            {
+                <a class="report-item" href="@action.Href">
+                    <span class="pill @action.Severity">@action.Count</span>
+                    <span class="report-item-name">@action.Label</span>
+                    <span class="report-item-why">@action.Detail</span>
+                </a>
+            }
+        </div>
+    }
+</div>
+
+@* Row 2 — the period at a glance. Every tile is a door (D4). *@
 <div class="tile-row">
-    <div class="tile">
-        <div class="tile-head">
-            <span class="tile-label">On the payroll</span>
-            <span class="icon" aria-hidden="true">groups</span>
-        </div>
-        <div class="tile-value">@Model.Headcount</div>
-        <div class="tile-sub">active employees</div>
-    </div>
-    <div class="tile">
-        <div class="tile-head">
-            <span class="tile-label">On leave today</span>
-            <span class="icon" aria-hidden="true">event_busy</span>
-        </div>
-        <div class="tile-value">@Model.OnLeaveToday</div>
-        <div class="tile-sub">approved leave in effect</div>
-    </div>
-    <div class="tile">
-        <div class="tile-head">
-            <span class="tile-label">Absent today</span>
-            <span class="icon" aria-hidden="true">person_off</span>
-        </div>
-        <div class="tile-value text-warning">@Model.AbsentToday</div>
-        <div class="tile-sub">no punch, no leave</div>
-    </div>
-    <div class="tile">
-        <div class="tile-head">
-            <span class="tile-label">Attendance to fix</span>
-            <span class="icon" aria-hidden="true">fact_check</span>
-        </div>
-        <div class="tile-value text-danger">@Model.UnresolvedExceptions</div>
-        <div class="tile-sub">this month — payroll waits on these</div>
-    </div>
-    <div class="tile">
-        <div class="tile-head">
-            <span class="tile-label">Leave awaiting a decision</span>
-            <span class="icon" aria-hidden="true">pending_actions</span>
-        </div>
-        <div class="tile-value">@Model.PendingLeave</div>
-        <div class="tile-sub">applied or recommended</div>
-    </div>
+    @foreach (var tile in Model.Tiles)
+    {
+        <a class="tile" href="@tile.Href">
+            <div class="tile-label">@tile.Label</div>
+            <div class="tile-value">@tile.Value</div>
+            <div class="tile-sub">@tile.Sub</div>
+        </a>
+    }
 </div>
 
 @if (Model.OpenPayrollPeriod is not null)
@@ -53,43 +49,54 @@
     <div class="alert info">
         <span class="icon" aria-hidden="true">payments</span>
         <span>
-            Payroll for <b>@Model.OpenPayrollPeriod</b> is <b>@Model.OpenPayrollState</b>.
-            <a href="/hr/payroll">Open it</a>
+            Payroll for <b>@Model.OpenPayrollPeriod</b> is <b>@Model.OpenPayrollState</b> —
+            @Model.OpenPayrollNextAction. <a href="/hr/payroll">Open it</a>
         </span>
     </div>
 }
 
 <div class="card card-clip">
     <div class="card-head">
-        <h2>Headcount by unit</h2>
+        Headcount by unit
+        <span class="spacer"></span>
+        <span class="section-sub">as at @Ui.DateLong(Model.Period.Range.To)</span>
     </div>
-    @if (Model.ByUnit.Count == 0)
-    {
-        <div class="empty-state">
-            No employees are assigned to a unit yet. Add employees under
-            <a href="/hr/employees">Employees</a>.
-        </div>
-    }
-    else
-    {
-        <div class="table-wrap">
-            <table class="data">
-                <thead>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
                 <tr>
                     <th>Unit</th>
                     <th class="num">Headcount</th>
                 </tr>
-                </thead>
-                <tbody>
+            </thead>
+            <tbody>
+                @if (Model.ByUnit.Count == 0)
+                {
+                    <tr>
+                        <td class="empty-state" colspan="2">
+                            Nobody was assigned to a unit as at @Ui.DateLong(Model.Period.Range.To).
+                            Add employees under <a href="/hr/employees">Employees</a>, or step the
+                            period back to a date after people had joined.
+                        </td>
+                    </tr>
+                }
                 @foreach (var row in Model.ByUnit)
                 {
                     <tr>
                         <td>@row.OrgUnit</td>
-                        <td class="num tabular">@row.Headcount</td>
+                        <td class="num tabular"><a class="drill" href="@row.Href">@row.Headcount</a></td>
                     </tr>
                 }
-                </tbody>
-            </table>
-        </div>
-    }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Reports</div>
+    <p class="card-hint">
+        Every figure above opens the rows behind it, for the period selected at the top of the screen.
+        The <a href="/hr/reports">report centre</a> has the full set — registers, statements and the
+        activity log — all reading the same period.
+    </p>
 </div>

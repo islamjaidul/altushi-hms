@@ -21,7 +21,11 @@ public sealed record MyBalanceRow(string Type, int AvailableBp);
 /// URL, so there is nothing to tamper with.
 /// </para>
 /// </summary>
-[Authorize(Policy = HrPerm.LeaveApply)]
+// Spec 0055: "My space" is present for anyone with a linked employment (§11 scoping rule 2), so the
+// door is hr.self rather than leave-apply — an employee who may not apply for leave still has a
+// payslip, a record and requests of their own. Seeded roles gain hr.self on the next start, because
+// HrSeed reconciles grants on every boot rather than only on first run.
+[Authorize(Policy = HrPerm.Self)]
 public class MeModel(IHrTx tx, LeaveService leave) : HmsPageModel
 {
     [BindProperty] public long LeaveTypeId { get; set; }
@@ -37,9 +41,21 @@ public class MeModel(IHrTx tx, LeaveService leave) : HmsPageModel
 
     public async Task OnGetAsync() => await LoadAsync();
 
+    /// <summary>
+    /// Whether this employee may apply for leave at all. Spec 0055 moved the page's door to
+    /// <c>hr.self</c>, so applying is now gated on its own grant rather than on reaching the screen —
+    /// which is the right shape anyway: everyone has a payslip and a record, not everyone has the
+    /// right to file leave.
+    /// </summary>
+    public bool CanApply => Can("hr.leave.apply");
+
     public async Task<IActionResult> OnPostApplyAsync()
     {
         await LoadAsync();
+
+        // At the handler, not the button (§12, security-guardrails): hiding the form is a courtesy,
+        // refusing the POST is the control.
+        if (!CanApply) return Forbid();
 
         if (Me is null)
         {
@@ -94,7 +110,7 @@ public class MeModel(IHrTx tx, LeaveService leave) : HmsPageModel
                 l.FromDate, l.ToDate, l.DaysBp, l.State))
             .ToListAsync();
 
-        var year = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6)).Year;
+        var year = Dhaka.DateOf(DateTimeOffset.UtcNow).Year;
         var balances = await s.Hr.LeaveBalances.AsNoTracking()
             .Where(b => b.EmployeeId == Me.Id && b.LeaveYear == year)
             .ToListAsync();

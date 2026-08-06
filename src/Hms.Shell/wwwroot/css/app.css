@@ -993,6 +993,79 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
 }
 
 /* ====================================================================== */
+/* Reporting — the period control and the report grammar (module PRD      */
+/* §12.3, §12.4). One control, one position, on every report, register,   */
+/* dashboard, calendar and log, so learning one screen is learning all.   */
+/* ====================================================================== */
+
+/* The period bar is a .filter-row that never wraps its arrows away from its select. */
+.period-bar { border-bottom: 0; padding-bottom: 6px; }
+.period-bar .input { flex: 0 1 150px; }
+.period-bar .select { flex: 0 1 190px; }
+.period-bar .btn-icon { flex: 0 0 auto; }
+
+/* §12.3: the resolved range is always stated in words, never only a control state. */
+.period-words {
+  padding: 2px 16px 10px;
+  color: var(--muted-1); font-size: 0.8125rem; font-weight: 700;
+}
+.period-compare { margin-left: 10px; color: var(--muted-2); font-weight: 500; }
+
+/* The future / partly-future / too-long sentence. Advisory, not an error: a period a report
+   cannot answer must say so in words and offer a way out (§12.3). */
+.period-notice {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 16px 12px; padding: 8px 12px;
+  border: 1px solid var(--info-border); border-radius: var(--radius);
+  background: var(--info-bg); color: var(--ink-2); font-size: 0.8125rem;
+}
+.period-notice .icon { color: var(--info); }
+
+/* §12.4.1: name, resolved period, the filters actually applied, who ran it and when. */
+.report-head { padding: 12px 16px 0; }
+.report-head h2 { margin: 0; font-size: 1rem; }
+.report-question { margin: 2px 0 0; color: var(--muted-2); font-size: 0.8125rem; }
+.report-meta {
+  display: flex; flex-wrap: wrap; gap: 4px 16px;
+  padding: 6px 16px 10px; color: var(--muted-2); font-size: 0.75rem;
+}
+
+/* §12.4.2: filters are removable chips, never hidden in a collapsed panel. */
+.chip-remove {
+  display: inline-flex; align-items: center;
+  margin-left: 2px; color: var(--muted-2); text-decoration: none;
+}
+.chip-remove:hover { color: var(--danger); text-decoration: none; }
+
+/* The report centre's catalogue: one card per category, one row per report. */
+.report-list { display: flex; flex-direction: column; }
+.report-item {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  padding: 9px 16px; border-top: 1px solid var(--td-rule); text-decoration: none;
+}
+.report-item:hover { background: var(--row-hover); text-decoration: none; }
+.report-item-name { font-weight: 700; color: var(--ink); }
+.report-item-why { color: var(--muted-2); font-size: 0.8125rem; }
+.report-item.locked { color: var(--muted-3); cursor: default; }
+.report-item.locked:hover { background: transparent; }
+.report-item.locked .report-item-name { color: var(--muted-2); }
+
+/* Centre alignment for a status or code column. Named here rather than left to the guard, which
+   cannot see a class computed in Razor (ReportView.AlignClass) — the whole failure mode
+   check-css-classes.sh exists for, arriving through its blind spot. */
+.centre { text-align: center; }
+
+/* A count that is a door (D4): every figure opens the rows behind it. */
+.drill { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--border-2); }
+.drill:hover { color: var(--primary); border-bottom-color: var(--primary); text-decoration: none; }
+
+/* Shown when a report caps its rows, so a truncated answer never reads as a complete one. */
+.report-truncated {
+  padding: 8px 16px; border-top: 1px solid var(--td-rule);
+  background: var(--warning-bg); color: var(--ink-2); font-size: 0.8125rem;
+}
+
+/* ====================================================================== */
 /* Print media — the sheet is the page (§7 U10)                           */
 /* ====================================================================== */
 
@@ -1003,7 +1076,28 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
   .modal-shell { max-height: none; }
   .sheet { width: auto; box-shadow: none; padding: 0; }
   body { background: var(--paper); }
+
+  /* §12.4.7: A4 portrait by default, landscape for wide registers. */
+  @page { size: A4 portrait; margin: 12mm; }
+
+  /* The period repeated on every page. Chromium repeats a fixed-position element per printed
+     page, which is the only mechanism a browser gives us for a running head. Page numbers come
+     from the browser's own print profile — CSS @page counters are implemented nowhere, and
+     faking them would print a number that is wrong. */
+  .sheet-runner {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding-bottom: 4px; border-bottom: 1px solid var(--th-rule);
+    color: var(--muted-2); font-size: 0.6875rem;
+  }
+  .report-head, .report-meta, .period-words { padding-left: 0; padding-right: 0; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
 }
+
+/* Wide registers — the muster roll is employee × day and never fits portrait (§7.4, G30).
+   A CSS named page, which is the supported way to give one document a different sheet size. */
+@page landscape { size: A4 landscape; margin: 10mm; }
+.sheet-landscape { page: landscape; }
 
 /* ====================================================================== */
 /* Thermal receipt (§5 M4 [M]) — 80 mm roll. The same document, re-flowed  */

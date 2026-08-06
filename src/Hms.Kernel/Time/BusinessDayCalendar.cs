@@ -7,13 +7,11 @@ namespace Hms.Kernel.Time;
 /// </summary>
 public sealed class BusinessDayCalendar(TimeOnly boundary)
 {
-    private static readonly TimeZoneInfo Dhaka = TimeZoneInfo.FindSystemTimeZoneById("Asia/Dhaka");
-
     public TimeOnly Boundary { get; } = boundary;
 
     public DateOnly BusinessDayOf(DateTimeOffset instant)
     {
-        var local = TimeZoneInfo.ConvertTime(instant, Dhaka);
+        var local = Dhaka.Local(instant);
         var date = DateOnly.FromDateTime(local.DateTime);
         // Before the boundary, the instant still belongs to the previous business day.
         return TimeOnly.FromDateTime(local.DateTime) < Boundary ? date.AddDays(-1) : date;

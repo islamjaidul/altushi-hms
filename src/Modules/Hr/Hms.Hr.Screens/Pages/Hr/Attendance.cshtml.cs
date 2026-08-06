@@ -119,7 +119,7 @@ public class AttendanceModel(IHrTx tx, AttendanceService attendance) : HmsPageMo
     {
         Date = FlexibleDate.TryParse(OnDate ?? "", out var d) && d != default
             ? d
-            : DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
+            : Dhaka.DateOf(DateTimeOffset.UtcNow);
 
         await tx.RunAsync(async s =>
         {

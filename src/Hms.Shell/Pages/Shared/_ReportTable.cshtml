@@ -1,0 +1,84 @@
+@model Hms.Shell.Reporting.ReportView
+@*
+    Every report's body (module PRD §12.4.3–5). Sortable headers, right-aligned tabular figures,
+    subtotals, a stated row count, drill-through on any cell that carries one, and an empty state
+    that explains itself rather than showing a blank grid.
+
+    Sorting is a link, not script: the sorted view is a URL, so it prints and exports as what was
+    seen.
+*@
+<div class="table-wrap">
+    <table class="data">
+        <thead>
+            <tr>
+                @foreach (var head in Model.Heads)
+                {
+                    <th class="@Hms.Shell.Reporting.ReportView.AlignClass(head.Align)">
+                        @if (head.SortHref is { } href)
+                        {
+                            <a href="@href">@head.Label@head.Indicator</a>
+                        }
+                        else
+                        {
+                            @head.Label
+                        }
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Table.Rows.Count == 0)
+            {
+                <tr>
+                    <td class="empty-state" colspan="@Math.Max(Model.Heads.Count, 1)">
+                        @Model.Table.EmptyReason
+                    </td>
+                </tr>
+            }
+            @foreach (var row in Model.Table.Rows)
+            {
+                <tr class="@(row.IsSubtotal ? "total-row" : "")">
+                    @foreach (var cell in row.Cells)
+                    {
+                        <td class="@(cell.Number.HasValue ? "num tabular" : "")">
+                            @if (cell.PillCss is { } pill)
+                            {
+                                <span class="pill @pill">@cell.Text</span>
+                            }
+                            else if (cell.Href is { } link)
+                            {
+                                @* D4: every figure is a door. The link was built by
+                                   ReportContext.Drill, so it already carries the period and filters. *@
+                                <a class="drill" href="@link">@cell.Text</a>
+                            }
+                            else
+                            {
+                                @cell.Text
+                            }
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+        @if (Model.Table.Totals is { Count: > 0 } totals)
+        {
+            <tfoot>
+                <tr class="total-row">
+                    @foreach (var cell in totals)
+                    {
+                        <td class="@(cell.Number.HasValue ? "num tabular" : "")">@cell.Text</td>
+                    }
+                </tr>
+            </tfoot>
+        }
+    </table>
+</div>
+
+@if (Model.Table.Truncated)
+{
+    @* A capped answer must never read as a complete one (N-HR2: the box is 2 vCPU / 3 GB). *@
+    <div class="report-truncated">
+        Showing @Model.Table.Rows.Count.ToString("N0") of @Model.Table.MatchedRows.ToString("N0") rows.
+        Narrow the period or add a filter to see them all — the export carries the same rows as this screen.
+    </div>
+}

@@ -1,0 +1,94 @@
+@model Hms.Shell.Reporting.PeriodBar
+@*
+    The period control (module PRD §12.3) — one control, one position, on every report, register,
+    dashboard, calendar and log in the module.
+
+    A partial rather than a tag helper on purpose: eng/check-css-classes.sh reads *.cshtml only, so
+    markup emitted from C# is invisible to the guard that exists to catch an undefined class
+    rendering unstyled with a 200. The most-used control in the module is the last place to go blind.
+
+    The grain control must stay a <select>: hms-date.js implements ADR-0020 rule 4 ("an explicit
+    date always wins") by looking up data-implies and requiring an HTMLSelectElement. Rendering
+    grains as chips would silently break a banned defect class with nothing failing.
+
+    Everything else — arrows, presets, comparison — is a server-computed href. No new JavaScript.
+*@
+<form method="get" class="filter-row period-bar no-print">
+    @foreach (var (key, value) in Model.CarryForward)
+    {
+        <input type="hidden" name="@key" value="@value" />
+    }
+    @* A full ISO date, so the anchor survives a change of grain: every grain can parse it. *@
+    <input type="hidden" name="d" value="@Model.Period.Range.From.ToString("yyyy-MM-dd")" />
+
+    <a class="btn-icon" href="@Model.PrevHref" title="Previous @Model.UnitWord"
+       aria-label="Previous @Model.UnitWord">
+        <span class="icon icon-sm" aria-hidden="true">arrow_back</span>
+    </a>
+
+    <label class="sr-only" for="PeriodGrain">Period</label>
+    <select id="PeriodGrain" name="p" class="select" data-submit>
+        @foreach (var g in Model.Grains)
+        {
+            <option value="@g.Key" selected="@g.Selected">@g.Label</option>
+        }
+    </select>
+
+    <label class="sr-only" for="PeriodFrom">From</label>
+    <input id="PeriodFrom" name="from" class="input" hms-date hms-date-implies="#PeriodGrain"
+           value="@Model.CustomFrom" placeholder="From" />
+    <label class="sr-only" for="PeriodTo">To</label>
+    <input id="PeriodTo" name="to" class="input" hms-date hms-date-implies="#PeriodGrain"
+           value="@Model.CustomTo" placeholder="To" />
+
+    <button type="submit" class="btn">Apply</button>
+
+    <a class="btn-icon" href="@Model.NextHref" title="Next @Model.UnitWord"
+       aria-label="Next @Model.UnitWord">
+        <span class="icon icon-sm" aria-hidden="true">arrow_forward</span>
+    </a>
+
+    <span class="spacer"></span>
+
+    <label class="sr-only" for="PeriodCompare">Compare with</label>
+    <select id="PeriodCompare" name="cmp" class="select" onchange="this.form.submit()">
+        <option value="" selected="@(Model.Period.Compare == Hms.Kernel.Time.PeriodCompare.None)">
+            No comparison
+        </option>
+        <option value="prev" selected="@(Model.Period.Compare == Hms.Kernel.Time.PeriodCompare.PreviousPeriod)">
+            vs previous period
+        </option>
+        <option value="yoy" selected="@(Model.Period.Compare == Hms.Kernel.Time.PeriodCompare.SameLastYear)">
+            vs same period last year
+        </option>
+    </select>
+</form>
+
+<div class="chip-row no-print">
+    @foreach (var p in Model.Presets)
+    {
+        <a class="chip-toggle @(p.Selected ? "on" : "")" href="@p.Href">@p.Label</a>
+    }
+</div>
+
+@* §12.3: the resolved range is always stated in words, with the timezone — never only a control
+   state. This line is also what makes a printed report meaningful the day after it is printed. *@
+<div class="period-words">
+    @Model.Words
+    @if (Model.CompareWords is { } compare)
+    {
+        <span class="period-compare">@compare</span>
+    }
+</div>
+
+@if (Model.Notice is { } notice)
+{
+    <div class="period-notice">
+        <span class="icon icon-sm" aria-hidden="true">info</span>
+        <span>@notice</span>
+        @if (Model.Period.Health == Hms.Kernel.Time.PeriodHealth.TooLong)
+        {
+            <a class="btn" href="@Model.RunAnywayHref">Run it anyway</a>
+        }
+    </div>
+}

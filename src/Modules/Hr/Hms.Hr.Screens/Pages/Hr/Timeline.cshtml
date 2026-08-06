@@ -1,0 +1,112 @@
+@page "/hr/employees/{id:long}/timeline"
+@model Hms.Hr.Screens.Pages.Hr.TimelineModel
+@{
+    ViewData["Title"] = "Service record";
+    ViewData["Crumb"] = "Employees";
+    var letterhead = new Letterhead("Service Record", Model.Person!.EmployeeCode, DateTimeOffset.UtcNow);
+}
+
+@* §15.3: printable as a Service Record — the document HR is asked for when a bank, an embassy or a
+   next employer asks about a person. The letterhead and the signature block are the point. *@
+<partial name="_Letterhead" model="letterhead" />
+
+<div class="card card-clip">
+    <div class="card-head">
+        @Model.Person!.FullName
+        <span class="spacer"></span>
+        <span class="section-sub">@Model.Person.EmployeeCode</span>
+        <a class="btn no-print" href="/hr/employees/@Model.Id">Full record</a>
+        <button type="button" class="btn btn-primary no-print" onclick="window.print()">
+            <span class="icon icon-sm" aria-hidden="true">print</span> Print
+        </button>
+    </div>
+    <div class="report-meta">
+        <span>@Model.CurrentAssignment</span>
+        <span>Joined @Ui.DateLong(Model.Person.JoinedOn)</span>
+        @if (Model.Person.SeparatedOn is { } left)
+        {
+            <span>Left @Ui.DateLong(left)</span>
+        }
+    </div>
+</div>
+
+<partial name="_PeriodBar" model="Model.Bar" />
+
+<div class="chip-row no-print" style="padding: 0 16px 10px">
+    @foreach (var category in Hms.Hr.Screens.Pages.Hr.TimelineModel.Categories)
+    {
+        <a class="chip-toggle @(Model.Selected.Contains(category) ? "on" : "")"
+           href="@Model.CategoryHref(category)">@category</a>
+    }
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Service record
+        <span class="spacer"></span>
+        <span class="section-sub">@Model.Entries.Count entr(ies) · @Model.Bar.Words</span>
+    </div>
+
+    @if (Model.HiddenCount > 0)
+    {
+        @* D6 / §15.3: state the absence. A record silently missing its compensation history reads
+           as complete when it is not, which is the more dangerous of the two failures. *@
+        <div class="report-truncated">
+            @Model.HiddenCount compensation entr(ies) are hidden — showing pay needs the
+            “HR salary read” permission, which your role does not have.
+        </div>
+    }
+
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>What happened</th>
+                    <th>Detail</th>
+                    <th>Reason</th>
+                    <th>Recorded by</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Entries.Count == 0)
+                {
+                    <tr>
+                        <td class="empty-state" colspan="6">
+                            Nothing happened to @Model.Person.FullName in this period. Step the period
+                            back with the arrow, or choose a wider one — a service record is usually
+                            read a year at a time.
+                        </td>
+                    </tr>
+                }
+                @foreach (var entry in Model.Entries)
+                {
+                    <tr>
+                        <td>@Ui.DateLong(entry.On)</td>
+                        <td>@entry.Category</td>
+                        <td>@entry.Title</td>
+                        <td>@entry.Detail</td>
+                        @* §12.6: a reason is first-class and shown where the change is seen. *@
+                        <td>@(string.IsNullOrWhiteSpace(entry.Reason) ? "—" : entry.Reason)</td>
+                        <td>@entry.RecordedBy</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="card-hint">
+        Nothing on this record is editable. A correction is a new entry that supersedes and says so —
+        the same rule the money follows.
+    </p>
+</div>
+
+@* The signature block a Bangladeshi employer expects on an issued service record. *@
+<div class="sheet-signs">
+    <div>Prepared by</div>
+    <div>Checked by</div>
+    <div>Authorised signatory</div>
+</div>
+
+<partial name="_SheetFooter" />

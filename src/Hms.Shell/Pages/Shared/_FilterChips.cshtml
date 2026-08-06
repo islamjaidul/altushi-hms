@@ -1,0 +1,24 @@
+@model IReadOnlyList<Hms.Shell.Reporting.FilterChip>
+@*
+    §12.4.2 — the filters actually applied, as removable chips. Never a collapsed panel: a filter an
+    operator cannot see is a filter they will not think to remove, and a report silently narrowed is
+    a wrong answer that looks right.
+
+    On print the chips stay (they are part of what the sheet says about itself) but their remove
+    links do not, because a printed X is nonsense.
+*@
+@if (Model.Count > 0)
+{
+    <div class="chip-row" style="padding: 0 16px 10px">
+        @foreach (var chip in Model)
+        {
+            <span class="chip-toggle on">
+                @chip.Label
+                <a class="chip-remove no-print" href="@chip.RemoveHref"
+                   title="Remove this filter" aria-label="Remove filter @chip.Label">
+                    <span class="icon icon-sm" aria-hidden="true">close</span>
+                </a>
+            </span>
+        }
+    </div>
+}

@@ -115,15 +115,25 @@ ROUTES = {
     "/hr/employees": "hr.read",
     "/hr/employees/new": "hr.employee.manage",
     "/hr/employees/1": "hr.read",
+    "/hr/employees/1/timeline": "hr.read",
     "/hr/leave": "hr.read",
     "/hr/masters": "hr.policy.manage",
-    "/hr/me": "hr.leave.apply",
+    # Spec 0055: "My space" is the employee dashboard, present for anyone with a linked
+    # employment (§11 scoping rule 2), so it gates on hr.self rather than on leave-apply.
+    "/hr/me": "hr.self",
     "/hr/payroll": "hr.payroll.run",
     "/hr/payroll/approvals": "hr.payroll.approve",
     "/hr/payslip/1": "hr.salary.read",
     "/hr/payslips": "hr.salary.read",
     "/hr/policies": "hr.policy.manage",
     "/hr/roster": "hr.roster.manage",
+    # Spec 0055. One row for sixty reports: the report centre is a single page at
+    # /hr/reports/{key?}, and an optional route parameter is stripped by the guard, so the
+    # whole §13 inventory is reachable without sixty hand-synced rows. Salary-bearing and
+    # governance registers are gated inside the page by Can("hr.reports.salary") and
+    # Can("hr.audit.view").
+    "/hr/reports": "hr.reports.view",
+    "/hr/team": "hr.team.view",
     "/emr/templates": "emr.note.write",
     "/emr/vitals": "emr.vitals.record",
     "/frontdesk": "ipd.read",

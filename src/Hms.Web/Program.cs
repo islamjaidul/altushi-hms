@@ -141,6 +141,11 @@ builder.Services.AddSingleton<IPlatformTx, PlatformTxAdapter>();
 builder.Services.AddSingleton(PermissionCatalog.FromPolicyConstants(
     typeof(Perm), typeof(PlatformPerm), typeof(Hms.Hr.Screens.HrPerm)));
 builder.Services.AddSingleton<Hms.Hr.Contracts.IPayrollPosting, JournalOnlyPosting>();
+// The period control's leave year and financial year come from employer configuration, never a
+// constant (module PRD §12.3, D2). HR owns that policy, so HR supplies the calendar.
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<Hms.Shell.Reporting.IPeriodCalendarSource,
+    Hms.Hr.Screens.HrPeriodCalendarSource>();
 builder.Services.AddSingleton<Hms.Hr.PolicyResolver>();
 builder.Services.AddSingleton<Hms.Hr.EmployeeService>();
 builder.Services.AddSingleton<Hms.Hr.AttendanceService>();

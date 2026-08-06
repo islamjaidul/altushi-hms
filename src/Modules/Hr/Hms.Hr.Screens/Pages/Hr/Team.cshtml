@@ -1,0 +1,177 @@
+@page "/hr/team"
+@model Hms.Hr.Screens.Pages.Hr.TeamModel
+@{
+    ViewData["Title"] = "My team";
+    ViewData["Crumb"] = "My team";
+}
+
+<partial name="_PeriodBar" model="Model.Bar" />
+
+@if (Model.Me is null)
+{
+    <div class="card">
+        <div class="empty-state">
+            <span class="icon icon-sm" aria-hidden="true">person_off</span>
+            Your login is not linked to an employee record yet, so there is no team to show.
+            Ask HR to link it on your employee record.
+        </div>
+    </div>
+}
+else
+{
+    @* Row 1 — my team today. Names, not just counts (§14.2): a department head wants to know who. *@
+    <div class="tile-row">
+        <div class="tile">
+            <div class="tile-label">My team</div>
+            <div class="tile-value">@Model.TeamSize</div>
+            <div class="tile-sub">in service today</div>
+        </div>
+        <div class="tile">
+            <div class="tile-label">Present</div>
+            <div class="tile-value">@Model.PresentCount</div>
+            <div class="tile-sub">@Ui.DateLong(Model.Today)</div>
+        </div>
+        <div class="tile">
+            <div class="tile-label">Absent</div>
+            <div class="tile-value">@Model.AbsentCount</div>
+            <div class="tile-sub">today</div>
+        </div>
+        <div class="tile">
+            <div class="tile-label">On leave</div>
+            <div class="tile-value">@Model.LeaveCount</div>
+            <div class="tile-sub">today</div>
+        </div>
+        <div class="tile">
+            <div class="tile-label">Late</div>
+            <div class="tile-value">@Model.LateCount</div>
+            <div class="tile-sub">today</div>
+        </div>
+        <a class="tile" href="@Model.ExceptionHref">
+            <div class="tile-label">Exceptions</div>
+            <div class="tile-value">@Model.ExceptionCount</div>
+            <div class="tile-sub">this period — before payroll cut-off</div>
+        </a>
+    </div>
+
+    @* Row 2 — my approvals, decidable with the context needed to decide (§12.6). *@
+    <div class="card card-clip">
+        <div class="card-head">
+            My approvals
+            <span class="spacer"></span>
+            <span class="section-sub">@Model.Approvals.Count waiting</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Application</th>
+                        <th>Who</th>
+                        <th>Type</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th class="num">Days</th>
+                        <th>State</th>
+                        <th class="num">Waiting</th>
+                        <th>Clash</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Approvals.Count == 0)
+                    {
+                        <tr>
+                            <td class="empty-state" colspan="10">
+                                Nothing is waiting for your decision.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var a in Model.Approvals)
+                    {
+                        <tr>
+                            <td>@a.ApplicationNo</td>
+                            <td>@a.EmployeeName</td>
+                            <td>@a.LeaveType</td>
+                            <td>@Ui.DateLong(a.From)</td>
+                            <td>@Ui.DateLong(a.To)</td>
+                            <td class="num tabular">@(a.DaysBp / 10000m)</td>
+                            <td><span class="pill warn">@a.State</span></td>
+                            <td class="num tabular">@a.WaitingDays d</td>
+                            <td>
+                                @* US16.12: who else is off in these dates, shown before the decision,
+                                   not after. It warns; it never blocks. *@
+                                @if (a.ClashCount > 0)
+                                {
+                                    <span class="pill warn">@a.ClashCount also off</span>
+                                }
+                                else
+                                {
+                                    <span>Nobody else off</span>
+                                }
+                            </td>
+                            <td><a class="btn" href="/hr/leave">Decide</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* Row 3 — my team today, by name. *@
+    <div class="card card-clip">
+        <div class="card-head">
+            My team today
+            <span class="spacer"></span>
+            <span class="section-sub">@Ui.DateLong(Model.Today)</span>
+        </div>
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Unit</th>
+                        <th>Designation</th>
+                        <th>Today</th>
+                        <th>Detail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Today_Team.Count == 0)
+                    {
+                        <tr>
+                            <td class="empty-state" colspan="6">
+                                Nobody reports to you and you head no unit, so there is no team here.
+                                Reporting lines are set on each employee's assignment.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var m in Model.Today_Team)
+                    {
+                        <tr>
+                            <td class="id-cell"><a href="/hr/employees/@m.EmployeeId">@m.Code</a></td>
+                            <td><a href="/hr/employees/@m.EmployeeId">@m.Name</a></td>
+                            <td>@m.Unit</td>
+                            <td>@m.Designation</td>
+                            <td>
+                                @if (m.StatusPill.Length > 0)
+                                {
+                                    <span class="pill @m.StatusPill">@m.Status</span>
+                                }
+                                else
+                                {
+                                    <span>@m.Status</span>
+                                }
+                            </td>
+                            <td>@m.Detail</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @* D6: there is no salary column here, and no permission grants one. *@
+        <p class="card-hint">
+            This screen never shows pay. Salary figures live behind a separate permission and a
+            separate set of reports.
+        </p>
+    </div>
+}

@@ -39,6 +39,8 @@ else
         }
     </div>
 
+@if (Model.CanApply)
+{
     <div class="card">
         <div class="card-head">Apply for leave</div>
         <div class="card-body">
@@ -68,6 +70,7 @@ else
             </form>
         </div>
     </div>
+}
 
     <div class="card card-clip">
         <div class="card-head"><h2>My applications</h2></div>

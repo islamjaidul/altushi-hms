@@ -131,21 +131,19 @@ public static class Ui
         return (parts[0][..1] + parts[^1][..1]).ToUpperInvariant();
     }
 
-    private static readonly TimeZoneInfo Dhaka = TimeZoneInfo.FindSystemTimeZoneById("Asia/Dhaka");
-
-    /// <summary>Everything an operator reads is Asia/Dhaka wall-clock; storage stays UTC.</summary>
-    public static DateTimeOffset Local(DateTimeOffset instant) => TimeZoneInfo.ConvertTime(instant, Dhaka);
+    /// <summary>
+    /// Everything an operator reads is Asia/Dhaka wall-clock; storage stays UTC.
+    /// Forwards to <see cref="Hms.Kernel.Time.Dhaka"/>, which is where the timezone now lives so
+    /// that Kernel types (<see cref="Hms.Kernel.Time.DateRange"/>) can convert without the Shell.
+    /// Kept here because 50 call sites read better as <c>Ui.Local</c>.
+    /// </summary>
+    public static DateTimeOffset Local(DateTimeOffset instant) => Hms.Kernel.Time.Dhaka.Local(instant);
 
     /// <summary>
     /// Start of a Dhaka business day as a UTC instant. Queries compare against timestamptz, which
-    /// Npgsql binds in UTC only — so the conversion happens here, once, rather than per query.
+    /// Npgsql binds in UTC only — so the conversion happens once, not per query.
     /// </summary>
-    public static DateTimeOffset DhakaMidnightUtc(DateOnly day)
-    {
-        var local = day.ToDateTime(TimeOnly.MinValue);
-        var offset = Dhaka.GetUtcOffset(local);
-        return new DateTimeOffset(local, offset).ToUniversalTime();
-    }
+    public static DateTimeOffset DhakaMidnightUtc(DateOnly day) => Hms.Kernel.Time.Dhaka.MidnightUtc(day);
 
     public static string Time(DateTimeOffset instant) => Local(instant).ToString("HH:mm");
     public static string DateTimeShort(DateTimeOffset instant) => Local(instant).ToString("dd MMM yyyy, HH:mm");

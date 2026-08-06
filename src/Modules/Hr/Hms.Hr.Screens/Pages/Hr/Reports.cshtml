@@ -1,0 +1,88 @@
+@page "/hr/reports/{key?}"
+@model Hms.Hr.Screens.Pages.Hr.ReportsModel
+@{
+    ViewData["Title"] = Model.Report?.Descriptor.Name ?? "Reports";
+    ViewData["Crumb"] = "Reports";
+}
+
+<partial name="_PeriodBar" model="Model.Bar" />
+
+@if (Model.Report is null)
+{
+    @* The report centre: every report, by category, whether or not this reader may open it. *@
+    <div class="card">
+        <div class="card-head">Reports</div>
+        <p class="card-hint">
+            Every register below reads the period above. Pick a report, then change the period —
+            the selection follows you from one report to the next, and the address bar is a link
+            you can send to someone else.
+        </p>
+    </div>
+
+    @foreach (var group in Model.Centre)
+    {
+        <div class="card card-clip">
+            <div class="card-head">@group.Category</div>
+            <div class="report-list">
+                @foreach (var listing in group.Reports)
+                {
+                    @if (listing.Permitted)
+                    {
+                        <a class="report-item" href="@listing.Href">
+                            <span class="report-item-name">@listing.Descriptor.Name</span>
+                            <span class="report-item-why">@listing.Descriptor.Question</span>
+                        </a>
+                    }
+                    else
+                    {
+                        @* Listed, not hidden (§12.4.8): somebody who cannot see that a report
+                           exists cannot ask to be given access to it. *@
+                        <span class="report-item locked">
+                            <span class="icon icon-sm" aria-hidden="true">lock</span>
+                            <span class="report-item-name">@listing.Descriptor.Name</span>
+                            <span class="report-item-why">@listing.UnavailableReason</span>
+                        </span>
+                    }
+                }
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="card card-clip @(Model.Report.Descriptor.Landscape ? "sheet-landscape" : "")">
+        @if (Model.UnavailableReason is not null)
+        {
+            <div class="card-head">@Model.Report.Descriptor.Name</div>
+            <div class="empty-state">
+                <span class="icon icon-sm" aria-hidden="true">lock</span> @Model.UnavailableReason
+            </div>
+        }
+        else
+        {
+            @* On print, a running head repeats the report and its period on every page. *@
+            <div class="sheet-runner">@Model.Report.Descriptor.Name · @Model.Head.PeriodWords</div>
+
+            <partial name="_ReportHeader" model="Model.Head" />
+            <partial name="_FilterChips" model="Model.Chips" />
+
+            <div class="card-head no-print">
+                <a class="btn" href="/hr/reports">
+                    <span class="icon icon-sm" aria-hidden="true">arrow_back</span> All reports
+                </a>
+                <span class="spacer"></span>
+                <a class="btn" href="@Model.CsvHref">
+                    <span class="icon icon-sm" aria-hidden="true">download</span> CSV
+                </a>
+                <a class="btn" href="@Model.XlsxHref">
+                    <span class="icon icon-sm" aria-hidden="true">download</span> Excel
+                </a>
+                <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <span class="icon icon-sm" aria-hidden="true">print</span> Print
+                </button>
+            </div>
+
+            <partial name="_ReportTable" model="Model.View" />
+        }
+    </div>
+}

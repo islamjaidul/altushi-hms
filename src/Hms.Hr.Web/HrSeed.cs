@@ -30,21 +30,31 @@ public static class HrSeed
             HrPerm.Claim.AttendanceReview, HrPerm.Claim.RosterManage,
             HrPerm.Claim.LeaveApply, HrPerm.Claim.LeaveApprove,
             HrPerm.Claim.PayrollRun, HrPerm.Claim.PolicyManage,
+            // Spec 0055. The report centre is the HR officer's day; salary reports follow the
+            // salary grant they already hold, never the plain report grant.
+            HrPerm.Claim.ReportsView, HrPerm.Claim.ReportsSalary, HrPerm.Claim.Self,
         ]),
         ("Department Head", [
             HrPerm.Claim.Read, HrPerm.Claim.AttendanceReview, HrPerm.Claim.RosterManage,
             HrPerm.Claim.LeaveApply, HrPerm.Claim.LeaveRecommend,
+            // Reports but never salary reports, and a team space scoped to their own line (D6).
+            HrPerm.Claim.ReportsView, HrPerm.Claim.TeamView, HrPerm.Claim.Self,
         ]),
         // §12 gives Accounts the payroll-post view and the lock approval — never employee management.
         ("Accounts Manager", [
             HrPerm.Claim.Read, HrPerm.Claim.SalaryRead, HrPerm.Claim.PayrollApprove,
+            HrPerm.Claim.ReportsView, HrPerm.Claim.ReportsSalary, HrPerm.Claim.Self,
         ]),
         ("Managing Director", [
             HrPerm.Claim.Read, HrPerm.Claim.SalaryRead, HrPerm.Claim.PayrollApprove,
+            // US16.14: the board's question is a report, and the audit log is how a dispute is settled.
+            HrPerm.Claim.ReportsView, HrPerm.Claim.ReportsSalary, HrPerm.Claim.AuditView,
+            HrPerm.Claim.Self,
         ]),
         // The self-service role every employee gets: apply for own leave, read own payslip. It
         // deliberately does NOT carry hr.read — a colleague's record is not theirs to browse.
-        ("Employee", [HrPerm.Claim.LeaveApply]),
+        // hr.self is what makes "My space" appear; §11 scoping rule 2 gives it to everyone.
+        ("Employee", [HrPerm.Claim.LeaveApply, HrPerm.Claim.Self]),
     ];
 
     /// <summary>

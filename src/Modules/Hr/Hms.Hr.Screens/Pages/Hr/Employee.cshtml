@@ -32,6 +32,11 @@
                 @p.FullName
                 <span class="spacer"></span>
                 <span class="card-hint">@p.EmployeeCode</span>
+                @* D5: this page is the summary; the timeline is the record, and it prints as the
+                   Service Record a bank or a next employer asks for. *@
+                <a class="btn" href="/hr/employees/@p.Id/timeline">
+                    <span class="icon icon-sm" aria-hidden="true">history</span> Service record
+                </a>
             </div>
             <div class="card-body">
                 <div class="field-grid cols-3">

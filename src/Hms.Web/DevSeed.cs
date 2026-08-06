@@ -65,7 +65,9 @@ public static class DevSeed
             ["dashboard.read", "admin.approvals.decide", "admin.audit.read", "pharmacy.read",
              "ipd.read",
              // §12: the MD approves the payroll lock and sees staff numbers, but does not run payroll.
-             "hr.read", "hr.salary.read", "hr.payroll.approve"],
+             // US16.14 makes the board's question a report; spec 0055 adds the log a dispute needs.
+             "hr.read", "hr.salary.read", "hr.payroll.approve",
+             "hr.reports.view", "hr.reports.salary", "hr.audit.view", "hr.self"],
         // §12 Pharmacist row: C on pharmacy, R on patient reg; counter open/close is the money
         // custody the pharmacy POS rides (spec 0016 / ADR-0021 #5).
         ["Pharmacist"] =
@@ -80,10 +82,14 @@ public static class DevSeed
         ["HR Officer"] =
             ["hr.read", "hr.salary.read", "hr.employee.manage", "hr.attendance.review",
              "hr.roster.manage", "hr.leave.apply", "hr.leave.approve", "hr.payroll.run",
-             "hr.policy.manage"],
+             "hr.policy.manage",
+             // Spec 0055: the report centre, and salary reports following the salary grant.
+             "hr.reports.view", "hr.reports.salary", "hr.self"],
         ["Department Head"] =
             ["hr.read", "hr.attendance.review", "hr.roster.manage", "hr.leave.apply",
-             "hr.leave.recommend"],
+             "hr.leave.recommend",
+             // Reports but never salary reports; the team space is scoped to their own line (D6).
+             "hr.reports.view", "hr.team.view", "hr.self"],
     };
 
     private static readonly (string User, string Display, string Role)[] Cast =

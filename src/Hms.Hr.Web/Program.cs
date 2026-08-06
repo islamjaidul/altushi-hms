@@ -6,7 +6,9 @@ using Hms.Kernel.Auth;
 using Hms.Kernel.Data;
 using Hms.Kernel.Entitlements;
 using Hms.Kernel.Hosting;
+using Hms.Kernel.Time;
 using Hms.Shell;
+using Hms.Shell.Reporting;
 using Microsoft.EntityFrameworkCore;
 
 // The HRM SKU (ADR-0025). Same source as the ERP, a fraction of the surface: three schemas, no
@@ -66,6 +68,16 @@ builder.Services.AddSingleton<IPlatformTx, PlatformTxOverHr>();
 builder.Services.AddSingleton(PermissionCatalog.FromPolicyConstants(
     typeof(HrPerm), typeof(PlatformPerm)));
 builder.Services.AddSingleton<Hms.Hr.Contracts.IPayrollPosting, JournalOnlyPosting>();
+
+// Numbering's fiscal year (ADR-0004 P1, default July). The ERP host has always registered this;
+// the HRM host did not, because nothing here needed it until the period control did.
+builder.Services.AddSingleton(new FiscalCalendar(
+    builder.Configuration.GetValue("Business:FiscalStartMonth", 7)));
+
+// The period control's leave year and financial year come from employer configuration, never a
+// constant (module PRD §12.3, D2). HR owns that policy, so HR supplies the calendar.
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IPeriodCalendarSource, HrPeriodCalendarSource>();
 builder.Services.AddSingleton<PolicyResolver>();
 builder.Services.AddSingleton<EmployeeService>();
 builder.Services.AddSingleton<AttendanceService>();

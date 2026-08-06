@@ -1,4 +1,5 @@
 using Hms.Hr.Data;
+using Hms.Kernel.Audit;
 using Hms.Shell;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +29,7 @@ public sealed record MasterTab(string Key, string Title, string Icon, string Blu
 /// </para>
 /// </summary>
 [Authorize(Policy = HrPerm.PolicyManage)]
-public class MastersModel(IHrTx tx) : HmsPageModel
+public class MastersModel(IHrTx tx, AuditWriter audit) : HmsPageModel
 {
     public static readonly IReadOnlyList<MasterTab> Tabs =
     [
@@ -84,21 +85,23 @@ public class MastersModel(IHrTx tx) : HmsPageModel
         {
             await tx.RunAsync(async s =>
             {
+                IMasterRow? created = null;
+
                 switch (Current.Key)
                 {
                     case "units":
                         RejectDuplicate(await s.Hr.OrgUnits.AnyAsync(x => x.BranchId == BranchId && x.Code == code), code);
-                        s.Hr.OrgUnits.Add(new OrgUnit { BranchId = BranchId, Code = code, Name = name });
+                        created = s.Hr.OrgUnits.Add(new OrgUnit { BranchId = BranchId, Code = code, Name = name }).Entity;
                         break;
 
                     case "designations":
                         RejectDuplicate(await s.Hr.Designations.AnyAsync(x => x.BranchId == BranchId && x.Code == code), code);
-                        s.Hr.Designations.Add(new Designation { BranchId = BranchId, Code = code, Name = name });
+                        created = s.Hr.Designations.Add(new Designation { BranchId = BranchId, Code = code, Name = name }).Entity;
                         break;
 
                     case "grades":
                         RejectDuplicate(await s.Hr.Grades.AnyAsync(x => x.BranchId == BranchId && x.Code == code), code);
-                        s.Hr.Grades.Add(new Grade { BranchId = BranchId, Code = code, Name = name, Rank = Rank });
+                        created = s.Hr.Grades.Add(new Grade { BranchId = BranchId, Code = code, Name = name, Rank = Rank }).Entity;
                         break;
 
                     case "shifts":
@@ -115,23 +118,23 @@ public class MastersModel(IHrTx tx) : HmsPageModel
                             ? (TimeOnly.MaxValue - from) + to.ToTimeSpan() + TimeSpan.FromTicks(1)
                             : to - from;
 
-                        s.Hr.Shifts.Add(new Shift
+                        created = s.Hr.Shifts.Add(new Shift
                         {
                             BranchId = BranchId, Code = code, Name = name,
                             StartsAt = from, EndsAt = to, EndsNextDay = overnight,
                             BreakMinutes = BreakMinutes,
                             StandardMinutes = (int)span.TotalMinutes - BreakMinutes,
-                        });
+                        }).Entity;
                         break;
                     }
 
                     case "leave-types":
                         RejectDuplicate(await s.Hr.LeaveTypes.AnyAsync(x => x.BranchId == BranchId && x.Code == code), code);
-                        s.Hr.LeaveTypes.Add(new LeaveType
+                        created = s.Hr.LeaveTypes.Add(new LeaveType
                         {
                             BranchId = BranchId, Code = code, Name = name,
                             Accrual = Accrual, Paid = Paid,
-                        });
+                        }).Entity;
                         break;
 
                     case "components":
@@ -150,7 +153,7 @@ public class MastersModel(IHrTx tx) : HmsPageModel
                             .Where(x => x.BranchId == BranchId)
                             .Select(x => (int?)x.DisplayOrder).MaxAsync() ?? 0;
 
-                        s.Hr.PayComponents.Add(new PayComponent
+                        created = s.Hr.PayComponents.Add(new PayComponent
                         {
                             BranchId = BranchId, Code = code, Name = name,
                             Kind = Kind, CalcMethod = CalcMethod,
@@ -158,7 +161,7 @@ public class MastersModel(IHrTx tx) : HmsPageModel
                             PercentBp = CalcMethod == PayComponentCalc.PercentOf ? PercentBp : 0,
                             Taxable = Taxable,
                             DisplayOrder = order + 10,
-                        });
+                        }).Entity;
                         break;
                     }
 
@@ -166,7 +169,16 @@ public class MastersModel(IHrTx tx) : HmsPageModel
                         throw new HrException("Unknown master.");
                 }
 
+                // Spec 0055: master writes were invisible to the audit trail, so the activity log
+                // would have claimed to show "every write in M16" while missing the rows that decide
+                // what a payroll run can even be generated against.
                 await s.Hr.SaveChangesAsync();
+                if (created is not null)
+                {
+                    audit.Append(s.Kernel, BranchId, ActorId, ActorName,
+                        $"hr.master.{Current.Key}.create", "hr.master", created.Id,
+                        after: new { Tab = Current.Key, Code = code, Name = name }, tier: 2);
+                }
             });
         }
         catch (HrException ex)
@@ -190,8 +202,12 @@ public class MastersModel(IHrTx tx) : HmsPageModel
         {
             var row = await FindAsync(s, id);
             if (row is null) return false;
+            var before = row.Name;
             row.Name = name;
             await s.Hr.SaveChangesAsync();
+            audit.Append(s.Kernel, BranchId, ActorId, ActorName,
+                $"hr.master.{Current.Key}.rename", "hr.master", row.Id,
+                before: new { Name = before }, after: new { Name = name }, tier: 2);
             return true;
         });
 
@@ -213,8 +229,13 @@ public class MastersModel(IHrTx tx) : HmsPageModel
         {
             var row = await FindAsync(s, id);
             if (row is null) return false;
+            var wasActive = row.Active;
             row.Active = !row.Active;
             await s.Hr.SaveChangesAsync();
+            audit.Append(s.Kernel, BranchId, ActorId, ActorName,
+                $"hr.master.{Current.Key}.{(wasActive ? "retire" : "restore")}", "hr.master", row.Id,
+                before: new { Active = wasActive, row.Name },
+                after: new { Active = !wasActive, row.Name }, tier: 2);
             return true;
         });
 

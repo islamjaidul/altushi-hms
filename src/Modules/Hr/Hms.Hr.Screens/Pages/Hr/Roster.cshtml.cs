@@ -1,4 +1,5 @@
 using Hms.Hr.Data;
+using Hms.Kernel.Audit;
 using Hms.Kernel.Time;
 using Hms.Shell;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ public sealed record RosterPerson(long Id, string Code, string Name);
 /// §7's operators work on 1366×768 and a month-wide grid is unreadable there.
 /// </summary>
 [Authorize(Policy = HrPerm.RosterManage)]
-public class RosterModel(IHrTx tx) : HmsPageModel
+public class RosterModel(IHrTx tx, AuditWriter audit) : HmsPageModel
 {
     /// <summary>Rows per board. Seven selects each, so this is a page-weight budget (§16).</summary>
     private const int PageSize = 60;
@@ -80,6 +81,10 @@ public class RosterModel(IHrTx tx) : HmsPageModel
                 await s.Hr.SaveChangesAsync();
             }
 
+            // Spec 0055: rostering wrote nothing to the audit trail, so "who put me on nights"
+            // had no documentary answer. The before is the shift the cell held, where it held one.
+            long? beforeShift = entry?.ShiftId;
+
             if (entry is null)
             {
                 s.Hr.RosterEntries.Add(new RosterEntry
@@ -96,6 +101,11 @@ public class RosterModel(IHrTx tx) : HmsPageModel
                 entry.ShiftId = shiftId;
                 entry.WeeklyOff = shiftId == 0;
             }
+
+            audit.Append(s.Kernel, BranchId, ActorId, ActorName,
+                "hr.roster.assign", "hr.roster_entry", employeeId,
+                before: beforeShift is null ? null : new { ShiftId = beforeShift, OnDate = day },
+                after: new { ShiftId = shiftId, OnDate = day, WeeklyOff = shiftId == 0 }, tier: 2);
         });
 
         return Redirect($"/hr/roster?WeekOf={WeekStart:dd MMM yyyy}&OrgUnitId={OrgUnitId}");
@@ -105,7 +115,7 @@ public class RosterModel(IHrTx tx) : HmsPageModel
     {
         var anchor = FlexibleDate.TryParse(WeekOf ?? "", out var d) && d != default
             ? d
-            : DateOnly.FromDateTime(DateTime.UtcNow.AddHours(6));
+            : Dhaka.DateOf(DateTimeOffset.UtcNow);
 
         // Bangladeshi weeks are commonly read Saturday-first; the roster grid follows the data's
         // weekly-off pattern rather than assuming, so we simply anchor on the requested day.
