@@ -92,6 +92,12 @@ public class PayrollLine
     public int PresentDaysBp { get; set; }
     public int AbsentDaysBp { get; set; }
     public int LeaveDaysBp { get; set; }
+    /// <summary>
+    /// The unpaid subset of <see cref="LeaveDaysBp"/> — days on a leave type whose
+    /// <c>Paid</c> flag is false (spec 0052). Deliberately a subset rather than a sibling count:
+    /// runs locked before 0052 recorded every leave day in <see cref="LeaveDaysBp"/>, and changing
+    /// what that column means would make two runs disagree about the same word.
+    /// </summary>
     public int LeaveWithoutPayDaysBp { get; set; }
     public int LateCount { get; set; }
     public int OvertimeMinutes { get; set; }
@@ -186,6 +192,14 @@ public static class LedgerKind
     public const string ProvidentFund = "pf";
     public const string Welfare = "welfare";
     public const string Tax = "tax";
+
+    /// <summary>
+    /// Money paid out beyond what the period earned, recoverable from the employee — today only
+    /// the minimum-net-pay shortfall (spec 0052 WP2). The payroll journal debits it as an asset,
+    /// so a row here is what makes that debit true rather than an assertion about a debt nothing
+    /// records.
+    /// </summary>
+    public const string Advance = "advance";
 }
 
 /// <summary>

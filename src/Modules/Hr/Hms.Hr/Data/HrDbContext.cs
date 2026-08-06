@@ -240,6 +240,11 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             // stops two officers generating March twice.
             e.HasIndex(x => new { x.BranchId, x.Period, x.Kind, x.Sequence }).IsUnique();
             e.HasIndex(x => x.State);
+            // A locked run is reversed once and only once (spec 0052 WP3). The service checks
+            // first, but a check is a race; the row lock in LoadAsync serialises the transitions
+            // and this makes the invariant a database fact rather than a consequence of timing.
+            e.HasIndex(x => x.ReversalOfRunId).IsUnique()
+                .HasFilter("reversal_of_run_id IS NOT NULL");
             e.Property(x => x.JournalJson).HasColumnType("jsonb");
         });
         // Intra-schema foreign keys (spec 0039 WP2 §2.3 / AUD-M16-10): the database, not luck,

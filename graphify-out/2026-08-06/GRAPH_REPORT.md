@@ -1,16 +1,16 @@
-# Graph Report - hms-erp  (2026-08-04)
+# Graph Report - hms-erp  (2026-08-06)
 
 ## Corpus Check
-- 943 files · ~783,418 words
+- 952 files · ~793,051 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 10275 nodes · 17536 edges · 798 communities (671 shown, 127 thin omitted)
+- 10385 nodes · 17627 edges · 822 communities (695 shown, 127 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 1076 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c87d1c76`
+- Built from commit: `d85cbbac`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -805,6 +805,30 @@
 - RazorLayoutTests
 - NullTempDataProvider
 - .InvokeAsync
+- CRUD completeness — HMS ERP
+- Drift measured during the audit, deliberately not fixed here
+- ReportsModel
+- BoardModel
+- .OnPostCancelAsync
+- hms-erp
+- Domain modelling — HMS ERP
+- TheatresModel
+- Cross-module flow — HMS ERP
+- TDD loop — HMS ERP
+- 0047 — The discharge certificate that was never a document
+- 0048 — An IPD bill counter that handles only IPD
+- 0049 — Role permissions as a form, not five hundred buttons
+- 0050 — Sylhet Evergreen Hospital: rebrand, logo, login, and a sidebar that folds
+- 0051 — Plan
+- Hms.PrintGolden.Tests.csproj
+- Scope routing
+- Spec-driven flow
+- ADR authoring
+- Module spec authoring
+- HrSeed
+- .Status
+- Certificates.cshtml
+- 0051-engineering-skill-set/tasks.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `KernelDbContext` - 131 edges
@@ -833,7 +857,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (798 total, 127 thin omitted)
+## Communities (822 total, 127 thin omitted)
 
 ### Community 0 - "HRM Transactions & Attendance"
 Cohesion: 0.05
@@ -845,11 +869,11 @@ Nodes (34): Func, IActionResult, Id, IReadOnlyList, Name, Task, TxScope, CaseMod
 
 ### Community 2 - "Billing Charge Poster"
 Cohesion: 0.06
-Nodes (36): CancellationToken, IReadOnlyList, Task, ChargePoster, CancellationToken, IReadOnlyList, Task, ChargeToPost (+28 more)
+Nodes (37): Hms.Billing.Contracts, CancellationToken, IReadOnlyList, Task, ChargePoster, CancellationToken, IReadOnlyList, Task (+29 more)
 
 ### Community 3 - "Namespace Declarations"
-Cohesion: 0.10
-Nodes (22): Hms.Kernel.Audit, Hms.Kernel.Time, Hms.Lis, Hms.Web.Pages.Ipd, Hms.Integration.Tests, Hms.Ipd, Hms.Billing, Hms.Kernel.Numbering (+14 more)
+Cohesion: 0.09
+Nodes (19): Hms.Registration.Data, Hms.Web.Pages.Emr, Hms.Emr, Hms.Ipd, Hms.Web, Hms.Admin.Data, Hms.Ipd.Data, Hms.Admin (+11 more)
 
 ### Community 4 - "Architecture Test Package Locks"
 Cohesion: 0.03
@@ -869,7 +893,7 @@ Nodes (10): HttpMessageHandler, HttpRequestMessage, HttpSmsGateway, Cancellation
 
 ### Community 8 - "HRM Web Shell & Seed"
 Cohesion: 0.04
-Nodes (37): Hms.Registration, Hms.Dashboard, IReadOnlyList, HrmNav, IServiceProvider, Task, HrSeed, HostKind (+29 more)
+Nodes (30): Hms.Dashboard, IReadOnlyList, HrmNav, HostKind, string, Perm, AdminModule, AppointmentsModule (+22 more)
 
 ### Community 9 - "Architecture Test Dependencies"
 Cohesion: 0.05
@@ -884,64 +908,64 @@ Cohesion: 0.05
 Nodes (58): EFCore.NamingConventions, Hms.Admin.Contracts, Hms.Billing, Hms.Billing.Contracts, Hms.Diagnostics.Contracts, Hms.Hr.Contracts, Hms.Kernel, Hms.Lis.Contracts (+50 more)
 
 ### Community 12 - "Namespace Declarations II"
-Cohesion: 0.11
-Nodes (16): Hms.Kernel.Approvals, Hms.Kernel.Data, Hms.Kernel.Auth, Hms.Kernel.Hosting, Hms.Hr, Hms.Hr.Contracts, Hms.Hr.Web.Pages, Hms.Hr.Web (+8 more)
+Cohesion: 0.10
+Nodes (20): Hms.Kernel.Approvals, Hms.Kernel.Audit, Hms.Kernel.Data, Hms.Kernel.Time, Hms.Kernel.Auth, Hms.Kernel.Hosting, Hms.Hr, Hms.Integration.Tests (+12 more)
 
 ### Community 13 - "Login & Access Denied Pages"
-Cohesion: 0.06
-Nodes (25): Hms.Web.Pages.Public, Hms.Shell.Pages, PageModel, Password, DeniedModel, IActionResult, Task, LoginModel (+17 more)
+Cohesion: 0.13
+Nodes (12): Password, IActionResult, Task, Fact, InlineData, Theory, LoginReturnUrlTests, Fact (+4 more)
 
 ### Community 14 - "Namespace Declarations III"
-Cohesion: 0.25
-Nodes (4): Hms.Web.Pages.Emr, Hms.Emr, Hms.Emr.Data, EmrModule
+Cohesion: 0.15
+Nodes (16): DateTimeOffset, DbSet, ModelBuilder, Modality, ModalityTest, RadiologyDbContext, RadiologyDbContextFactory, Study (+8 more)
 
 ### Community 15 - "Web Test Package Locks"
 Cohesion: 0.04
 Nodes (52): dependencies, net10.0, type, type, type, type, type, type (+44 more)
 
 ### Community 16 - "Counter Sessions & Money UI"
-Cohesion: 0.11
-Nodes (14): TimeZoneInfo, Ui, IActionResult, IReadOnlyList, OpenSession, Task, DueRow, DuesModel (+6 more)
+Cohesion: 0.14
+Nodes (14): IActionResult, IReadOnlyList, OpenSession, Task, DueRow, DuesModel, IActionResult, IReadOnlyList (+6 more)
 
 ### Community 17 - "Pharmacy Data Model"
-Cohesion: 0.09
-Nodes (37): IndentReturnLine, DateOnly, DateTimeOffset, DbSet, ModelBuilder, Batch, Company, IssueAllocation (+29 more)
+Cohesion: 0.16
+Nodes (22): DateOnly, DateTimeOffset, DbSet, ModelBuilder, Batch, Company, IssueAllocation, Outlet (+14 more)
 
 ### Community 18 - "Web Package Locks"
 Cohesion: 0.04
 Nodes (47): dependencies, net10.0, type, type, type, type, type, type (+39 more)
 
 ### Community 19 - "Billing Service & Invoices"
-Cohesion: 0.21
-Nodes (8): encounterId, Fact, Func, InvoiceId, NpgsqlConnection, sessionId, Task, MoneySpineTests
+Cohesion: 0.16
+Nodes (13): Collected, Net, Refunded, NewChargeLine, State, encounterId, Fact, Func (+5 more)
 
 ### Community 20 - "HR Data Model"
-Cohesion: 0.16
-Nodes (22): EntityEntry, Expression, RateBp, DateOnly, DateTimeOffset, DeductionRule, GraceTimeRule, GratuityRule (+14 more)
+Cohesion: 0.10
+Nodes (37): EntityEntry, Expression, RateBp, DbSet, ModelBuilder, HrDbContext, HrDbContextFactory, DateOnly (+29 more)
 
 ### Community 21 - "Build Tooling Package Locks"
 Cohesion: 0.05
 Nodes (45): Humanizer.Core, Microsoft.Build.Framework, Microsoft.CodeAnalysis.Analyzers, Microsoft.CodeAnalysis.Common, Microsoft.CodeAnalysis.CSharp, Microsoft.CodeAnalysis.CSharp.Workspaces, Microsoft.CodeAnalysis.Workspaces.Common, Microsoft.CodeAnalysis.Workspaces.MSBuild (+37 more)
 
 ### Community 22 - "Branch Isolation Tests"
-Cohesion: 0.22
-Nodes (5): Hms.Architecture.Tests, MemberData, Theory, TheoryData, BranchIsolationTests
+Cohesion: 0.08
+Nodes (13): Hms.Hr.Web.Pages, Hms.Architecture.Tests, Hms.Hr.Screens, MemberData, Theory, TheoryData, BranchIsolationTests, Fact (+5 more)
 
 ### Community 23 - "Appointments Service"
-Cohesion: 0.24
-Nodes (11): DoctorId, OnDate, CancellationToken, DateOnly, Task, DateOnly, Fact, List (+3 more)
+Cohesion: 0.11
+Nodes (26): DoctorId, OnDate, CancellationToken, DateOnly, Dictionary, IEnumerable, Task, AppointmentsService (+18 more)
 
 ### Community 24 - "IPD Data Model & Audit"
 Cohesion: 0.11
-Nodes (32): Qty, Guid, DateTimeOffset, DbSet, ModelBuilder, string, Admission, AdmissionPackage (+24 more)
+Nodes (35): Guid, CancellationToken, Dictionary, Task, CertificateService, DateTimeOffset, DbSet, ModelBuilder (+27 more)
 
 ### Community 25 - "IPD Folio Screen"
-Cohesion: 0.18
-Nodes (14): IActionResult, IReadOnlyList, List, OpenSession, Task, TxScope, AdvanceRow, FolioLine (+6 more)
+Cohesion: 0.29
+Nodes (7): IActionResult, IReadOnlyList, List, OpenSession, Task, TxScope, FolioModel
 
 ### Community 26 - "EMR Data Model"
-Cohesion: 0.06
-Nodes (47): IActionResult, Id, IReadOnlyList, List, Name, Task, TxScope, ConsultModel (+39 more)
+Cohesion: 0.13
+Nodes (21): IDesignTimeDbContextFactory, DateOnly, DateTimeOffset, DbSet, ModelBuilder, DoseState, EmrDbContext, EmrDbContextFactory (+13 more)
 
 ### Community 27 - "HR Package Locks"
 Cohesion: 0.05
@@ -949,7 +973,7 @@ Nodes (41): dependencies, net10.0, type, contentHash, resolved, type, contentHas
 
 ### Community 28 - "Hms.Registration.Data.Migrations"
 Cohesion: 0.05
-Nodes (19): Hms.Registration.Data.Migrations, ModelBuilder, InitReg, MigrationBuilder, ModelBuilder, PhoneDigits, PhoneDigits, MigrationBuilder (+11 more)
+Nodes (21): Hms.Registration.Data.Migrations, MigrationBuilder, ModelBuilder, InitReg, InitReg, MigrationBuilder, ModelBuilder, PhoneDigits (+13 more)
 
 ### Community 29 - "Hms.Billing.Data.Migrations"
 Cohesion: 0.05
@@ -957,31 +981,31 @@ Nodes (19): Hms.Billing.Data.Migrations, MigrationBuilder, ModelBuilder, InitBil
 
 ### Community 30 - "Migration"
 Cohesion: 0.05
-Nodes (21): Hms.Ipd.Data.Migrations, MigrationBuilder, MigrationBuilder, ModelBuilder, InitIpd, InitIpd, MigrationBuilder, ModelBuilder (+13 more)
+Nodes (19): Hms.Ipd.Data.Migrations, MigrationBuilder, ModelBuilder, InitIpd, InitIpd, MigrationBuilder, ModelBuilder, Hardening0039 (+11 more)
 
 ### Community 31 - "dependencies"
 Cohesion: 0.05
 Nodes (41): Hms.Admin, Hms.Appointments, Hms.Billing, Hms.Dashboard, Hms.Diagnostics, Hms.Emr, Hms.Hr, Hms.Hr.Screens (+33 more)
 
 ### Community 32 - ".BuildLineAsync"
-Cohesion: 0.12
-Nodes (19): BuiltLine, IList, RaiseResult, long, Taka, DateOnly, CancellationToken, Task (+11 more)
+Cohesion: 0.11
+Nodes (22): BuiltLine, Display, IList, long, Taka, CancellationToken, Task, JournalOnlyPosting (+14 more)
 
 ### Community 33 - "BillDbContext"
-Cohesion: 0.14
-Nodes (23): AdvanceApplied, CancellationToken, Guid, Task, DateOnly, DateTimeOffset, DbSet, Guid (+15 more)
+Cohesion: 0.13
+Nodes (23): AdvanceApplied, DateOnly, CancellationToken, Guid, Task, DateOnly, DateTimeOffset, DbSet (+15 more)
 
 ### Community 34 - "Hms.Pharmacy.Data"
-Cohesion: 0.13
-Nodes (14): Hms.Web.Pages.Pharmacy, Hms.Pharmacy, Hms.Pharmacy.Contracts, Hms.Pharmacy.Data, PoLineRow, DateOnly, IReadOnlyList, MoveRow (+6 more)
+Cohesion: 0.19
+Nodes (11): Hms.Web.Pages.Pharmacy, Hms.Pharmacy, Hms.Pharmacy.Data, PoLineRow, DateOnly, IReadOnlyList, MoveRow, PurchaseStatRow (+3 more)
 
 ### Community 35 - ".CreateKernelContext"
-Cohesion: 0.24
-Nodes (7): DateOnly, Fact, InlineData, long, Task, Theory, NursingStationTests
+Cohesion: 0.21
+Nodes (9): DateOnly, DateTimeOffset, Fact, InlineData, long, Task, Theory, FixedClock (+1 more)
 
 ### Community 36 - "Hms.Kernel.Data.Migrations"
-Cohesion: 0.06
-Nodes (17): Hms.Kernel.Data.Migrations, MigrationBuilder, ModelBuilder, InitKernel, InitKernel, MigrationBuilder, ModelBuilder, AddImportBatch (+9 more)
+Cohesion: 0.05
+Nodes (19): Hms.Kernel.Data.Migrations, MigrationBuilder, ModelBuilder, InitKernel, InitKernel, MigrationBuilder, ModelBuilder, AddImportBatch (+11 more)
 
 ### Community 37 - "Hms.Diagnostics.Data.Migrations"
 Cohesion: 0.06
@@ -989,11 +1013,11 @@ Nodes (17): Hms.Diagnostics.Data.Migrations, MigrationBuilder, ModelBuilder, Ini
 
 ### Community 38 - "HmsPageModel"
 Cohesion: 0.09
-Nodes (20): Hms.Web.Pages.Notifications, HmsPageModel, IActionResult, IReadOnlyList, Task, IndentsModel, WardIndentRow, DateTimeOffset (+12 more)
+Nodes (19): Hms.Web.Pages.Notifications, HmsPageModel, DeniedModel, DateTimeOffset, IActionResult, IReadOnlyList, Task, InvoiceModel (+11 more)
 
 ### Community 39 - "ChartsModel"
-Cohesion: 0.11
-Nodes (20): Drugs, DateTimeOffset, IActionResult, Id, IReadOnlyDictionary, IReadOnlyList, PatientBanner, Task (+12 more)
+Cohesion: 0.19
+Nodes (12): Drugs, DateTimeOffset, IActionResult, Id, IReadOnlyDictionary, IReadOnlyList, PatientBanner, Task (+4 more)
 
 ### Community 40 - "dependencies"
 Cohesion: 0.06
@@ -1004,24 +1028,24 @@ Cohesion: 0.06
 Nodes (36): Hms.Admin, Hms.Appointments, Hms.Dashboard, Hms.Diagnostics, Hms.Emr, Hms.Hr, Hms.Hr.Screens, Hms.Ipd (+28 more)
 
 ### Community 42 - "LisDbContext"
-Cohesion: 0.32
-Nodes (7): OutletId, Fact, Func, NpgsqlConnection, ProductId, Task, PharmacyStockTests
+Cohesion: 0.23
+Nodes (10): Hms.Pharmacy.Contracts, OutletId, BatchAllocation, IReadOnlyList, Fact, Func, NpgsqlConnection, ProductId (+2 more)
 
 ### Community 43 - "RosterModel"
 Cohesion: 0.24
 Nodes (8): DateOnly, IActionResult, int, IReadOnlyList, Task, RosterCell, RosterModel, RosterPerson
 
 ### Community 44 - "MastersModel"
-Cohesion: 0.17
-Nodes (11): Hms.Web.Pages.Diagnostics, IActionResult, IReadOnlyList, LabCard, Task, DeliveryModel, DateTimeOffset, IReadOnlyList (+3 more)
+Cohesion: 0.14
+Nodes (13): Hms.Web.Pages.Diagnostics, IActionResult, IReadOnlyList, LabCard, Task, DeliveryModel, DateTimeOffset, IActionResult (+5 more)
 
 ### Community 45 - "FrontDesk.cshtml.cs"
-Cohesion: 0.28
-Nodes (5): FiscalCalendar, Fact, InlineData, Theory, FiscalCalendarTests
+Cohesion: 0.13
+Nodes (9): Hms.Kernel.Tests, FiscalCalendar, Fact, InlineData, Theory, FiscalCalendarTests, InlineData, Theory (+1 more)
 
 ### Community 46 - "Hms.Web"
-Cohesion: 0.07
-Nodes (18): Hms.Registration.Data, Hms.Lis.Data, Hms.Web.Tests, Hms.Kernel.Jobs, Hms.Web, Hms.Notifications, Hms.Notifications.Data, Hms.Web.Pages.Ipd.CertificatesModel (+10 more)
+Cohesion: 0.16
+Nodes (10): Hms.Kernel.Jobs, Hms.Notifications, Hms.Notifications.Data, DailyJobPayload, DailyJobScheduler, IRecurringJob, int, TimeSpan (+2 more)
 
 ### Community 47 - "Microsoft.Extensions.DependencyInjection.Abstractions"
 Cohesion: 0.06
@@ -1052,8 +1076,8 @@ Cohesion: 0.07
 Nodes (32): Humanizer.Core, Microsoft.CodeAnalysis.Analyzers, Microsoft.CodeAnalysis.Common, Microsoft.CodeAnalysis.CSharp, Microsoft.CodeAnalysis.Workspaces.Common, System.Composition, Humanizer.Core, Microsoft.CodeAnalysis.Analyzers (+24 more)
 
 ### Community 54 - "TxScope"
-Cohesion: 0.08
-Nodes (39): IAsyncDisposable, PendingOrder, PostedCharge, SettlementResult, TimeProvider, CancellationToken, IReadOnlyList, Task (+31 more)
+Cohesion: 0.07
+Nodes (41): IAsyncDisposable, PendingOrder, PostedCharge, SettlementResult, TimeProvider, DateTimeOffset, CancellationToken, IReadOnlyList (+33 more)
 
 ### Community 55 - "Microsoft.Extensions.DependencyInjection.Abstractions"
 Cohesion: 0.07
@@ -1064,16 +1088,16 @@ Cohesion: 0.07
 Nodes (31): Microsoft.Extensions.Configuration.Abstractions, Microsoft.Extensions.Configuration.Binder, Microsoft.Extensions.Primitives, Microsoft.Extensions.Configuration.Abstractions, Microsoft.Extensions.Configuration.Binder, Microsoft.Extensions.Primitives, contentHash, dependencies (+23 more)
 
 ### Community 57 - ".RunWardAsync"
-Cohesion: 0.18
-Nodes (20): BackdatedClock, Counters, OperatorId, OrderTestId, Random, CounterId, DateOnly, DateTimeOffset (+12 more)
+Cohesion: 0.20
+Nodes (18): BackdatedClock, Counters, OperatorId, Random, CounterId, DateOnly, DateTimeOffset, int (+10 more)
 
 ### Community 58 - "Hms.Kernel.Auth.Migrations"
 Cohesion: 0.08
-Nodes (14): Hms.Kernel.Auth.Migrations, Migration, MigrationBuilder, ModelBuilder, InitAuth, InitAuth, MigrationBuilder, ModelBuilder (+6 more)
+Nodes (14): Hms.Kernel.Auth.Migrations, Migration, MigrationBuilder, MigrationBuilder, ModelBuilder, InitAuth, InitAuth, MigrationBuilder (+6 more)
 
 ### Community 59 - "HmsPageModel"
-Cohesion: 0.18
-Nodes (12): DateOnly, int, IServiceProvider, Task, HrDemoSeed, CancellationToken, Func, Task (+4 more)
+Cohesion: 0.24
+Nodes (9): DateOnly, int, IServiceProvider, Task, HrDemoSeed, CancellationToken, Func, Task (+1 more)
 
 ### Community 60 - "dependencies"
 Cohesion: 0.07
@@ -1088,7 +1112,7 @@ Cohesion: 0.07
 Nodes (15): Hms.Pharmacy.Data.Migrations, MigrationBuilder, ModelBuilder, InitPharm, InitPharm, MigrationBuilder, ModelBuilder, IssueAllocation (+7 more)
 
 ### Community 63 - "SmsModel"
-Cohesion: 0.23
+Cohesion: 0.25
 Nodes (9): DateOnly, Func, HrScope, IActionResult, IReadOnlyList, List, Task, PoliciesModel (+1 more)
 
 ### Community 64 - "KernelDbContext"
@@ -1116,8 +1140,8 @@ Cohesion: 0.08
 Nodes (27): Microsoft.AspNetCore.Cryptography.KeyDerivation, Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.Extensions.Caching.Memory, Microsoft.Extensions.Diagnostics, Microsoft.Extensions.Logging, Microsoft.AspNetCore.Cryptography.KeyDerivation, Microsoft.EntityFrameworkCore.Abstractions (+19 more)
 
 ### Community 70 - "IpdFolioTests"
-Cohesion: 0.22
-Nodes (8): AdmissionId, BedId, Fact, FolioId, Func, NpgsqlConnection, Task, IpdFolioTests
+Cohesion: 0.13
+Nodes (13): Qty, CancellationToken, IReadOnlyList, ProductId, Task, AdmissionId, BedId, Fact (+5 more)
 
 ### Community 71 - "net10.0"
 Cohesion: 0.07
@@ -1128,8 +1152,8 @@ Cohesion: 0.07
 Nodes (29): dependencies, net10.0, type, contentHash, resolved, type, contentHash, resolved (+21 more)
 
 ### Community 73 - ".ParseAge"
-Cohesion: 0.07
-Nodes (21): Hms.Web.Pages.Registration, Dob, Estimated, Months, DateTimeOffset, IActionResult, Task, CardModel (+13 more)
+Cohesion: 0.12
+Nodes (13): Dob, Estimated, Months, DateOnly, DateOnly, Fact, InlineData, MemberData (+5 more)
 
 ### Community 74 - "PermissionCatalogTests"
 Cohesion: 0.14
@@ -1152,16 +1176,16 @@ Cohesion: 0.08
 Nodes (26): Microsoft.Extensions.Configuration.Abstractions, Microsoft.Extensions.Configuration.Binder, Microsoft.Extensions.Primitives, Microsoft.Extensions.Configuration.Abstractions, Microsoft.Extensions.Configuration.Binder, Microsoft.Extensions.Primitives, contentHash, dependencies (+18 more)
 
 ### Community 79 - "WardMoneySeamTests"
-Cohesion: 0.09
-Nodes (37): DbSet, ModelBuilder, HrDbContext, HrDbContextFactory, DateOnly, DateTimeOffset, LeaveApplication, LeaveBalance (+29 more)
+Cohesion: 0.16
+Nodes (17): DateOnly, DateTimeOffset, ComputedComponent, Designation, Grade, Holiday, HolidayCalendar, IMasterRow (+9 more)
 
 ### Community 80 - "UsersModel"
 Cohesion: 0.13
 Nodes (13): CancellationToken, Func, Task, PlatformTxOverHr, CancellationToken, Func, Task, IPlatformTx (+5 more)
 
 ### Community 81 - "Hms.Kernel.csproj"
-Cohesion: 0.03
-Nodes (62): Microsoft.AspNetCore.Identity.EntityFrameworkCore (10.0.10), Npgsql (10.0.3), QuestPDF (2026.7.1), Testcontainers.PostgreSql (4.13.0), net10.0, Microsoft.NET.Sdk.Web, net10.0, EFCore.NamingConventions (10.0.1) (+54 more)
+Cohesion: 0.04
+Nodes (58): Microsoft.AspNetCore.Identity.EntityFrameworkCore (10.0.10), Npgsql (10.0.3), QuestPDF (2026.7.1), Testcontainers.PostgreSql (4.13.0), net10.0, Microsoft.NET.Sdk.Web, net10.0, EFCore.NamingConventions (10.0.1) (+50 more)
 
 ### Community 82 - "0043 — Front-desk friction: a false duplicate, a mislabelled menu, and a cashier retyping what the hospital knows"
 Cohesion: 0.29
@@ -1188,12 +1212,12 @@ Cohesion: 0.14
 Nodes (18): AdmissionRow, Phone, ResultLine, ResultRow, CancellationToken, IReadOnlyList, Task, AdmissionRow (+10 more)
 
 ### Community 88 - "ModelSnapshot"
-Cohesion: 0.07
-Nodes (15): ModelSnapshot, ModelBuilder, AuthDbContextModelSnapshot, ModelBuilder, KernelDbContextModelSnapshot, ModelBuilder, BillDbContextModelSnapshot, ModelBuilder (+7 more)
+Cohesion: 0.08
+Nodes (13): ModelSnapshot, ModelBuilder, AuthDbContextModelSnapshot, ModelBuilder, BillDbContextModelSnapshot, ModelBuilder, DiagDbContextModelSnapshot, ModelBuilder (+5 more)
 
 ### Community 89 - "RadiologyDbContext"
-Cohesion: 0.05
-Nodes (52): CancellationToken, Task, DiagnosticsRelease, CancellationToken, Dictionary, IReadOnlyList, Task, RadiologyReporting (+44 more)
+Cohesion: 0.10
+Nodes (27): OrderTestId, CancellationToken, Task, DiagnosticsRelease, CancellationToken, Dictionary, IReadOnlyList, Task (+19 more)
 
 ### Community 90 - "net10.0"
 Cohesion: 0.08
@@ -1224,12 +1248,12 @@ Cohesion: 0.21
 Nodes (9): DateOnly, Fact, NpgsqlConnection, PostgresFixture, KernelDbContext, Patient, RegDbContext, Task (+1 more)
 
 ### Community 97 - "Hms.Appointments.Data.Migrations"
-Cohesion: 0.12
-Nodes (9): Hms.Appointments.Data.Migrations, MigrationBuilder, InitAppt, MigrationBuilder, Hardening0039, MigrationBuilder, ModelBuilder, DoctorConsultationService0043 (+1 more)
+Cohesion: 0.07
+Nodes (15): Hms.Appointments.Data.Migrations, MigrationBuilder, ModelBuilder, InitAppt, InitAppt, MigrationBuilder, ModelBuilder, Hardening0039 (+7 more)
 
 ### Community 98 - "Hms.Lis.Data.Migrations"
 Cohesion: 0.08
-Nodes (13): Hms.Lis.Data.Migrations, MigrationBuilder, ModelBuilder, InitLis, InitLis, MigrationBuilder, ModelBuilder, Hardening0039 (+5 more)
+Nodes (14): Hms.Lis.Data, Hms.Lis.Data.Migrations, MigrationBuilder, ModelBuilder, InitLis, InitLis, MigrationBuilder, ModelBuilder (+6 more)
 
 ### Community 99 - "Hms.Radiology.Data.Migrations"
 Cohesion: 0.09
@@ -1240,12 +1264,12 @@ Cohesion: 0.09
 Nodes (11): Hms.Ot.Data.Migrations, MigrationBuilder, ModelBuilder, InitOt, InitOt, MigrationBuilder, ModelBuilder, Hardening0039 (+3 more)
 
 ### Community 101 - ".ClaimNextAsync"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (16): BackgroundService, CancellationToken, DateTimeOffset, int, Task, TimeSpan, ClaimedJob, JobQueue (+8 more)
 
 ### Community 102 - "RegDbContext"
-Cohesion: 0.12
-Nodes (22): DbContext, DbSet, ModelBuilder, KernelDbContext, KernelDbContextFactory, DateTimeOffset, Guid, ApprovalDelegation (+14 more)
+Cohesion: 0.09
+Nodes (30): DbContext, IndentReturnLine, CancellationToken, Task, ApprovalEngine, RaiseResult, DbSet, ModelBuilder (+22 more)
 
 ### Community 103 - "EFCore.NamingConventions"
 Cohesion: 0.09
@@ -1300,8 +1324,8 @@ Cohesion: 0.09
 Nodes (21): dependencies, net10.0, type, contentHash, resolved, type, contentHash, resolved (+13 more)
 
 ### Community 116 - "EmrTests"
-Cohesion: 0.09
-Nodes (19): Hms.Radiology, Hms.Radiology.Data, Hms.Web.Pages.Radiology, Exception, ApprovalException, MatrixLockoutException, OtBillingException, DayTotal (+11 more)
+Cohesion: 0.11
+Nodes (17): Hms.Lis, Hms.Radiology, Hms.Radiology.Data, Hms.Web.Pages.Radiology, Exception, ApprovalException, EntitlementException, MatrixLockoutException (+9 more)
 
 ### Community 117 - "net10.0"
 Cohesion: 0.09
@@ -1332,16 +1356,16 @@ Cohesion: 0.18
 Nodes (11): int, IQueryable, PatientSearch, DateOnly, DateTimeOffset, DbSet, ModelBuilder, Patient (+3 more)
 
 ### Community 124 - "OrderModel"
-Cohesion: 0.18
-Nodes (14): ReferrerPick, AdmissionId, AdmissionNo, Bed, DateTimeOffset, Guid, IActionResult, IReadOnlyList (+6 more)
+Cohesion: 0.20
+Nodes (13): ReferrerPick, AdmissionId, AdmissionNo, Bed, DateTimeOffset, Guid, IActionResult, IReadOnlyList (+5 more)
 
 ### Community 125 - "ApprovalAndRateTests"
-Cohesion: 0.26
-Nodes (6): CancellationToken, Task, ApprovalEngine, Fact, Task, ApprovalAndRateTests
+Cohesion: 0.40
+Nodes (3): Fact, Task, ApprovalAndRateTests
 
 ### Community 126 - ".RunAsync"
-Cohesion: 0.11
-Nodes (10): Hms.Appointments.Data, Hms.Appointments, AppointmentsException, ModelBuilder, InitAppt, ModelBuilder, Hardening0039, ModelBuilder (+2 more)
+Cohesion: 0.23
+Nodes (9): AdmissionId, DbContextOptions, Fact, FolioId, Func, long, PatientId, Task (+1 more)
 
 ### Community 127 - ".HireAsync"
 Cohesion: 0.31
@@ -1353,14 +1377,14 @@ Nodes (27): BouncyCastle.Cryptography, BouncyCastle.Cryptography, Microsoft.Exte
 
 ### Community 129 - "AuthDbContext"
 Cohesion: 0.08
-Nodes (25): Hms.Hr.Screens.Pages.Hr, PageHandlerExecutingContext, PageHandlerExecutionDelegate, RedirectResult, Task, HmsPageModel, PayrollComponentLine, PayrollLine (+17 more)
+Nodes (26): Hms.Hr.Screens.Pages.Hr, Hms.Kernel.Money, Hms.Shell, DocLine, Letterhead, DateOnly, Dictionary, IReadOnlyList (+18 more)
 
 ### Community 130 - "DayCloseBoundaryTests"
 Cohesion: 0.22
 Nodes (8): FixedClock, DateTimeOffset, Fact, Func, NpgsqlConnection, Task, DayCloseBoundaryTests, FixedClock
 
 ### Community 131 - "PostgresFixture"
-Cohesion: 0.17
+Cohesion: 0.16
 Nodes (11): IAsyncLifetime, ICollectionFixture, PostgreSqlContainer, Task, IpdSeed, Task, PostgresCollection, PostgresFixture (+3 more)
 
 ### Community 132 - ".RunAsync"
@@ -1368,12 +1392,12 @@ Cohesion: 0.20
 Nodes (14): DateOnly, DateTimeOffset, Employee, EmployeeAssignment, EmployeePayComponent, EmployeePayStructure, EmploymentEvent, EmploymentEventKind (+6 more)
 
 ### Community 133 - "ConsultModel"
-Cohesion: 0.18
-Nodes (12): DateOnly, DateTimeOffset, DbSet, ModelBuilder, string, Appointment, AppointmentState, ApptDbContext (+4 more)
+Cohesion: 0.21
+Nodes (11): CancellationToken, Task, DayCloseService, counterId, Fact, Func, invoiceId, NpgsqlConnection (+3 more)
 
 ### Community 134 - ".OnPostAsync"
-Cohesion: 0.33
-Nodes (7): IActionResult, Task, Fact, InlineData, Task, Theory, RegistrationScreenTests
+Cohesion: 0.24
+Nodes (10): IActionResult, IEnumerable, IReadOnlyList, Task, NewModel, Fact, InlineData, Task (+2 more)
 
 ### Community 135 - "Microsoft.Extensions.DependencyInjection.Abstractions"
 Cohesion: 0.10
@@ -1384,20 +1408,20 @@ Cohesion: 0.11
 Nodes (20): EFCore.NamingConventions, Hms.Billing.Contracts, Hms.Kernel, Hms.Registration.Contracts, Microsoft.AspNetCore.Identity.EntityFrameworkCore, Npgsql.EntityFrameworkCore.PostgreSQL, QuestPDF, dependencies (+12 more)
 
 ### Community 137 - ".Local"
-Cohesion: 0.36
-Nodes (6): IActionResult, IReadOnlyList, List, Task, PoRow, PurchaseModel
+Cohesion: 0.19
+Nodes (11): IActionResult, IReadOnlyList, Task, AdmissionRow, AdmissionsModel, IActionResult, IReadOnlyList, List (+3 more)
 
 ### Community 138 - ".RunAsync"
-Cohesion: 0.17
-Nodes (13): Label, Line, IActionResult, IReadOnlyList, Task, AdmissionRow, AdmissionsModel, IActionResult (+5 more)
+Cohesion: 0.11
+Nodes (20): Label, Line, CancellationToken, Func, IServiceProvider, Task, BranchLoop, CancellationToken (+12 more)
 
 ### Community 139 - "SmsDispatchJobTests"
 Cohesion: 0.42
 Nodes (4): Fact, ServiceProvider, Task, SmsDispatchJobTests
 
 ### Community 140 - ".AgeDisplay"
-Cohesion: 0.35
-Nodes (6): Dictionary, IActionResult, IReadOnlyList, Task, ReportModel, ReportParameter
+Cohesion: 0.34
+Nodes (4): Fact, long, Task, EmrTests
 
 ### Community 141 - "PosModel"
 Cohesion: 0.18
@@ -1412,8 +1436,8 @@ Cohesion: 0.11
 Nodes (19): Microsoft.Extensions.Caching.Abstractions, Microsoft.Extensions.Primitives, Microsoft.Extensions.Caching.Abstractions, Microsoft.Extensions.Primitives, contentHash, dependencies, resolved, type (+11 more)
 
 ### Community 144 - "PoliciesModel"
-Cohesion: 0.11
-Nodes (14): net10.0, Microsoft.NET.Sdk, net10.0, EFCore.NamingConventions (10.0.1), Npgsql.EntityFrameworkCore.PostgreSQL (10.0.3), Microsoft.NET.Sdk, net10.0, Microsoft.NET.Sdk (+6 more)
+Cohesion: 0.12
+Nodes (12): net10.0, Microsoft.NET.Sdk, net10.0, Microsoft.NET.Sdk, net10.0, Microsoft.NET.Sdk, net10.0, Microsoft.NET.Sdk (+4 more)
 
 ### Community 145 - "Microsoft.Extensions.DependencyInjection.Abstractions"
 Cohesion: 0.17
@@ -1436,16 +1460,16 @@ Cohesion: 0.10
 Nodes (20): DateOnly, DateTimeOffset, Day, int, IReadOnlyList, Time, TimeOnly, TimeSpan (+12 more)
 
 ### Community 150 - ".IssueValueAsync"
-Cohesion: 0.20
-Nodes (10): Display, GeneratedRegex, CancellationToken, Regex, Task, NumberSeriesService, Fact, Task (+2 more)
+Cohesion: 0.26
+Nodes (6): GeneratedRegex, Regex, NumberSeriesService, Fact, Task, NumberSeriesTests
 
 ### Community 151 - "DischargeModel"
 Cohesion: 0.23
 Nodes (10): Admission, Folio, OutstandingInvoice, Guid, IActionResult, IReadOnlyList, OpenSession, Task (+2 more)
 
 ### Community 152 - ".ActAsync"
-Cohesion: 0.25
-Nodes (8): IActionResult, IndexModel, Func, HrScope, IActionResult, IReadOnlyList, Task, PayrollModel
+Cohesion: 0.29
+Nodes (7): Func, HrScope, IActionResult, IReadOnlyList, Task, PayrollModel, RunRow
 
 ### Community 153 - "BoardModel"
 Cohesion: 0.29
@@ -1460,8 +1484,8 @@ Cohesion: 0.12
 Nodes (18): Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.Extensions.Caching.Memory, Microsoft.Extensions.Logging, Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.Extensions.Caching.Memory, Microsoft.Extensions.Logging (+10 more)
 
 ### Community 156 - "AdmDbContext"
-Cohesion: 0.07
-Nodes (34): ClaimsIdentity, IdentityDbContext, IdentityRole, IdentityUser, IDesignTimeDbContextFactory, DbSet, ModelBuilder, AppRole (+26 more)
+Cohesion: 0.19
+Nodes (12): CancellationToken, DateOnly, IEnumerable, Task, DayTotal, RateResolutionException, ResolvedRate, DateOnly (+4 more)
 
 ### Community 157 - "Microsoft.Extensions.Logging"
 Cohesion: 0.12
@@ -1488,8 +1512,8 @@ Cohesion: 0.12
 Nodes (18): Microsoft.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Relational, Npgsql, contentHash, dependencies, requested, resolved, type (+10 more)
 
 ### Community 163 - "HrEntities.Pay.cs"
-Cohesion: 0.08
-Nodes (24): CancellationToken, Func, Task, DateOnly, IActionResult, IFormFile, IReadOnlyList, Task (+16 more)
+Cohesion: 0.22
+Nodes (9): HrScope, IActionResult, Id, IReadOnlyList, Name, Task, MasterRow, MastersModel (+1 more)
 
 ### Community 164 - "Microsoft.Extensions.Logging"
 Cohesion: 0.11
@@ -1540,8 +1564,8 @@ Cohesion: 0.08
 Nodes (27): Microsoft.AspNetCore.Cryptography.KeyDerivation, Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.Extensions.Caching.Memory, Microsoft.Extensions.Diagnostics, Microsoft.Extensions.Logging, Microsoft.AspNetCore.Cryptography.KeyDerivation, Microsoft.EntityFrameworkCore.Abstractions (+19 more)
 
 ### Community 176 - "EntitlementFile"
-Cohesion: 0.19
-Nodes (9): IReadOnlySet, EntitlementException, EntitlementFile, EntitlementState, Envelope, Payload, DateTimeOffset, IReadOnlyCollection (+1 more)
+Cohesion: 0.21
+Nodes (8): IReadOnlySet, EntitlementFile, EntitlementState, Envelope, Payload, DateTimeOffset, IReadOnlyCollection, EntitlementProvider
 
 ### Community 177 - "TemplatesModel"
 Cohesion: 0.16
@@ -1644,8 +1668,8 @@ Cohesion: 0.13
 Nodes (16): Microsoft.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Relational, Npgsql, contentHash, dependencies, resolved, type, Microsoft.EntityFrameworkCore (+8 more)
 
 ### Community 202 - "Hms.Lis.csproj"
-Cohesion: 0.13
-Nodes (12): net10.0, Microsoft.NET.Sdk, net10.0, EFCore.NamingConventions (10.0.1), Npgsql.EntityFrameworkCore.PostgreSQL (10.0.3), Microsoft.NET.Sdk, net10.0, Microsoft.NET.Sdk (+4 more)
+Cohesion: 0.08
+Nodes (19): TestItem, net10.0, Microsoft.NET.Sdk, net10.0, EFCore.NamingConventions (10.0.1), Npgsql.EntityFrameworkCore.PostgreSQL (10.0.3), Microsoft.NET.Sdk, net10.0 (+11 more)
 
 ### Community 203 - "dependencies"
 Cohesion: 0.12
@@ -1660,8 +1684,8 @@ Cohesion: 0.13
 Nodes (16): EFCore.NamingConventions, Hms.Hr.Contracts, Microsoft.AspNetCore.Identity.EntityFrameworkCore, Npgsql.EntityFrameworkCore.PostgreSQL, QuestPDF, dependencies, type, dependencies (+8 more)
 
 ### Community 206 - "EmployeeModel"
-Cohesion: 0.18
-Nodes (14): Hms.Kernel.Money, DateOnly, Dictionary, IActionResult, IReadOnlyList, Task, AssignmentView, AttendanceView (+6 more)
+Cohesion: 0.33
+Nodes (4): DateOnly, FlexibleDate, IActionResult, Task
 
 ### Community 207 - "dependencies"
 Cohesion: 0.12
@@ -1736,12 +1760,12 @@ Cohesion: 0.21
 Nodes (11): DbSet, Dictionary, Hms.Appointments.Data, Hms.Web.Pages.Appointments.IndexModel, IdentityResult, IServiceProvider, route:/appointments, KernelDbContext (+3 more)
 
 ### Community 225 - ".LoadAsync"
-Cohesion: 0.22
-Nodes (9): CancellationToken, IReadOnlyList, Patient, string, Task, TxScope, LabBoard, LabSample (+1 more)
+Cohesion: 0.16
+Nodes (12): CancellationToken, DateTimeOffset, IReadOnlyList, Patient, string, Task, TxScope, LabBoard (+4 more)
 
 ### Community 226 - "TemplatesModel"
-Cohesion: 0.38
-Nodes (5): At, IActionResult, List, Task, TemplatesModel
+Cohesion: 0.21
+Nodes (10): IActionResult, IReadOnlyList, List, Task, TemplatesModel, NoteTemplate, IReadOnlyList, DrugLine (+2 more)
 
 ### Community 227 - "ImportAndDashboardTests"
 Cohesion: 0.24
@@ -1772,15 +1796,15 @@ Cohesion: 0.28
 Nodes (8): IActionResult, IReadOnlyList, Task, ConsultantRow, ConsultOption, DoctorRow, PeopleModel, ReferrerRow
 
 ### Community 234 - ".TryParse"
-Cohesion: 0.18
-Nodes (11): DateOnly, FlexibleDate, DateOnly, IActionResult, Id, IReadOnlyDictionary, IReadOnlyList, Name (+3 more)
+Cohesion: 0.25
+Nodes (9): DateOnly, IActionResult, Id, IReadOnlyDictionary, IReadOnlyList, Name, Task, DutyModel (+1 more)
 
 ### Community 235 - "ResultsModel"
 Cohesion: 0.22
 Nodes (9): Regex, Dictionary, IActionResult, IReadOnlyList, LabCard, Task, EntryParameter, EntryTest (+1 more)
 
 ### Community 236 - ".SendAsync"
-Cohesion: 0.20
+Cohesion: 0.21
 Nodes (10): Task, CancellationToken, Dictionary, IEnumerable, IReadOnlyCollection, IReadOnlyDictionary, Task, BilledTotals (+2 more)
 
 ### Community 237 - "dependencies"
@@ -1800,8 +1824,8 @@ Cohesion: 0.14
 Nodes (14): Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Logging.Abstractions, contentHash, dependencies, resolved, type (+6 more)
 
 ### Community 241 - "Hms.Pharmacy.csproj"
-Cohesion: 0.06
-Nodes (33): Css, Branch, DateTimeOffset, CancellationToken, Func, IServiceProvider, Task, BranchLoop (+25 more)
+Cohesion: 0.29
+Nodes (8): IActionResult, IReadOnlyList, Task, TxScope, Operation, Person, SchedulablePatient, ScheduleModel
 
 ### Community 242 - "dependencies"
 Cohesion: 0.14
@@ -1932,8 +1956,8 @@ Cohesion: 0.14
 Nodes (14): Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Options, Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Options, contentHash, dependencies, resolved, type (+6 more)
 
 ### Community 274 - "PurchaseModel"
-Cohesion: 0.17
-Nodes (16): Hms.Web.Pages, DateOnly, IReadOnlyList, ConsultantRank, DashboardModel, DayBar, DeptSlice, DiscountRow (+8 more)
+Cohesion: 0.13
+Nodes (19): Hms.Appointments.Data, Hms.Appointments, Hms.Web.Pages, DateOnly, IReadOnlyList, ConsultantRank, DashboardModel, DayBar (+11 more)
 
 ### Community 275 - "Microsoft.Extensions.Configuration.Abstractions"
 Cohesion: 0.14
@@ -2008,8 +2032,8 @@ Cohesion: 0.18
 Nodes (11): ConsultantPick, CriticalFinding, IActionResult, IReadOnlyList, LabCard, Task, ConsultantPick, CriticalFinding (+3 more)
 
 ### Community 293 - "IndexModel"
-Cohesion: 0.12
-Nodes (16): SmsTemplate, IActionResult, IReadOnlyDictionary, IReadOnlyList, Task, SmsModel, CancellationToken, IReadOnlyDictionary (+8 more)
+Cohesion: 0.09
+Nodes (22): SmsTemplate, IActionResult, IReadOnlyDictionary, IReadOnlyList, Task, SmsModel, Dictionary, IActionResult (+14 more)
 
 ### Community 294 - "dependencies"
 Cohesion: 0.15
@@ -2020,19 +2044,19 @@ Cohesion: 0.15
 Nodes (13): Docker.DotNet.Enhanced.LegacyHttp, Docker.DotNet.Enhanced.NativeHttp, Docker.DotNet.Enhanced.NPipe, Docker.DotNet.Enhanced.Unix, Docker.DotNet.Enhanced.LegacyHttp, Docker.DotNet.Enhanced.NativeHttp, Docker.DotNet.Enhanced.NPipe, Docker.DotNet.Enhanced.Unix (+5 more)
 
 ### Community 296 - ".RunAsync"
-Cohesion: 0.07
-Nodes (21): DateOnly, DateTimeOffset, IActionResult, IReadOnlyList, Task, InvoiceModel, ReceiptLine, ReceiptPayment (+13 more)
+Cohesion: 0.06
+Nodes (21): DateOnly, TimeZoneInfo, Ui, DateOnly, IReadOnlyList, Task, ConsultRow, QueueModel (+13 more)
 
 ### Community 297 - "CriticalValueTests"
-Cohesion: 0.27
-Nodes (4): Fact, InlineData, Theory, CriticalValueTests
+Cohesion: 0.17
+Nodes (6): string, ResultFlags, Fact, InlineData, Theory, CriticalValueTests
 
 ### Community 298 - "0043 — notes"
 Cohesion: 0.22
 Nodes (8): 0043 — notes, Deviations from the plan, Execution log (2026-08-03), Findings raised, not fixed, Not committed, Two things the verification script taught, worth keeping, Verification, What the phone-only classification does and does not change
 
 ### Community 299 - ".Parse"
-Cohesion: 0.19
+Cohesion: 0.20
 Nodes (7): int, Dictionary, IReadOnlyList, ReferenceBand, ResultParameter, ResultTemplate, ResultTemplates
 
 ### Community 300 - "0044 — notes"
@@ -2048,16 +2072,16 @@ Cohesion: 0.21
 Nodes (6): bool, Hms.PrintGolden.Tests, Hms.Kernel.Printing, PdfRenderer, Fact, BanglaSpikeTests
 
 ### Community 303 - "Hms.Admin"
-Cohesion: 0.29
-Nodes (4): Hms.Diagnostics.Data, Hms.Diagnostics, Hms.Billing.Contracts, DiagnosticsModule
+Cohesion: 0.08
+Nodes (16): Hms.Diagnostics.Data, Hms.Diagnostics, Hms.Web.Pages.Public, Hms.Web.Tests, Hms.Shell.Pages, PageModel, LoginModel, IActionResult (+8 more)
 
 ### Community 304 - ".OnPostAsync"
 Cohesion: 0.17
 Nodes (6): int, IReadOnlyList, List, Barcode128, Fact, Barcode128Tests
 
 ### Community 305 - "Hms.Web.Tests"
-Cohesion: 0.05
-Nodes (35): 0046 — Departments above wards, and the nurse who receives her own patients, Acceptance criteria, Out of scope, Problem, Requirements, Risks / open questions, 0047 — The discharge certificate that was never a document, Acceptance criteria (+27 more)
+Cohesion: 0.29
+Nodes (6): 0046 — Departments above wards, and the nurse who receives her own patients, Acceptance criteria, Out of scope, Problem, Requirements, Risks / open questions
 
 ### Community 306 - "0044 — plan"
 Cohesion: 0.22
@@ -2068,12 +2092,12 @@ Cohesion: 0.17
 Nodes (7): IPageApplicationModelConvention, PageApplicationModel, ModuleEntitlementPolicy, IReadOnlyDictionary, IServiceCollection, ModuleEntitlementExtensions, ModuleRouteConvention
 
 ### Community 308 - ".BusinessDayOf"
-Cohesion: 0.15
+Cohesion: 0.17
 Nodes (10): CancellationToken, IServiceProvider, Task, DateOnly, DateTimeOffset, TimeOnly, TimeZoneInfo, BusinessDayCalendar (+2 more)
 
 ### Community 309 - "StatementModel"
-Cohesion: 0.15
-Nodes (13): IActionResult, IReadOnlyList, OpenSession, Task, ClosedRow, DayCloseModel, TenderRow, DateOnly (+5 more)
+Cohesion: 0.14
+Nodes (14): Hms.Web.Pages.Billing, IActionResult, IReadOnlyList, OpenSession, Task, ClosedRow, DayCloseModel, TenderRow (+6 more)
 
 ### Community 310 - "Microsoft.Extensions.DependencyInjection.Abstractions"
 Cohesion: 0.17
@@ -2100,7 +2124,7 @@ Cohesion: 0.24
 Nodes (6): Assembly, Fact, MemberData, Theory, TheoryData, ModuleBoundaryTests
 
 ### Community 316 - ".ActAsync"
-Cohesion: 0.31
+Cohesion: 0.33
 Nodes (7): Func, HrScope, IActionResult, IReadOnlyList, Task, ApprovalRow, PayrollApprovalsModel
 
 ### Community 317 - "Microsoft.Extensions.DependencyInjection.Abstractions"
@@ -2152,8 +2176,8 @@ Cohesion: 0.17
 Nodes (12): xunit.analyzers, xunit.assert, xunit.core, xunit.analyzers, xunit.assert, xunit.core, xunit, contentHash (+4 more)
 
 ### Community 329 - "NullTempDataProvider"
-Cohesion: 0.47
-Nodes (4): ITempDataProvider, HttpContext, IDictionary, NullTempDataProvider
+Cohesion: 0.12
+Nodes (13): CancellationToken, Func, Task, IActionResult, List, SelectListItem, Task, EmployeeNewModel (+5 more)
 
 ### Community 330 - "FaultBoundaryMiddleware"
 Cohesion: 0.24
@@ -2199,6 +2223,10 @@ Nodes (11): EFCore.NamingConventions, Microsoft.AspNetCore.Identity.EntityFramew
 Cohesion: 0.18
 Nodes (11): EFCore.NamingConventions, Microsoft.AspNetCore.Identity.EntityFrameworkCore, Npgsql.EntityFrameworkCore.PostgreSQL, QuestPDF, dependencies, type, EFCore.NamingConventions, Microsoft.AspNetCore.Identity.EntityFrameworkCore (+3 more)
 
+### Community 341 - "HrEntities.Time.cs"
+Cohesion: 0.23
+Nodes (10): IActionResult, Id, IReadOnlyList, List, Name, Task, TxScope, ConsultModel (+2 more)
+
 ### Community 342 - "dependencies"
 Cohesion: 0.18
 Nodes (11): EFCore.NamingConventions, Microsoft.AspNetCore.Identity.EntityFrameworkCore, Npgsql.EntityFrameworkCore.PostgreSQL, QuestPDF, dependencies, type, EFCore.NamingConventions, Microsoft.AspNetCore.Identity.EntityFrameworkCore (+3 more)
@@ -2208,8 +2236,8 @@ Cohesion: 0.18
 Nodes (11): Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.Extensions.Caching.Memory, Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.Extensions.Caching.Memory, contentHash, dependencies (+3 more)
 
 ### Community 344 - "MeModel"
-Cohesion: 0.31
-Nodes (7): IActionResult, IReadOnlyList, List, PatientBanner, Task, IndoorModel, IndoorRx
+Cohesion: 0.25
+Nodes (9): At, WardPatient, IActionResult, IReadOnlyList, List, PatientBanner, Task, IndoorModel (+1 more)
 
 ### Community 345 - "dependencies"
 Cohesion: 0.18
@@ -2240,15 +2268,15 @@ Cohesion: 0.22
 Nodes (10): Microsoft.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Relational, Npgsql, dependencies, Microsoft.EntityFrameworkCore, Microsoft.EntityFrameworkCore.Relational, Npgsql, dependencies (+2 more)
 
 ### Community 352 - "PrescriptionModel"
-Cohesion: 0.14
-Nodes (13): DrugRow, DateOnly, DateTimeOffset, IActionResult, IReadOnlyList, Task, PrescriptionModel, DateTimeOffset (+5 more)
+Cohesion: 0.31
+Nodes (7): DrugRow, DateOnly, DateTimeOffset, IActionResult, IReadOnlyList, Task, PrescriptionModel
 
 ### Community 353 - "CertificatesModel"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (9): ChainTier, JsonSerializerOptions, CancellationToken, IServiceProvider, List, Task, ApprovalEscalationJob, ChainTier (+1 more)
 
 ### Community 354 - ".OnPostDeliverAsync"
-Cohesion: 0.29
+Cohesion: 0.32
 Nodes (7): Func, HrScope, IActionResult, IReadOnlyList, Task, LeaveModel, LeaveRow
 
 ### Community 355 - "ModalitiesModel"
@@ -2312,8 +2340,8 @@ Cohesion: 0.22
 Nodes (9): Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, Microsoft.EntityFrameworkCore.Abstractions, Microsoft.EntityFrameworkCore.Analyzers, contentHash, dependencies, resolved, type (+1 more)
 
 ### Community 370 - "Hms.Web.csproj"
-Cohesion: 0.12
-Nodes (14): Hms.Web.Pages.Lis, JsonElement, Dictionary, IActionResult, IReadOnlyList, Task, AmendableTest, AmendModel (+6 more)
+Cohesion: 0.23
+Nodes (8): Hms.Web.Pages.Lis, Dictionary, IActionResult, IReadOnlyList, Task, AmendableTest, AmendModel, AmendValue
 
 ### Community 371 - "Microsoft.EntityFrameworkCore"
 Cohesion: 0.22
@@ -2332,8 +2360,8 @@ Cohesion: 0.26
 Nodes (8): IActionResult, IReadOnlyList, List, SelectListItem, Task, MeModel, MyBalanceRow, MyLeaveRow
 
 ### Community 376 - "BoardModel"
-Cohesion: 0.62
-Nodes (3): Fact, Task, HandlerPermissionTests
+Cohesion: 0.18
+Nodes (10): ITempDataProvider, Fact, HttpContext, IDictionary, Task, HandlerPermissionTests, NullTempDataProvider, HttpContext (+2 more)
 
 ### Community 377 - "CrossContextQueryTests"
 Cohesion: 0.29
@@ -2536,8 +2564,8 @@ Cohesion: 0.25
 Nodes (8): Microsoft.EntityFrameworkCore, dependencies, Microsoft.EntityFrameworkCore, contentHash, dependencies, resolved, type, Microsoft.EntityFrameworkCore.Relational
 
 ### Community 428 - ".InvokeAsync"
-Cohesion: 0.53
-Nodes (3): DateTimeOffset, LabCard, TimeSpan
+Cohesion: 0.15
+Nodes (14): ClaimsIdentity, IdentityDbContext, IdentityRole, IdentityUser, DbSet, ModelBuilder, AppRole, AppUser (+6 more)
 
 ### Community 429 - ".OnPostCancelAsync"
 Cohesion: 0.29
@@ -2545,19 +2573,19 @@ Nodes (6): 0044 — A haemoglobin of 3.1 and one of 11.9 both print "L", Accepta
 
 ### Community 430 - "Hms.Ot.Data"
 Cohesion: 0.18
-Nodes (10): Hms.Web.Pages.Ot, DateOnly, IReadOnlyList, BoardCase, BoardModel, BoardTheatre, DateOnly, IReadOnlyList (+2 more)
+Nodes (11): Hms.Web.Pages.Ot, Hms.Ot.Data, DateOnly, IReadOnlyList, BoardCase, BoardModel, BoardTheatre, DateOnly (+3 more)
 
 ### Community 431 - "Hms.Admin.csproj"
-Cohesion: 0.40
-Nodes (3): DateTimeOffset, Task, CertificateModel
+Cohesion: 0.15
+Nodes (11): JsonElement, DateTimeOffset, IActionResult, IReadOnlyList, Task, ReportModel, ReportSection, ReportValue (+3 more)
 
 ### Community 432 - "System.CodeDom"
 Cohesion: 0.50
 Nodes (4): System.CodeDom, contentHash, resolved, type
 
 ### Community 433 - "Hms.Billing.csproj"
-Cohesion: 0.20
-Nodes (9): Hms.Ipd.Data, Hms.Web.Pages.Ipd.DischargeModel, route:/ipd/discharge/{admissionId:long}, IReadOnlyList, OpenSession, Task, IpdInvoiceRow, IpdModel (+1 more)
+Cohesion: 0.11
+Nodes (15): Hms.Ipd.Data, Hms.Web.Pages.Ipd.DischargeModel, route:/ipd/discharge/{admissionId:long}, IReadOnlyList, OpenSession, Task, IpdInvoiceRow, IpdModel (+7 more)
 
 ### Community 434 - "Testcontainers.PostgreSql"
 Cohesion: 0.25
@@ -2788,8 +2816,8 @@ Cohesion: 0.29
 Nodes (7): xunit.abstractions, xunit.abstractions, xunit.extensibility.core, contentHash, dependencies, resolved, type
 
 ### Community 493 - "Hms.Kernel.Tests.csproj"
-Cohesion: 0.13
-Nodes (12): net10.0, coverlet.collector (6.0.4), Microsoft.NET.Test.Sdk (17.14.1), xunit (2.9.3), xunit.runner.visualstudio (3.1.4), Microsoft.NET.Sdk, net10.0, coverlet.collector (6.0.4) (+4 more)
+Cohesion: 0.29
+Nodes (6): net10.0, coverlet.collector (6.0.4), Microsoft.NET.Test.Sdk (17.14.1), xunit (2.9.3), xunit.runner.visualstudio (3.1.4), Microsoft.NET.Sdk
 
 ### Community 494 - "Microsoft.AspNetCore.Cryptography.KeyDerivation"
 Cohesion: 0.29
@@ -2800,8 +2828,8 @@ Cohesion: 0.29
 Nodes (7): xunit.abstractions, xunit.abstractions, xunit.extensibility.core, contentHash, dependencies, resolved, type
 
 ### Community 496 - "Hms.PrintGolden.Tests.csproj"
-Cohesion: 0.29
-Nodes (7): IActionResult, IReadOnlyList, Task, AdmitModel, BedChoice, DoctorChoice, PackageChoice
+Cohesion: 0.26
+Nodes (8): DateTimeOffset, IActionResult, IReadOnlyDictionary, IReadOnlyList, PatientBanner, Task, TasksModel, CareTask
 
 ### Community 497 - "Microsoft.AspNetCore.Cryptography.KeyDerivation"
 Cohesion: 0.29
@@ -2836,8 +2864,8 @@ Cohesion: 0.33
 Nodes (5): dependencies, net10.0, type, hms.kernel, version
 
 ### Community 505 - "ModuleNav"
-Cohesion: 0.25
-Nodes (4): Hms.Kernel.Tests, InlineData, Theory, PermissionPolicyTests
+Cohesion: 0.20
+Nodes (14): DateOnly, DateTimeOffset, EmployeeLedgerEntry, LedgerKind, Loan, LoanInstallment, LoanState, PayrollComponentLine (+6 more)
 
 ### Community 508 - "Hms.Dashboard.csproj"
 Cohesion: 0.31
@@ -2876,8 +2904,8 @@ Cohesion: 0.40
 Nodes (5): Hms.Notifications.Contracts, dependencies, type, Hms.Notifications.Contracts, hms.notifications
 
 ### Community 519 - "AdmissionId"
-Cohesion: 0.14
-Nodes (14): CancellationToken, Task, IActionResult, IReadOnlyList, Task, BoardModel, IActionResult, IReadOnlyList (+6 more)
+Cohesion: 0.35
+Nodes (6): IActionResult, IReadOnlyList, List, Task, TransferRow, TransfersModel
 
 ### Community 520 - "Hms.Kernel"
 Cohesion: 0.40
@@ -2940,8 +2968,8 @@ Cohesion: 0.40
 Nodes (5): Hms.Notifications.Contracts, dependencies, type, Hms.Notifications.Contracts, hms.notifications
 
 ### Community 535 - "Appointments/Index.cshtml"
-Cohesion: 0.50
-Nodes (3): Dictionary, IEnumerable, AppointmentsService
+Cohesion: 0.33
+Nodes (6): CancellationToken, DateOnly, IReadOnlyList, Task, NewPoLine, PurchaseService
 
 ### Community 536 - "Employee.cshtml"
 Cohesion: 0.50
@@ -3012,8 +3040,8 @@ Cohesion: 0.50
 Nodes (3): Hms.Web.Pages.Ipd.BoardModel, route:/ipd/board, Hms.Ipd.Data
 
 ### Community 553 - "Discharge.cshtml"
-Cohesion: 0.39
-Nodes (5): IActionResult, IReadOnlyList, Task, IndentsModel, IssueQueueRow
+Cohesion: 0.14
+Nodes (12): 0051 — Engineering skill set for production-grade delivery, Acceptance criteria, How each was verified (closed 2026-08-06), Out of scope, Problem, Requirements, Risks / open questions, How this relates to the other docs (+4 more)
 
 ### Community 554 - "Folio.cshtml"
 Cohesion: 0.50
@@ -3142,6 +3170,10 @@ Nodes (4): Newtonsoft.Json, contentHash, resolved, type
 ### Community 585 - "QuestPDF"
 Cohesion: 0.50
 Nodes (4): QuestPDF, contentHash, resolved, type
+
+### Community 586 - "Bed"
+Cohesion: 0.24
+Nodes (10): DateOnly, DbSet, ModelBuilder, AdmDbContext, AdmDbContextFactory, RateVersion, Referrer, ReportingConsultant (+2 more)
 
 ### Community 587 - "Hms.Admin.Contracts/packages.lock.json"
 Cohesion: 0.50
@@ -3420,8 +3452,8 @@ Cohesion: 0.50
 Nodes (4): QuestPDF, contentHash, resolved, type
 
 ### Community 658 - "OpenSession"
-Cohesion: 0.25
-Nodes (6): net10.0, Microsoft.NET.Sdk, net10.0, EFCore.NamingConventions (10.0.1), Npgsql.EntityFrameworkCore.PostgreSQL (10.0.3), Microsoft.NET.Sdk
+Cohesion: 0.17
+Nodes (11): 1. One business action = one transaction — `HmsTx`, 2. Services are stateless singletons, 3. Concurrency is PostgreSQL's job, not the CLR's, 4. Money and time, Code conventions — HMS ERP, Layout, Migrations, Screens (Razor Pages) (+3 more)
 
 ### Community 660 - "Microsoft.EntityFrameworkCore.Abstractions"
 Cohesion: 0.50
@@ -3452,16 +3484,16 @@ Cohesion: 0.67
 Nodes (3): dependencies, type, hms.shell
 
 ### Community 757 - "0047 — The discharge certificate that was never a document"
-Cohesion: 0.29
-Nodes (4): Fact, InlineData, Theory, HrIndependenceTests
+Cohesion: 0.18
+Nodes (6): Hms.Registration, Hms.Web.Pages.Registration, DateTimeOffset, IActionResult, Task, CardModel
 
 ### Community 761 - "Hms.Web.Tests.csproj"
 Cohesion: 0.29
 Nodes (5): AsyncLocal, DbContext, ModelBuilder, BranchIsolation, BranchScope
 
 ### Community 763 - "ReportsModel"
-Cohesion: 0.47
-Nodes (5): DateOnly, IReadOnlyList, CensusRow, MovementRow, ReportsModel
+Cohesion: 0.10
+Nodes (18): Hms.Web.Pages.Ipd, DateTimeOffset, IReadOnlyList, AdmitModel, BedChoice, DoctorChoice, PackageChoice, BedTile (+10 more)
 
 ### Community 764 - "IndexModel"
 Cohesion: 0.33
@@ -3476,36 +3508,124 @@ Cohesion: 0.33
 Nodes (4): Dictionary, IReadOnlyDictionary, IReadOnlyList, ModuleNav
 
 ### Community 791 - ".ReadAsync"
-Cohesion: 0.40
-Nodes (4): Collected, Net, Refunded, State
+Cohesion: 0.21
+Nodes (7): PageHandlerExecutingContext, PageHandlerExecutionDelegate, RedirectResult, IActionResult, IndexModel, Task, HmsPageModel
+
+### Community 795 - "RazorLayoutTests"
+Cohesion: 0.18
+Nodes (10): Before you claim a list screen is fast, Checklist for a new table, Concurrency, at the schema level, Deletion, correction and effective dating, Indexes, Invariants belong in the database, Schema and indexing — HMS ERP, Substring search — the rule most often missed (+2 more)
 
 ### Community 796 - "NullTempDataProvider"
-Cohesion: 0.60
-Nodes (3): HttpContext, IDictionary, NullTempDataProvider
+Cohesion: 0.31
+Nodes (7): DateOnly, IActionResult, IFormFile, IReadOnlyList, Task, AttendanceModel, AttendanceRow
 
 ### Community 797 - ".InvokeAsync"
 Cohesion: 0.50
 Nodes (3): HttpContext, Task, BranchResolutionMiddleware
 
+### Community 798 - "CRUD completeness — HMS ERP"
+Cohesion: 0.22
+Nodes (8): Attribution, audit, concurrency, Authorization, CRUD completeness — HMS ERP, Definition of done, Read path, Tests — write them first (`tdd-loop`), The five paths, all of them required, Write path
+
+### Community 799 - "Drift measured during the audit, deliberately not fixed here"
+Cohesion: 0.22
+Nodes (8): 0051 — Notes, 1. Five substring searches with no supporting index, 2. Seven of fifteen DbContexts are outside the CI additive-migration gate, 3. Index density varies with no written rationale, 4. Two factual errors found in `code-conventions`, fixed in this spec, Deviations from the plan, Drift measured during the audit, deliberately not fixed here, Enforcement tests agreed for a follow-up spec
+
+### Community 800 - "ReportsModel"
+Cohesion: 0.36
+Nodes (8): DateOnly, IReadOnlyList, CollectionRow, DeptIncomeRow, DiscountRegisterRow, DueAgeRow, ReferrerRow, ReportsModel
+
+### Community 801 - "BoardModel"
+Cohesion: 0.50
+Nodes (4): IActionResult, IReadOnlyList, Task, BoardModel
+
+### Community 802 - ".OnPostCancelAsync"
+Cohesion: 0.36
+Nodes (5): IActionResult, IReadOnlyList, Task, IndentsModel, WardIndentRow
+
+### Community 803 - "hms-erp"
+Cohesion: 0.25
+Nodes (7): Conventions, Files, graphify, Hard rules, hms-erp, Product constants, Token discipline
+
+### Community 804 - "Domain modelling — HMS ERP"
+Cohesion: 0.25
+Nodes (7): Aggregates: the boundary is the transaction, Domain modelling — HMS ERP, Smells, and what they actually mean, Starting a new module, The house position on DDD and SOLID, When a concept earns its own type, Where an invariant belongs
+
+### Community 805 - "TheatresModel"
+Cohesion: 0.46
+Nodes (4): IActionResult, IReadOnlyList, Task, TheatresModel
+
+### Community 806 - "Cross-module flow — HMS ERP"
+Cohesion: 0.29
+Nodes (6): Before you call a cross-module change done, Cross-module flow — HMS ERP, Proving it landed, Reads across a boundary, The standing obligations, Where orchestration lives
+
+### Community 807 - "TDD loop — HMS ERP"
+Cohesion: 0.29
+Nodes (6): Keeping the loop fast when the tier is Integration, Mandatory, and exempt, TDD loop — HMS ERP, The loop, What a good test looks like here, Which tier takes the first test
+
+### Community 808 - "0047 — The discharge certificate that was never a document"
+Cohesion: 0.29
+Nodes (6): 0047 — The discharge certificate that was never a document, Acceptance criteria, Out of scope, Problem, Requirements, Risks / open questions
+
+### Community 809 - "0048 — An IPD bill counter that handles only IPD"
+Cohesion: 0.29
+Nodes (6): 0048 — An IPD bill counter that handles only IPD, Acceptance criteria, Out of scope, Problem, Requirements, Risks / open questions
+
+### Community 810 - "0049 — Role permissions as a form, not five hundred buttons"
+Cohesion: 0.29
+Nodes (6): 0049 — Role permissions as a form, not five hundred buttons, Acceptance criteria, Out of scope, Problem, Requirements, Risks / open questions
+
+### Community 811 - "0050 — Sylhet Evergreen Hospital: rebrand, logo, login, and a sidebar that folds"
+Cohesion: 0.29
+Nodes (6): 0050 — Sylhet Evergreen Hospital: rebrand, logo, login, and a sidebar that folds, Acceptance criteria, Out of scope, Problem, Requirements, Risks / open questions
+
+### Community 812 - "0051 — Plan"
+Cohesion: 0.29
+Nodes (6): 0051 — Plan, Approach, Approved: 2026-08-06, Files, Not done here, Steps
+
+### Community 813 - "Hms.PrintGolden.Tests.csproj"
+Cohesion: 0.29
+Nodes (6): net10.0, coverlet.collector (6.0.4), Microsoft.NET.Test.Sdk (17.14.1), xunit (2.9.3), xunit.runner.visualstudio (3.1.4), Microsoft.NET.Sdk
+
+### Community 814 - "Scope routing"
+Cohesion: 0.33
+Nodes (5): Anti-patterns, Scope routing, The routing question is not "is it in scope" — it is "which of these four is it", Two override rules that still bind, What "production-grade" changes about the decision
+
+### Community 815 - "Spec-driven flow"
+Cohesion: 0.33
+Nodes (5): Rules, Spec-driven flow, Templates, The loop, When a spec is required
+
+### Community 816 - "ADR authoring"
+Cohesion: 0.40
+Nodes (4): ADR authoring, Project-specific requirements, Required coverage, Template
+
+### Community 817 - "Module spec authoring"
+Cohesion: 0.40
+Nodes (4): After editing the PRD, Module spec authoring, Rules, Shape of a module section
+
+### Community 818 - "HrSeed"
+Cohesion: 0.60
+Nodes (3): IServiceProvider, Task, HrSeed
+
 ## Knowledge Gaps
-- **3561 isolated node(s):** `0046 — Notes`, `Problem`, `Requirements`, `Acceptance criteria`, `Out of scope` (+3556 more)
+- **3638 isolated node(s):** `Template`, `Project-specific requirements`, `Required coverage`, `Layout`, `1. One business action = one transaction — `HmsTx`` (+3633 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **127 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `string` connect `HRM Web Shell & Seed` to `HRM Transactions & Attendance`, `OT Case Screen`, `Billing Charge Poster`, `.RunAsync`, `SMS Notifications & Dispatch`, `NotifDbContext`, `.RunAsync`, `Login & Access Denied Pages`, `Namespace Declarations III`, `Counter Sessions & Money UI`, `NumberSeriesScopeTests`, `.IssueValueAsync`, `CrossContextQueryTests`, `BoardModel`, `HostRootRouteTests`, `InputGateCoverageTests`, `BillDbContext`, `Hms.Pharmacy.Data`, `ModuleEntitlement.cs`, `HrEntities.Pay.cs`, `IndexModel`, `Hms.Web`, `PdfRenderer`, `.OnPostAsync`, `Hms.Admin`, `Hms.Hr.Data.Migrations`, `ModuleEntitlementPolicy`, `TxScope`, `.RunWardAsync`, `HmsPageModel`, `.ActAsync`, `FaultBoundaryMiddleware`, `PermissionCatalogTests`, `WardMoneySeamTests`, `RadiologyDbContext`, `CertificatesModel`, `ImportAndDashboardTests`, `RegDbContext`, `PermissionPolicyProvider`, `.TryParse`, `.Codewords`, `EmrTests`, `0047 — The discharge certificate that was never a document`, `Hms.Web.Tests.csproj`, `.RunAsync`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
-- **Why does `TxScope` connect `TxScope` to `OT Case Screen`, `Billing Charge Poster`, `ConsultModel`, `AdmissionId`, `NotifDbContext`, `AdmissionNo`, `Pharmacy Data Model`, `IPD Data Model & Audit`, `EMR Data Model`, `AdmDbContext`, `BillDbContext`, `IndexModel`, `ChartsModel`, `Hms.Web`, `.RunWardAsync`, `WardMoneySeamTests`, `HistoryModel`, `RadiologyDbContext`, `RegDbContext`, `PharmacyStockTests`, `Hms.Notifications.csproj`?**
-  _High betweenness centrality (0.015) - this node is a cross-community bridge._
-- **Why does `Hms.Kernel.Data` connect `Namespace Declarations II` to `HRM Transactions & Attendance`, `OT Case Screen`, `Billing Charge Poster`, `Namespace Declarations`, `NotifDbContext`, `Namespace Declarations III`, `Pharmacy Data Model`, `EMR Data Model`, `AdmDbContext`, `BillDbContext`, `Hms.Pharmacy.Data`, `Hms.Kernel.Data.Migrations`, `Hms.Web`, `Hms.Admin`, `WardMoneySeamTests`, `ModelSnapshot`, `RadiologyDbContext`, `CertificatesModel`, `.ClaimNextAsync`, `RegDbContext`, `ImportModel`, `Hms.Web.csproj`, `EmrTests`, `Hms.Web.Tests.csproj`, `PharmacyStockTests`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
-- **What connects `0046 — Notes`, `Problem`, `Requirements` to the rest of the system?**
-  _3561 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `string` connect `HRM Web Shell & Seed` to `HRM Transactions & Attendance`, `OT Case Screen`, `Billing Charge Poster`, `.RunAsync`, `SMS Notifications & Dispatch`, `NotifDbContext`, `.Local`, `Namespace Declarations III`, `Counter Sessions & Money UI`, `HR Data Model`, `Branch Isolation Tests`, `NumberSeriesScopeTests`, `CrossContextQueryTests`, `BoardModel`, `EMR Data Model`, `HostRootRouteTests`, `InputGateCoverageTests`, `.IssueValueAsync`, `BillDbContext`, `ModuleEntitlement.cs`, `HrEntities.Pay.cs`, `IndexModel`, `.RunAsync`, `Hms.Web`, `PdfRenderer`, `.OnPostAsync`, `Hms.Admin`, `HrSeed`, `ModuleEntitlementPolicy`, `Hms.Hr.Data.Migrations`, `TxScope`, `.RunWardAsync`, `HmsPageModel`, `.ActAsync`, `FaultBoundaryMiddleware`, `PermissionCatalogTests`, `EmployeeModel`, `WardMoneySeamTests`, `CertificatesModel`, `ImportAndDashboardTests`, `RegDbContext`, `PermissionPolicyProvider`, `.TryParse`, `ModuleNav`, `.Codewords`, `Hms.Web.Tests.csproj`?**
+  _High betweenness centrality (0.033) - this node is a cross-community bridge._
+- **Why does `KernelDbContext` connect `RegDbContext` to `HRM Transactions & Attendance`, `OT Case Screen`, `Billing Charge Poster`, `DayCloseBoundaryTests`, `.RunAsync`, `ConsultModel`, `.AgeDisplay`, `Namespace Declarations III`, `Billing Service & Invoices`, `HR Data Model`, `LifecycleGapTests`, `.IssueValueAsync`, `Appointments/Index.cshtml`, `IPD Data Model & Audit`, `TerminalExitTests`, `EMR Data Model`, `.BuildLineAsync`, `BillDbContext`, `.CreateKernelContext`, `IndexModel`, `LisDbContext`, `HrSeed`, `TxScope`, `HmsPageModel`, `IpdFolioTests`, `UsersModel`, `ImportAndDashboardTests`, `.OnPostImportAsync`, `.ClaimNextAsync`, `SmsQueueTests`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **Why does `TxScope` connect `TxScope` to `OT Case Screen`, `Billing Charge Poster`, `Namespace Declarations`, `NotifDbContext`, `AdmissionNo`, `.RunAsync`, `Namespace Declarations III`, `Pharmacy Data Model`, `HR Data Model`, `Appointments Service`, `IPD Data Model & Audit`, `EMR Data Model`, `BillDbContext`, `IndexModel`, `ChartsModel`, `.InvokeAsync`, `.RunWardAsync`, `Bed`, `HistoryModel`, `RadiologyDbContext`, `RegDbContext`, `.RunAsync`, `PharmacyStockTests`, `Hms.Notifications.csproj`?**
+  _High betweenness centrality (0.016) - this node is a cross-community bridge._
+- **What connects `Template`, `Project-specific requirements`, `Required coverage` to the rest of the system?**
+  _3638 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `HRM Transactions & Attendance` be split into smaller, more focused modules?**
-  _Cohesion score 0.051138294257560314 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0514018691588785 - nodes in this community are weakly interconnected._
 - **Should `OT Case Screen` be split into smaller, more focused modules?**
   _Cohesion score 0.08350877192982456 - nodes in this community are weakly interconnected._
 - **Should `Billing Charge Poster` be split into smaller, more focused modules?**
-  _Cohesion score 0.06398809523809523 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.062004662004662 - nodes in this community are weakly interconnected._

@@ -1870,9 +1870,9 @@
     "semantic_hash": "a3e285e00b167145caa4447ed2c0aad0"
   },
   "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Policies.cshtml": {
-    "mtime": 1785700408.2667816,
-    "ast_hash": "e66bb085f2a4c692827e258fe6807c3f",
-    "semantic_hash": "e66bb085f2a4c692827e258fe6807c3f"
+    "mtime": 1785998204.2411764,
+    "ast_hash": "46e13169f43ad279213372780467a145",
+    "semantic_hash": ""
   },
   "src/Modules/Hr/Hms.Hr.Screens/Pages/Hr/Policies.cshtml.cs": {
     "mtime": 1785700369.7937515,
@@ -1915,9 +1915,9 @@
     "semantic_hash": "382887a9689e0fe9373712013e8f97ae"
   },
   "src/Modules/Hr/Hms.Hr/Data/HrDbContext.cs": {
-    "mtime": 1785703010.2855377,
-    "ast_hash": "f15d5110b281a13ee4e16180c69b40ae",
-    "semantic_hash": "f15d5110b281a13ee4e16180c69b40ae"
+    "mtime": 1785998050.013337,
+    "ast_hash": "094d28ad9f02f6e2bc69f78016d45b7b",
+    "semantic_hash": ""
   },
   "src/Modules/Hr/Hms.Hr/Data/HrEntities.Leave.cs": {
     "mtime": 1785522776.1015995,
@@ -1930,9 +1930,9 @@
     "semantic_hash": "b38848b8a8ce145360865651320b2247"
   },
   "src/Modules/Hr/Hms.Hr/Data/HrEntities.Pay.cs": {
-    "mtime": 1785522813.9504824,
-    "ast_hash": "4ddc0dc179477c3694b25ed4dfd84bdd",
-    "semantic_hash": "4ddc0dc179477c3694b25ed4dfd84bdd"
+    "mtime": 1785998050.0135605,
+    "ast_hash": "a71ff5e73349edb080fc373c86e00734",
+    "semantic_hash": ""
   },
   "src/Modules/Hr/Hms.Hr/Data/HrEntities.People.cs": {
     "mtime": 1785522725.9532955,
@@ -1980,9 +1980,9 @@
     "semantic_hash": "1a25b424cdbfbac452839ef27c345b78"
   },
   "src/Modules/Hr/Hms.Hr/Data/Migrations/HrDbContextModelSnapshot.cs": {
-    "mtime": 1785705740.2913618,
-    "ast_hash": "60ad7499d908cc4fd032b9cacd6aa0fc",
-    "semantic_hash": "60ad7499d908cc4fd032b9cacd6aa0fc"
+    "mtime": 1785998050.013921,
+    "ast_hash": "0b2df9d9acc16d711cd2e3bbc87cb918",
+    "semantic_hash": ""
   },
   "src/Modules/Hr/Hms.Hr/EmployeeService.cs": {
     "mtime": 1785658722.2144854,
@@ -2010,9 +2010,9 @@
     "semantic_hash": "564c493b4a31c15914c8548426e7d3f7"
   },
   "src/Modules/Hr/Hms.Hr/PayrollService.cs": {
-    "mtime": 1785701831.976407,
-    "ast_hash": "1a7929302285bfae3595601b5bfb3bd8",
-    "semantic_hash": "1a7929302285bfae3595601b5bfb3bd8"
+    "mtime": 1785998050.01551,
+    "ast_hash": "3ccbaa2678506a42027266ac57b2d197",
+    "semantic_hash": ""
   },
   "src/Modules/Hr/Hms.Hr/PolicyResolver.cs": {
     "mtime": 1785700294.604306,
@@ -2640,9 +2640,9 @@
     "semantic_hash": "b75e98918a9e8cdc0965e2d8d2584ba5"
   },
   "tests/Hms.Integration.Tests/HrPayrollTests.cs": {
-    "mtime": 1785705704.6734445,
-    "ast_hash": "317f45e1f807ddf8e65b6ccf5f6e9cc3",
-    "semantic_hash": "317f45e1f807ddf8e65b6ccf5f6e9cc3"
+    "mtime": 1785998050.016053,
+    "ast_hash": "1b02081770c67152fa965fc17dec90ff",
+    "semantic_hash": ""
   },
   "tests/Hms.Integration.Tests/ImportAndDashboardTests.cs": {
     "mtime": 1785071067.7676706,
@@ -4595,8 +4595,8 @@
     "semantic_hash": ""
   },
   "docs/specs/README.md": {
-    "mtime": 1785961384.967507,
-    "ast_hash": "a8e5836e4ef7be55c5d668d1ce84682e",
+    "mtime": 1785998353.0253983,
+    "ast_hash": "9c2a4321d4ee43aaefa3933f67213eff",
     "semantic_hash": ""
   },
   "docs/staff_engineer_prompt.md": {
@@ -4640,8 +4640,8 @@
     "semantic_hash": ""
   },
   "eng/spike-artifacts/bangla-sample.pdf": {
-    "mtime": 1785849536.2505414,
-    "ast_hash": "c1fb31f6969242fc561a12c26cbec6ee",
+    "mtime": 1785998230.503206,
+    "ast_hash": "99bb92fa7cf06687fc325f9c487bb437",
     "semantic_hash": ""
   },
   "eng/verify/ui/fidelity/crops/ours-daycl-full.png": {
@@ -4952,6 +4952,36 @@
   "docs/specs/0051-engineering-skill-set/tasks.md": {
     "mtime": 1785961395.323455,
     "ast_hash": "219be2ca99531e35352a09e534246158",
+    "semantic_hash": ""
+  },
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260806062101_HrPayrollGuards0052.Designer.cs": {
+    "mtime": 1785998050.033573,
+    "ast_hash": "d6634b8b6cf403ec837c677829deef9b",
+    "semantic_hash": ""
+  },
+  "src/Modules/Hr/Hms.Hr/Data/Migrations/20260806062101_HrPayrollGuards0052.cs": {
+    "mtime": 1785998050.03389,
+    "ast_hash": "4836d6b4ec2d8ad6d982a34650c8677e",
+    "semantic_hash": ""
+  },
+  "docs/specs/0052-payroll-money-correctness/notes.md": {
+    "mtime": 1785998328.8691506,
+    "ast_hash": "b035c1df78a512474afe4ef4ec2075f9",
+    "semantic_hash": ""
+  },
+  "docs/specs/0052-payroll-money-correctness/plan.md": {
+    "mtime": 1785998050.0319796,
+    "ast_hash": "f03d85774ef2d76943995002bd5e650e",
+    "semantic_hash": ""
+  },
+  "docs/specs/0052-payroll-money-correctness/spec.md": {
+    "mtime": 1785998353.024869,
+    "ast_hash": "f867f4f7cd48bffea6fae90eb10490ab",
+    "semantic_hash": ""
+  },
+  "docs/specs/0052-payroll-money-correctness/tasks.md": {
+    "mtime": 1785998352.9985518,
+    "ast_hash": "b2059346c60f0fe33f82e9759b9907ec",
     "semantic_hash": ""
   }
 }

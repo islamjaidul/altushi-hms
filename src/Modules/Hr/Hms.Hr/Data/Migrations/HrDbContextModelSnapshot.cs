@@ -2002,6 +2002,11 @@ namespace Hms.Hr.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_payroll_run");
 
+                    b.HasIndex("ReversalOfRunId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payroll_run_reversal_of_run_id")
+                        .HasFilter("reversal_of_run_id IS NOT NULL");
+
                     b.HasIndex("RunNo")
                         .IsUnique()
                         .HasDatabaseName("ix_payroll_run_run_no");

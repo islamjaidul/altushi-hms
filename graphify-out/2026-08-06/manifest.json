@@ -3400,23 +3400,18 @@
     "semantic_hash": ""
   },
   ".claude/skills/adr-write/SKILL.md": {
-    "mtime": 1785060795.539308,
-    "ast_hash": "66bdaba83989090a47e8fbe08788ba1e",
+    "mtime": 1785961239.3982155,
+    "ast_hash": "196195bb5f00d8fb2c758fcaa8ca5920",
     "semantic_hash": ""
   },
   ".claude/skills/code-conventions/SKILL.md": {
-    "mtime": 1785246603.9188313,
-    "ast_hash": "85153c1e749d6f339fb3221f0b8b5b5d",
+    "mtime": 1785961263.8817961,
+    "ast_hash": "59fb5ae1acbaf851ed47d8d1d8ef0f72",
     "semantic_hash": ""
   },
   ".claude/skills/module-spec/SKILL.md": {
-    "mtime": 1785060816.6128523,
-    "ast_hash": "59eef6302864f68747aee01abdbfd32b",
-    "semantic_hash": ""
-  },
-  ".claude/skills/mvp-scope-check/SKILL.md": {
-    "mtime": 1785060774.8245327,
-    "ast_hash": "d1d50b5ea6edec2f68da1f9af6cd5726",
+    "mtime": 1785961228.834772,
+    "ast_hash": "1d2b0543798df0143b5532addf3b05c6",
     "semantic_hash": ""
   },
   ".claude/skills/prd-lookup/SKILL.md": {
@@ -3435,8 +3430,8 @@
     "semantic_hash": ""
   },
   ".claude/skills/spec-flow/SKILL.md": {
-    "mtime": 1785061014.9745998,
-    "ast_hash": "262f1ebd7dc9edd85e0b58dcbcbb94e4",
+    "mtime": 1785961339.8593528,
+    "ast_hash": "9c6549909a05bad584542dc88eb8e2b2",
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
@@ -3445,8 +3440,8 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1785748300.3189962,
-    "ast_hash": "a819740ea5f3a40678b099a615c2e874",
+    "mtime": 1785961225.8653057,
+    "ast_hash": "b6fbc3820f59b19d3a16d1707a31f834",
     "semantic_hash": ""
   },
   "README.md": {
@@ -4600,8 +4595,8 @@
     "semantic_hash": ""
   },
   "docs/specs/README.md": {
-    "mtime": 1785850096.9919064,
-    "ast_hash": "13161d33583c570ec849eb6463c23971",
+    "mtime": 1785961384.967507,
+    "ast_hash": "a8e5836e4ef7be55c5d668d1ce84682e",
     "semantic_hash": ""
   },
   "docs/staff_engineer_prompt.md": {
@@ -4907,6 +4902,56 @@
   "src/Hms.Shell/wwwroot/img/logo-mark.png": {
     "mtime": 1785849125.5734892,
     "ast_hash": "0fb3aec731a2ce381b5ab1d7a0371930",
+    "semantic_hash": ""
+  },
+  ".claude/skills/cross-module-flow/SKILL.md": {
+    "mtime": 1785961376.7310708,
+    "ast_hash": "8fc44cb9fe5b9e929c59cf9a7e38ca91",
+    "semantic_hash": ""
+  },
+  ".claude/skills/crud-completeness/SKILL.md": {
+    "mtime": 1785961084.8711762,
+    "ast_hash": "8ee43fd627800f1a11e11f1412f4bd87",
+    "semantic_hash": ""
+  },
+  ".claude/skills/domain-modelling/SKILL.md": {
+    "mtime": 1785961215.2475493,
+    "ast_hash": "5b4a1ef1f7787bd77ca2c8891d1dae8e",
+    "semantic_hash": ""
+  },
+  ".claude/skills/schema-and-indexing/SKILL.md": {
+    "mtime": 1785960984.7436726,
+    "ast_hash": "078769cf225e0ac0133ad15b1ba281e0",
+    "semantic_hash": ""
+  },
+  ".claude/skills/scope-routing/SKILL.md": {
+    "mtime": 1785960827.7371662,
+    "ast_hash": "41d5c12e2e1fd43fd27958cfe8e545f1",
+    "semantic_hash": ""
+  },
+  ".claude/skills/tdd-loop/SKILL.md": {
+    "mtime": 1785960875.2340662,
+    "ast_hash": "4ff2017bf1d1e370242781168133d985",
+    "semantic_hash": ""
+  },
+  "docs/specs/0051-engineering-skill-set/notes.md": {
+    "mtime": 1785961305.115116,
+    "ast_hash": "b5abcaec2563a957fa8af3c0c8a05203",
+    "semantic_hash": ""
+  },
+  "docs/specs/0051-engineering-skill-set/plan.md": {
+    "mtime": 1785960726.1709173,
+    "ast_hash": "8a16ffec20f4a4420dbcfadeedde3f44",
+    "semantic_hash": ""
+  },
+  "docs/specs/0051-engineering-skill-set/spec.md": {
+    "mtime": 1785961415.7440128,
+    "ast_hash": "e8de0abfcb1269fce9fb4e7e212263c9",
+    "semantic_hash": ""
+  },
+  "docs/specs/0051-engineering-skill-set/tasks.md": {
+    "mtime": 1785961395.323455,
+    "ast_hash": "219be2ca99531e35352a09e534246158",
     "semantic_hash": ""
   }
 }

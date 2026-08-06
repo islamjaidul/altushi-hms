@@ -87,13 +87,30 @@ public sealed class PayrollService(
             .OrderBy(c => c.DisplayOrder)
             .ToListAsync(ct);
 
+        // Which of this period's leave days were on an UNPAID leave type (spec 0052 WP1). §5 M16
+        // requires without-pay handling and the module modelled it — LeaveType.Paid was written by
+        // the masters screen, seeded by the demo, and read by nothing, so a month of unpaid leave
+        // paid a full month's salary. Resolved once for the whole run rather than per employee:
+        // it is the same three-table join for all of them.
+        var unpaidLeaveDays = await hr.AttendanceDays.AsNoTracking()
+            .Where(d => d.OnDate >= period && d.OnDate <= periodEnd
+                        && d.Status == AttendanceStatus.OnLeave && d.LeaveApplicationId != null)
+            .Join(hr.LeaveApplications.AsNoTracking(),
+                d => d.LeaveApplicationId, a => (long?)a.Id, (d, a) => new { d.EmployeeId, a.LeaveTypeId })
+            .Join(hr.LeaveTypes.AsNoTracking().Where(t => !t.Paid),
+                x => x.LeaveTypeId, t => t.Id, (x, _) => x.EmployeeId)
+            .GroupBy(id => id)
+            .Select(g => new { EmployeeId = g.Key, Days = g.Count() })
+            .ToDictionaryAsync(x => x.EmployeeId, x => x.Days, ct);
+
         long totalGross = 0, totalDeduction = 0, totalNet = 0, totalEmployerCost = 0;
         var exceptionCount = 0;
 
         foreach (var employee in employees)
         {
             var line = await BuildLineAsync(
-                hr, branchId, run, employee, period, periodEnd, policy, components, ct);
+                hr, branchId, run, employee, period, periodEnd, policy, components,
+                unpaidLeaveDays.GetValueOrDefault(employee.Id), ct);
             hr.PayrollLines.Add(line.Line);
             await hr.SaveChangesAsync(ct);
 
@@ -129,7 +146,7 @@ public sealed class PayrollService(
     private async Task<BuiltLine> BuildLineAsync(
         HrDbContext hr, long branchId, PayrollRun run, Employee employee,
         DateOnly period, DateOnly periodEnd, PayrollPolicy policy,
-        IReadOnlyList<PayComponent> components, CancellationToken ct)
+        IReadOnlyList<PayComponent> components, int unpaidLeaveDays, CancellationToken ct)
     {
         var assignment = await policies.AssignmentAsync(hr, employee.Id, periodEnd, ct);
         var structure = await policies.PayStructureAsync(hr, employee.Id, periodEnd, ct);
@@ -178,6 +195,8 @@ public sealed class PayrollService(
         line.PresentDaysBp = days.Where(d => d.Status == AttendanceStatus.Present).Sum(d => d.PayableFractionBp);
         line.AbsentDaysBp = days.Count(d => d.Status == AttendanceStatus.Absent) * 10000;
         line.LeaveDaysBp = days.Count(d => d.Status == AttendanceStatus.OnLeave) * 10000;
+        // The unpaid subset of LeaveDaysBp, not a separate count — see the property's own note.
+        line.LeaveWithoutPayDaysBp = unpaidLeaveDays * 10000;
         line.LateCount = days.Count(d => d.LateMinutes > 0);
         line.OvertimeMinutes = days.Sum(d => d.OvertimeMinutes);
         line.PayableDaysBp = employedBp;
@@ -236,6 +255,33 @@ public sealed class PayrollService(
                 var amount = Taka.ApplyBp(dayRate * (line.AbsentDaysBp / 10000), deductionRule.PerAbsentDayBp);
                 if (amount > 0)
                     deductions.Add((def, amount, $"{line.AbsentDaysBp / 10000} absent day(s)"));
+            }
+        }
+
+        // Leave without pay (spec 0052 WP1, §5 M16 `[M]`). Same shape as the absence deduction
+        // above, and the same ADR-0027 discipline: the employer's rate or nothing. When there are
+        // unpaid days and no way to price them the line says so, because silently paying a full
+        // month for a month of unpaid leave is what this fix exists to stop.
+        if (line.LeaveWithoutPayDaysBp > 0)
+        {
+            var def = components.FirstOrDefault(
+                c => c.ComputedKind == ComputedComponent.LeaveWithoutPay);
+            var unpaidDays = line.LeaveWithoutPayDaysBp / 10000;
+
+            if (deductionRule is null || def is null)
+            {
+                line.Note = Append(line.Note,
+                    $"{unpaidDays} unpaid leave day(s) were not deducted: "
+                    + (deductionRule is null
+                        ? "no unpaid-leave deduction rule is configured for this period."
+                        : "no leave-without-pay component exists on this branch."));
+            }
+            else
+            {
+                var amount = Taka.ApplyBp(
+                    dayRate * unpaidDays, deductionRule.PerLeaveWithoutPayDayBp);
+                if (amount > 0)
+                    deductions.Add((def, amount, $"{unpaidDays} unpaid leave day(s)"));
             }
         }
 
@@ -377,6 +423,10 @@ public sealed class PayrollService(
         };
     }
 
+    /// <summary>Adds a sentence to a line's note without losing whatever was already there.</summary>
+    private static string Append(string? note, string sentence)
+        => string.IsNullOrWhiteSpace(note) ? sentence : $"{note} {sentence}";
+
     /// <summary>Applies a progressive band set. The engine knows the shape; the bands are data.</summary>
     public static long ApplySlabs(long taxable, IReadOnlyList<TaxSlab> slabs)
     {
@@ -477,6 +527,9 @@ public sealed class PayrollService(
             .ToListAsync(ct);
         foreach (var c in settled) c.ArrearsSettled = true;
 
+        await RecordShortfallsAsync(hr, run, sign: -1, actorId,
+            $"Minimum-net-pay shortfall carried from {run.RunNo}", ct);
+
         audit.Append(kernel, branchId, actorId, actorName, "hr.payroll.lock", "hr.payroll_run",
             run.Id, after: new { run.RunNo, run.TotalNetTaka, journal.TotalDebit }, tier: 1);
 
@@ -548,16 +601,67 @@ public sealed class PayrollService(
                 GrossEarningsTaka = -l.GrossEarningsTaka,
                 TotalDeductionsTaka = -l.TotalDeductionsTaka,
                 NetPayTaka = -l.NetPayTaka,
+                // The shortfall mirrors with everything else, or ck_payroll_line_net refuses the
+                // row: the identity is net = gross − deductions + shortfall, and negating two of
+                // the three terms while dropping the fourth does not satisfy it. Left out until
+                // spec 0052, which means a run carrying any floored line could be locked (0039
+                // fixed that half, AUD-M16-04) and then never reversed — the one correction hard
+                // rule 4 allows was the one it refused.
+                CarriedShortfallTaka = -l.CarriedShortfallTaka,
                 EmployerCostTaka = -l.EmployerCostTaka,
                 Note = $"Reversal of {original.RunNo}: {reason}",
             });
         }
+
+        // The shortfall the original booked as a debt is given back, as a mirroring entry rather
+        // than a deletion — the ledger is append-only and hard rule 4 has no delete in it.
+        await RecordShortfallsAsync(hr, original, sign: +1, actorId,
+            $"Shortfall reversed by {reversal.RunNo}: {reason}", ct, runId: reversal.Id);
 
         audit.Append(kernel, branchId, actorId, actorName, "hr.payroll.reverse", "hr.payroll_run",
             reversal.Id, before: new { original.RunNo, original.TotalNetTaka },
             after: new { reversal.RunNo, reason }, tier: 1);
 
         return reversal;
+    }
+
+    /// <summary>
+    /// Writes one <see cref="EmployeeLedgerEntry"/> per line the minimum-net-pay floor lifted
+    /// (spec 0052 WP2).
+    /// <para>
+    /// <see cref="BuildJournalAsync"/> debits <em>Employee Advances</em> for these — an asset, money
+    /// the employer is owed. Nothing recorded that debt before 0052: the ledger tables had no writer
+    /// at all, so the journal asserted a receivable the system had no record of and would never
+    /// collect. A negative <see cref="EmployeeLedgerEntry.EmployeeShareTaka"/> debits the member,
+    /// per that column's own contract.
+    /// </para>
+    /// <para>
+    /// Written at <b>lock</b>, not at generate: a generated run is a draft that may be regenerated
+    /// or cancelled, and a draft must not move an employee's ledger.
+    /// </para>
+    /// </summary>
+    private async Task RecordShortfallsAsync(
+        HrDbContext hr, PayrollRun run, int sign, long actorId, string narration,
+        CancellationToken ct, long? runId = null)
+    {
+        var floored = await hr.PayrollLines.AsNoTracking()
+            .Where(l => l.RunId == run.Id && l.CarriedShortfallTaka != 0)
+            .Select(l => new { l.EmployeeId, l.CarriedShortfallTaka })
+            .ToListAsync(ct);
+
+        foreach (var line in floored)
+            hr.LedgerEntries.Add(new EmployeeLedgerEntry
+            {
+                BranchId = run.BranchId,
+                EmployeeId = line.EmployeeId,
+                Kind = LedgerKind.Advance,
+                OnDate = run.Period,
+                Narration = narration,
+                EmployeeShareTaka = sign * line.CarriedShortfallTaka,
+                PayrollRunId = runId ?? run.Id,
+                RecordedAt = clock.GetUtcNow(),
+                RecordedBy = actorId,
+            });
     }
 
     /// <summary>
@@ -649,9 +753,31 @@ public sealed class PayrollService(
                 + $"{expected.Replace('_', ' ')} run can be {verb}.");
     }
 
+    /// <summary>
+    /// Loads a run for a state transition, under a row lock (spec 0052 WP3).
+    /// <para>
+    /// The lock is the guard on the state machine, and until 0052 there was none — no
+    /// <c>FOR UPDATE</c> anywhere in this module, and no concurrency token on the run. Two
+    /// operators pressing Lock together both read <c>approved</c>, both proceeded, and both wrote
+    /// a <c>hr.payroll.lock</c> audit row: an audit trail asserting something that did not happen,
+    /// against hard rule 4. Postgres serialises them here, and the loser re-reads the state the
+    /// winner wrote, so <see cref="Require"/> refuses it in a sentence instead of a database error.
+    /// </para>
+    /// <para>
+    /// The lock is taken by id alone; the entity still comes from the branch-filtered set, so a run
+    /// in another branch is locked briefly and then reported as not existing — never returned.
+    /// </para>
+    /// </summary>
     private static async Task<PayrollRun> LoadAsync(HrDbContext hr, long runId, CancellationToken ct)
-        => await hr.PayrollRuns.FirstOrDefaultAsync(r => r.Id == runId, ct)
-           ?? throw new HrException("That payroll run no longer exists.");
+    {
+        var locked = await hr.Database.SqlQuery<long>($"""
+            SELECT id AS "Value" FROM hr.payroll_run WHERE id = {runId} FOR UPDATE
+            """).ToListAsync(ct);
+        if (locked.Count == 0) throw new HrException("That payroll run no longer exists.");
+
+        return await hr.PayrollRuns.FirstOrDefaultAsync(r => r.Id == runId, ct)
+               ?? throw new HrException("That payroll run no longer exists.");
+    }
 
     /// <summary>Days in the period that are not holidays. Weekly offs vary per employee, so they are
     /// not netted here — the convention exists to give proration a stable denominator, not to
