@@ -155,8 +155,13 @@ jobs:
           dotnet tool restore
           # context:project pairs — every context whose schema carries money, identity or the
           # clinical record. Each was added after a gap let a destructive change through.
+          # --configuration, spelled out: in `dotnet ef`, -c is the short form of --context, not
+          # of --configuration. `-c Release` therefore named a DbContext called "Release" and left
+          # the configuration at its Debug default, so this gate went looking for bin/Debug after
+          # a Release build and died on a missing deps.json. It never ran — the guard-script step
+          # failed ahead of it every time, so nothing since 0046 has been migration-checked.
           script_for() {
-            dotnet ef migrations script --idempotent --no-build -c Release \
+            dotnet ef migrations script --idempotent --no-build --configuration Release \
               --project "$2" --startup-project src/Hms.Web --context "$1" -o "$3"
           }
           script_for KernelDbContext src/Hms.Kernel                                  kernel.sql
