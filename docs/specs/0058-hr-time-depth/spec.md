@@ -59,7 +59,6 @@ one.
 - [S] **Short leave and outdoor duty** — an hourly absence attendance honours without consuming a
   leave day, landing on the existing `errand` status. (G29)
 - [S] **Shift swap** between two employees with manager approval. (G28)
-- [M] **Holiday calendar management** with per-unit assignment and a year rollover. (G31)
 - [M] **Week start becomes employer configuration**, resolving the constant spec 0055 left commented
   in `PeriodCalendar`. (ADR-0029's obligation)
 - [M] No statutory value (D2): the grace period, the late policy, the OT multiplier, the comp-off
@@ -100,6 +99,7 @@ one.
 | Manual bulk attendance entry (`[S]` §7.4) | The device registry, import and per-day correction cover every site that has asked. | later |
 | Leave-year close, encashment, balance adjustment, leave calendar (G32–G37) | §5.5, and §17 puts them in Phase 5. | 0059 |
 | Roster print for the notice board (`[S]`) | Rides on 0059's notice board. | 0059 |
+| Holiday calendar management, per-unit assignment and year rollover (G31) | Listed in the requirements when this spec was written and **not built**. It is a month-grid screen over `hr.holiday_calendar` and `hr.holiday`, which both already exist and are read by the attendance engine — the same grid 0059 needs for the leave calendar and the attendance calendar. Building three month grids in three specs would be three grids. Moved rather than quietly dropped. | 0059 |
 
 ## What landed
 
@@ -114,6 +114,7 @@ one.
 | Short leave | Hourly `short_leave_request` for short leave and outdoor duty, landing on the `errand` status that existed and had no producer. |
 | Shift swap | Two-sided request, manager-approved, exchanging exactly two entries. |
 | Week start | `PayrollPolicy.WeekStartsOn`, read by `HrPeriodCalendarSource` — closing ADR-0029's open constant. |
+| Device endpoint | `POST /api/hr/punches` in both hosts, authenticated on the device's own salted key, landing in the same `AttendanceService.ImportAsync` the CSV upload uses. Anonymous by design: machine-to-machine, no cookie, no antiforgery token. A wrong key and an unknown code read identically, so the endpoint does not confirm which devices exist. |
 | Registers | Device health, regularization, overtime approval, OT bank and comp-off, roster coverage, short leave, shift swap. |
 
 **A defect found by a test written for this spec:** the regularization request linked to

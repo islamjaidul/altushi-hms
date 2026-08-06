@@ -1,0 +1,166 @@
+@page "/hr/devices"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.DevicesModel
+@{
+    ViewData["Title"] = "Attendance devices";
+    ViewData["Crumb"] = HrNav.Setup;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (Model.IssuedKey is not null)
+{
+    @* Shown once. It is a machine credential, stored only as a salted hash, and there is no way
+       to read it back — which is the point. *@
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">key</span>
+        <div>
+            <b>Copy this key into the device's configuration now.</b>
+            It is stored only as a hash and cannot be shown again.
+            <div class="letter-body" style="margin-top:6px">@Model.IssuedKey</div>
+        </div>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Registered devices
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Devices.Count(d => d.Active) active</span>
+            </div>
+            @if (Model.Devices.Count == 0)
+            {
+                <div class="empty-state">
+                    No device is registered. Attendance arrives by file import and manual entry until
+                    one is — registering a device does not replace those, it adds a source that can
+                    say when it stopped working.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Code</th><th>Device</th><th>Location</th>
+                            <th class="num">Reports every</th><th>Last heard</th>
+                            <th class="num">Last batch</th><th>Health</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var d in Model.Devices)
+                        {
+                            <tr class="@(d.Active ? "" : "text-muted")">
+                                <td class="tabular">@d.Code</td>
+                                <td>
+                                    @d.Name
+                                    @if (!string.IsNullOrWhiteSpace(d.SerialNo))
+                                    {
+                                        <div class="text-muted" style="font-size:0.6875rem">@d.SerialNo</div>
+                                    }
+                                </td>
+                                <td class="text-muted">@(d.Location ?? "—")</td>
+                                <td class="num">@d.ExpectedIntervalMinutes min</td>
+                                <td class="tabular">
+                                    @Hms.Hr.Screens.Pages.Hr.DevicesModel.Seen(d.LastSeenAt)
+                                </td>
+                                <td class="num">@(d.LastBatchPunches == 0 ? "—" : d.LastBatchPunches.ToString())</td>
+                                <td>
+                                    @if (d.Active)
+                                    {
+                                        <span class="pill @Hms.Hr.Screens.Pages.Hr.DevicesModel.HealthTone(d.Health)">
+                                            @DeviceHealth.Label(d.Health)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="pill">retired</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (d.Active)
+                                    {
+                                        <form method="post" asp-page-handler="Retire"
+                                              asp-route-id="@d.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Deactivate</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-head">How a device sends punches</div>
+            <div class="card-body">
+                <p class="card-hint">
+                    A device — or a small agent on the site's own network — posts a punch file to
+                    <b>/api/hr/punches</b> with two headers: <b>X-Device-Code</b> and
+                    <b>X-Device-Key</b>. The body is the same CSV the import screen accepts:
+                    employee code, timestamp, direction, one punch per line.
+                </p>
+                <p class="card-hint">
+                    This product deliberately ships <b>no vendor-specific poller</b>. Talking a
+                    particular clock's protocol is not something this project can claim to have
+                    verified without the hardware in the room, so the honest shape is an endpoint
+                    anything can post to, and a health indication that says plainly when nothing has.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <div class="card-head">Register a device</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Register">
+                    @Html.AntiForgeryToken()
+                    <label class="field">
+                        <span class="field-label">Code</span>
+                        <input class="input" name="Code" maxlength="30" placeholder="e.g. GATE-1" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Name</span>
+                        <input class="input" name="Name" maxlength="80"
+                               placeholder="e.g. Main gate clock" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Location</span>
+                        <input class="input" name="Location" maxlength="120" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Serial number</span>
+                        <input class="input" name="SerialNo" maxlength="60" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Expected to report every (minutes)</span>
+                        <input class="input num" name="ExpectedIntervalMinutes" inputmode="numeric"
+                               value="60" />
+                    </label>
+                    <div class="filter-row" style="margin-top:8px">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="icon icon-sm" aria-hidden="true">sensors</span> Register
+                        </button>
+                    </div>
+                </form>
+                <p class="card-hint">
+                    Silence beyond twice the interval reads as <b>silent</b> rather than late — the
+                    difference between a quiet night shift and an unplugged clock.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

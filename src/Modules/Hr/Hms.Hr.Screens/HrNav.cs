@@ -68,6 +68,8 @@ public static class HrNav
         // beside the policies rather than beside the people they are applied to.
         new(HrModule.Name, "Letters", "/hr/letters", HrPerm.Claim.DocumentIssue, "mail", Setup),
         new(HrModule.Name, "Alerts", "/hr/notifications", HrPerm.Claim.PolicyManage, "notifications", Setup),
+        // spec 0058: the registry, its health, and the key a device posts with.
+        new(HrModule.Name, "Devices", "/hr/devices", HrPerm.Claim.PolicyManage, "sensors", Setup),
 
         // Always present for anyone with a linked employment — for most employees it is the only
         // group they will ever see, and permission filtering therefore makes it their first.

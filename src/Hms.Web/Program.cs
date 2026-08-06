@@ -163,6 +163,8 @@ builder.Services.AddSingleton<Hms.Hr.DisbursementService>();
 // spec 0058 — the surface around the attendance engine.
 builder.Services.AddSingleton<Hms.Hr.TimeRequestService>();
 builder.Services.AddSingleton<Hms.Hr.RosterPlanService>();
+builder.Services.AddSingleton<Hms.Hr.DeviceService>();
+builder.Services.AddSingleton<Hms.Hr.DevicePushEndpoint>();
 // This SKU ships M20, so a lifecycle alert can actually be sent.
 builder.Services.AddSingleton(new Hms.Hr.HrNotificationChannel(true, "SMS"));
 builder.Services.AddSingleton<Hms.Registration.RegistrationService>();
@@ -348,6 +350,32 @@ app.MapGet("/api/typeahead/products", async (string? q, HmsTx tx) =>
         .ToListAsync());
     return Results.Json(hits);
 }).RequireAuthorization(Perm.EmrNoteWrite);
+
+
+// Spec 0058 (§13 I8): the endpoint a device or a site agent posts punches to. Machine-to-machine —
+// no cookie, no antiforgery token — authenticated on the device's own key, and landing in the same
+// import path the CSV upload uses so there is one parser and one idempotency rule.
+app.MapPost("/api/hr/punches", async (HttpRequest request, Hms.Hr.IHrTx tx, Hms.Hr.DevicePushEndpoint push) =>
+{
+    if (request.ContentLength > Hms.Hr.DevicePushEndpoint.MaxBytes)
+        return Results.BadRequest(new { error = "That push is too large for one batch." });
+
+    try
+    {
+        var result = await tx.RunAsync(s => push.PushAsync(
+            s, Hms.Kernel.Data.BranchScope.Current,
+            request.Headers["X-Device-Code"].ToString(),
+            request.Headers["X-Device-Key"].ToString(),
+            request.Body));
+        return Results.Ok(result);
+    }
+    catch (Hms.Hr.HrException e)
+    {
+        // A wrong key and an unknown device read the same to the caller, deliberately: a device
+        // endpoint should not confirm which codes exist.
+        return Results.Json(new { error = e.Message }, statusCode: 400);
+    }
+}).AllowAnonymous();
 
 app.MapRazorPages();
 

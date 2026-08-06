@@ -234,3 +234,53 @@ public class CoverageTests
         Assert.False(Cell(required: 4, rostered: 4, onLeave: 0).IsShort);
     }
 }
+
+/// <summary>
+/// Spec 0058 — the device push key (module PRD §7.4, G22). A machine credential, not a password:
+/// the operator never types it, so it has no human-memorable entropy to protect and no login rate
+/// to slow down. What it must do is verify in fixed time and not reveal that two branches share one.
+/// </summary>
+public class DeviceKeyTests
+{
+    [Fact]
+    public void A_key_verifies_against_its_own_hash()
+    {
+        var hash = DeviceService.HashKey("a-very-long-machine-key");
+
+        Assert.True(DeviceService.Verify("a-very-long-machine-key", hash));
+    }
+
+    [Fact]
+    public void A_wrong_key_does_not()
+    {
+        var hash = DeviceService.HashKey("a-very-long-machine-key");
+
+        Assert.False(DeviceService.Verify("a-very-long-machine-kex", hash));
+        Assert.False(DeviceService.Verify("", hash));
+    }
+
+    [Fact]
+    public void The_same_key_hashes_differently_every_time()
+    {
+        // The salt is what stops one employer's stolen database revealing that two branches
+        // configured the same key into two clocks.
+        var first = DeviceService.HashKey("identical-machine-key-here");
+        var second = DeviceService.HashKey("identical-machine-key-here");
+
+        Assert.NotEqual(first, second);
+        Assert.True(DeviceService.Verify("identical-machine-key-here", first));
+        Assert.True(DeviceService.Verify("identical-machine-key-here", second));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("no-colon-in-here")]
+    [InlineData("not-base64:also-not-base64")]
+    [InlineData("::")]
+    public void A_malformed_stored_hash_refuses_rather_than_throwing(string stored)
+    {
+        // Whatever is in that column, a device gets a clean refusal — never a 500 that tells it
+        // something about the shape of the store.
+        Assert.False(DeviceService.Verify("anything", stored));
+    }
+}
