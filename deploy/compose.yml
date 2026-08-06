@@ -21,7 +21,10 @@ services:
     build:
       context: ..
       dockerfile: deploy/app.Dockerfile
-    image: hms-app:dev
+    # Laptop/demo default builds locally as before. The VM sets HMS_APP_IMAGE to a registry ref
+    # that CI already built and deploy-remote.sh already pulled, so `up` never compiles on the
+    # hospital box (spec 0053, §16). Rollback re-runs `up` with the previous digest here.
+    image: "${HMS_APP_IMAGE:-hms-app:dev}"
     mem_limit: 800m
     restart: unless-stopped
     environment:

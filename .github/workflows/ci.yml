@@ -1,37 +1,139 @@
-# CI gates per staff_engineer_prompt G8/G15/G16/G18/G21. Red money test blocks merge — no [Skip].
+# CI/CD for the ERP SKU (spec 0053).
+#
+# Shape:  changes ─┬─ build-test ──┬─ image (GHCR) ── deploy (approval-gated) ── VM
+#                  └─ upgrade-path ┘
+#
+# Gates per staff_engineer_prompt G8/G15/G16/G18/G21. Red money test blocks merge — no [Skip].
+# The image is built once here and only pulled on the VM: nothing is ever compiled on the
+# hospital box (§16 — 2 vCPU / 3 GB, shared with three other products).
 name: ci
+
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# A newer commit supersedes an in-flight PR run. Never cancel a main run: it may be mid-deploy.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
 
 jobs:
-  build-test:
-    runs-on: ubuntu-latest   # docker available → Testcontainers works (spec 0005 conflict flag 3)
+  # A commit that only moves docs or the graphify cache has nothing to say about the build.
+  # Previously every such commit ran the full solution build and mailed a failure (spec 0053).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Does this commit touch anything the build has an opinion about?
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+          # Force-push, first push, or a manual dispatch gives us no usable base: build everything.
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "No usable base ref — running the full gate."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED="$(git diff --name-only "$BASE" "$HEAD")"
+          echo "Changed files:"; echo "$CHANGED" | sed 's/^/  /'
+          # Anything NOT docs / graphify cache / top-level markdown counts as code.
+          RELEVANT="$(echo "$CHANGED" \
+            | grep -vE '^docs/' \
+            | grep -vE '^graphify-out/' \
+            | grep -vE '^[^/]*\.md$' \
+            | grep -vE '^user-guide\.md$' || true)"
+          if [ -n "$RELEVANT" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            { echo "### Full gate running"; echo; echo "Code-relevant changes:"; echo '```';
+              echo "$RELEVANT"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            { echo "### Docs-only commit — build gate skipped";
+              echo; echo "Only \`docs/\`, \`graphify-out/\` and markdown changed.";
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  build-test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest   # docker available → Testcontainers works (spec 0005 conflict flag 3)
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
+      - name: Record the SDK this run resolved
+        # --locked-mode failing because the runner image moved, rather than because a dependency
+        # moved, is otherwise invisible. Pin here once a known-good version is established.
+        run: echo "SDK \`$(dotnet --version)\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       - name: Restore (locked mode — G15 pinning)
         run: dotnet restore hms-erp.slnx --locked-mode
       - name: Build (warnings are errors)
         run: dotnet build hms-erp.slnx --no-restore -c Release
+
+      # Named individually so a red run says which gate failed without opening a browser.
       - name: Guard scripts
         run: |
-          sh eng/check-no-external-hosts.sh src
-          sh eng/check-ui-tokens.sh src
-          sh eng/check-fkeys.sh src
-          sh eng/check-no-native-date.sh src
-          bash eng/check-lifecycle-traceability.sh
-          sh eng/check-published-content-tracked.sh
-          sh eng/check-css-classes.sh src
+          set -uo pipefail
+          fail=0
+          run_guard() {
+            if sh -c "$1" > /tmp/guard.log 2>&1; then
+              echo "- ✅ \`$1\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- ❌ \`$1\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error title=Guard failed::$1"
+              sed 's/^/    /' /tmp/guard.log
+              fail=1
+            fi
+          }
+          echo "### Guard scripts" >> "$GITHUB_STEP_SUMMARY"
+          run_guard "sh eng/check-no-external-hosts.sh src"
+          run_guard "sh eng/check-ui-tokens.sh src"
+          run_guard "sh eng/check-fkeys.sh src"
+          run_guard "sh eng/check-no-native-date.sh src"
+          run_guard "bash eng/check-lifecycle-traceability.sh"
+          run_guard "sh eng/check-published-content-tracked.sh"
+          run_guard "sh eng/check-css-classes.sh src"
+          exit $fail
+
       # Both of these catch defects that return HTTP 200 with correct markup, which is why every
       # route, permission and entitlement check passed over them for an entire release (spec 0036).
       - name: Icon subset covers every ligature used
         run: |
           python3 -m pip install --quiet fonttools brotli
           sh eng/check-icon-glyphs.sh src
+
       - name: Unit + architecture tests
         run: |
           dotnet test tests/Hms.Kernel.Tests --no-build -c Release
@@ -41,58 +143,46 @@ jobs:
         run: dotnet test tests/Hms.Integration.Tests --no-build -c Release
       - name: Print golden tests
         run: dotnet test tests/Hms.PrintGolden.Tests --no-build -c Release
+
       - name: Vulnerable package scan (G15)
         run: |
           dotnet list hms-erp.slnx package --vulnerable --include-transitive | tee vuln.txt
           ! grep -q 'has the following vulnerable packages' vuln.txt
+
       - name: Additive-migration gate (03 §12)
         run: |
+          set -euo pipefail
           dotnet tool restore
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Hms.Kernel --startup-project src/Hms.Web --context KernelDbContext -o kernel.sql
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Hms.Kernel --startup-project src/Hms.Web --context AuthDbContext -o auth.sql
-          # reg carries patient identity and its ck_identity constraint (spec 0032, M1-D1); the
-          # gate covered two of the fourteen contexts and neither was the one being widened.
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Modules/Registration/Hms.Registration --startup-project src/Hms.Web \
-            --context RegDbContext -o reg.sql
-          # hr carries payroll, which is money: a dropped column there loses a locked salary sheet,
-          # and hard rule 4 says financial history is never destroyed (spec 0035).
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Modules/Hr/Hms.Hr --startup-project src/Hms.Web \
-            --context HrDbContext -o hr.sql
-          # diag carries the public report token and notif the SMS retry columns (spec 0039 WP6);
-          # both contexts now change and were outside the gate.
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Modules/Diagnostics/Hms.Diagnostics --startup-project src/Hms.Web \
-            --context DiagDbContext -o diag.sql
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Modules/Notifications/Hms.Notifications --startup-project src/Hms.Web \
-            --context NotifDbContext -o notif.sql
-          # emr and ipd carry the clinical record (MAR, care tasks, admissions, duty) — both
-          # widened by spec 0041 and previously outside the gate.
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Modules/Emr/Hms.Emr --startup-project src/Hms.Web \
-            --context EmrDbContext -o emr.sql
-          dotnet ef migrations script --idempotent --no-build -c Release \
-            --project src/Modules/Ipd/Hms.Ipd --startup-project src/Hms.Web \
-            --context IpdDbContext -o ipd.sql
-          sh eng/check-additive-migrations.sh kernel.sql
-          sh eng/check-additive-migrations.sh auth.sql
-          sh eng/check-additive-migrations.sh reg.sql
-          sh eng/check-additive-migrations.sh hr.sql
-          sh eng/check-additive-migrations.sh diag.sql
-          sh eng/check-additive-migrations.sh notif.sql
-          sh eng/check-additive-migrations.sh emr.sql
-          sh eng/check-additive-migrations.sh ipd.sql
-      - name: Image build
-        run: docker build -f deploy/app.Dockerfile -t hms-app:ci .
+          # context:project pairs — every context whose schema carries money, identity or the
+          # clinical record. Each was added after a gap let a destructive change through.
+          script_for() {
+            dotnet ef migrations script --idempotent --no-build -c Release \
+              --project "$2" --startup-project src/Hms.Web --context "$1" -o "$3"
+          }
+          script_for KernelDbContext src/Hms.Kernel                                  kernel.sql
+          script_for AuthDbContext   src/Hms.Kernel                                  auth.sql
+          # reg carries patient identity and its ck_identity constraint (spec 0032, M1-D1).
+          script_for RegDbContext    src/Modules/Registration/Hms.Registration       reg.sql
+          # hr carries payroll, which is money: a dropped column there loses a locked salary
+          # sheet, and hard rule 4 says financial history is never destroyed (spec 0035).
+          script_for HrDbContext     src/Modules/Hr/Hms.Hr                           hr.sql
+          # diag carries the public report token and notif the SMS retry columns (spec 0039 WP6).
+          script_for DiagDbContext   src/Modules/Diagnostics/Hms.Diagnostics         diag.sql
+          script_for NotifDbContext  src/Modules/Notifications/Hms.Notifications     notif.sql
+          # emr and ipd carry the clinical record (MAR, care tasks, admissions, duty) — spec 0041.
+          script_for EmrDbContext    src/Modules/Emr/Hms.Emr                         emr.sql
+          script_for IpdDbContext    src/Modules/Ipd/Hms.Ipd                         ipd.sql
+          for f in kernel auth reg hr diag notif emr ipd; do
+            sh eng/check-additive-migrations.sh "$f.sql"
+          done
 
   # ADR-0022 (spec 0015): boot the current build against the PREVIOUS release's data.
   # Clean-database-only testing hid a production defect once (spec 0013); never again.
   upgrade-path:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17
@@ -102,10 +192,16 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
       - name: Upgrade gate
         run: bash eng/verify/upgrade/run.sh
         env:
@@ -113,3 +209,103 @@ jobs:
           PGPORT: "5455"
           PGUSER: postgres
           PGPASSWORD: dev-only-super
+
+  # Built only from a commit that passed every gate above, and only on main.
+  image:
+    needs: [changes, build-test, upgrade-path]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: ref
+        run: echo "image=ghcr.io/${{ github.repository }}/app:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/app.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ref.outputs.image }}
+            ghcr.io/${{ github.repository }}/app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: echo "Pushed \`${{ steps.ref.outputs.image }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # `environment: production` is where the approval gate lives — configure a required reviewer on
+  # it in repo Settings → Environments. Until approved this job sits in `waiting` and the VM is
+  # untouched. Deploys queue rather than cancel: never abandon a half-swapped stack.
+  # DEPLOY_ENABLED is a repository *variable*, not a secret, so it can be read here in `if:`.
+  # It stays unset until the VM secrets and the `production` environment exist — otherwise every
+  # push would go red on a missing secret, which is the noise this spec set out to remove.
+  deploy:
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://hms.specshipper.com
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Open an SSH session to the VM
+        env:
+          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VM_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          # Pinned host key — never StrictHostKeyChecking=no, that accepts any MITM (§8 N5).
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+
+      - name: Ship the deploy script and the compose files
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_PATH: ${{ secrets.VM_PATH }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_deploy -P "${{ secrets.VM_SSH_PORT || 22 }}" \
+            deploy/deploy-remote.sh deploy/compose.yml deploy/compose.vm.yml \
+            "${VM_USER}@${VM_HOST}:${VM_PATH}/deploy/"
+
+      - name: Deploy, health-check, roll back on failure
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_PATH: ${{ secrets.VM_PATH }}
+          VM_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
+          IMAGE: ${{ needs.image.outputs.image }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          # The token goes over stdin, never as an argv element: anything on the remote command
+          # line is readable in `ps` by every other tenant of this shared box (§8 N5).
+          printf '%s' "$REGISTRY_TOKEN" | ssh -i ~/.ssh/id_deploy -p "$VM_PORT" \
+            "${VM_USER}@${VM_HOST}" \
+            "docker login ghcr.io -u '${REGISTRY_USER}' --password-stdin \
+             && HMS_DEPLOY_DIR='${VM_PATH}/deploy' bash '${VM_PATH}/deploy/deploy-remote.sh' '${IMAGE}'"
+
+      - name: Record what is now running
+        if: always()
+        run: |
+          echo "### Deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: \`${{ needs.image.outputs.image }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Hms.Ipd;
 using Hms.Ipd.Data;
+using Hms.Kernel.Time;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,11 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
     // Blank falls back to the summary recorded at discharge; post-issue stays frozen.
     [BindProperty, StringLength(10000, ErrorMessage = "Clinical summary — at most 10000 characters")]
     public string? ClinicalSummary { get; set; }
-    [BindProperty] public DateOnly? FollowUpOn { get; set; }
+    // Free text, parsed by FlexibleDate — not DateOnly off a native picker, which renders the
+    // browser's locale and not the dd/mm the operator knows (ADR-0020, §7 U13). Unparseable
+    // input is refused rather than dropped: the body freezes at issue, so a follow-up date the
+    // operator typed and never saw again would be a silent hole in a document we cannot reissue.
+    [BindProperty] public string? FollowUpOn { get; set; }
     [BindProperty] public long CertificateId { get; set; }
 
     public IReadOnlyList<CertRow> Rows { get; private set; } = [];
@@ -79,6 +84,17 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
     public async Task<IActionResult> OnPostIssueAsync()
     {
         if (AdmissionId == 0) { await LoadAsync(); Fail("Pick the admission."); return Page(); }
+        DateOnly? followUpOn = null;
+        if (!string.IsNullOrWhiteSpace(FollowUpOn))
+        {
+            if (!FlexibleDate.TryParse(FollowUpOn, out var parsed))
+            {
+                await LoadAsync();
+                Fail("Follow-up date not understood — try 12/03/2026, 2026-03-12 or 12 Mar 2026.");
+                return Page();
+            }
+            followUpOn = parsed;
+        }
         long certId;
         try
         {
@@ -110,7 +126,7 @@ public class CertificatesModel(HmsTx tx, CertificateService certs, TimeProvider 
                     summary = string.IsNullOrWhiteSpace(ClinicalSummary)
                         ? admission.ClinicalSummary : ClinicalSummary.Trim(),
                     extra = string.IsNullOrWhiteSpace(Extra) ? null : Extra.Trim(),
-                    followUp = FollowUpOn?.ToString("dd MMM yyyy"),
+                    followUp = followUpOn?.ToString("dd MMM yyyy"),
                     issuedOn = Ui.Local(clock.GetUtcNow()).ToString("dd MMM yyyy"),
                 });
                 var cert = await certs.IssueAsync(s.Ipd, s.Kernel, BranchId, AdmissionId, Kind,
