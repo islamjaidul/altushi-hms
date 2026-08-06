@@ -1,0 +1,238 @@
+@page "/hr/time-desk"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.TimeDeskModel
+@{
+    ViewData["Title"] = "Time requests";
+    ViewData["Crumb"] = HrNav.Time;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Waiting for a decision
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Pending.Count outstanding</span>
+            </div>
+            @if (Model.Pending.Count == 0)
+            {
+                <div class="empty-state">
+                    Nothing is waiting. Corrections, overtime, comp-off, short leave and shift swaps
+                    all queue here — one desk, because a manager clearing yesterday should have one
+                    list to work through rather than five.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Kind</th><th>Employee</th><th>Date</th><th>Asking for</th>
+                            <th>Reason</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in Model.Pending)
+                        {
+                            <tr>
+                                <td class="text-muted">@r.Kind</td>
+                                <td>
+                                    <a href="/hr/employees/@r.EmployeeId">@r.Name</a>
+                                    <div class="text-muted" style="font-size:0.6875rem">
+                                        @r.Code · raised by @r.RaisedByName
+                                    </div>
+                                </td>
+                                <td class="tabular">@Ui.DateLong(r.OnDate)</td>
+                                <td>@r.What</td>
+                                <td class="text-muted">@(r.Reason ?? "—")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="Decide"
+                                          asp-route-kind="@r.Kind" asp-route-id="@r.Id"
+                                          asp-route-approve="true" class="inline-form">
+                                        @Html.AntiForgeryToken()
+                                        <input class="input" name="Note" maxlength="200"
+                                               placeholder="note" style="max-width:9rem" />
+                                        <button type="submit" class="btn-tint">Approve</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="Decide"
+                                          asp-route-kind="@r.Kind" asp-route-id="@r.Id"
+                                          asp-route-approve="false" class="inline-form">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-tint">Reject</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">
+                Recently decided
+                <span class="spacer"></span>
+                <span class="card-hint">last 50</span>
+            </div>
+            @if (Model.Decided.Count == 0)
+            {
+                <table class="data"><tbody><tr><td class="empty">Nothing decided yet.</td></tr></tbody></table>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>Kind</th><th>Employee</th><th>Date</th><th>What</th><th>Outcome</th></tr></thead>
+                    <tbody>
+                    @foreach (var r in Model.Decided)
+                    {
+                        <tr>
+                            <td class="text-muted">@r.Kind</td>
+                            <td>@r.Name</td>
+                            <td class="tabular">@Ui.DateLong(r.OnDate)</td>
+                            <td class="text-muted">@r.What</td>
+                            <td><span class="pill @RequestState.Tone(r.State)">@RequestState.Label(r.State)</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="stack">
+        @if (Model.CanRaise)
+        {
+            <div class="card">
+                <div class="card-head">Raise on someone's behalf</div>
+                <div class="card-body">
+                    <p class="card-hint">
+                        Until employees have their own space, HR raises for them. The record names
+                        both people either way.
+                    </p>
+
+                    <form method="post" asp-page-handler="RaiseRegularization">
+                        @Html.AntiForgeryToken()
+                        <label class="field">
+                            <span class="field-label">Employee</span>
+                            <select class="input" name="EmployeeId" asp-items="Model.People"></select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Date</span>
+                            <input class="input" name="OnDate" hms-date />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Should be</span>
+                            <select class="input" name="RequestedStatus">
+                                <option value="present">Present</option>
+                                <option value="on_leave">On leave</option>
+                                <option value="weekly_off">Weekly off</option>
+                                <option value="errand">Errand</option>
+                                <option value="absent">Absent</option>
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Reason</span>
+                            <input class="input" name="Reason" maxlength="200" />
+                        </label>
+                        <button type="submit" class="btn btn-primary" style="margin-top:8px">
+                            <span class="icon icon-sm" aria-hidden="true">edit_calendar</span>
+                            Request a correction
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Overtime</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RaiseOvertime">
+                        @Html.AntiForgeryToken()
+                        <label class="field">
+                            <span class="field-label">Employee</span>
+                            <select class="input" name="EmployeeId" asp-items="Model.People"></select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Date</span>
+                            <input class="input" name="OnDate" hms-date />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Minutes</span>
+                            <input class="input num" name="Minutes" inputmode="numeric" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">When approved</span>
+                            <select class="input" name="OvertimeKind">
+                                <option value="post">After the fact</option>
+                                <option value="pre">Before the hours are worked</option>
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Reason</span>
+                            <input class="input" name="Reason" maxlength="200" />
+                        </label>
+                        <button type="submit" class="btn" style="margin-top:8px">
+                            <span class="icon icon-sm" aria-hidden="true">more_time</span> Raise
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">Short leave / outdoor duty</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RaiseShortLeave">
+                        @Html.AntiForgeryToken()
+                        <label class="field">
+                            <span class="field-label">Employee</span>
+                            <select class="input" name="EmployeeId" asp-items="Model.People"></select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Date</span>
+                            <input class="input" name="OnDate" hms-date />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Kind</span>
+                            <select class="input" name="ShortLeaveKindValue">
+                                @foreach (var k in ShortLeaveKind.All)
+                                {
+                                    <option value="@k">@ShortLeaveKind.Label(k)</option>
+                                }
+                            </select>
+                        </label>
+                        <div class="field-grid cols-2">
+                            <label class="field">
+                                <span class="field-label">From (HH:mm)</span>
+                                <input class="input" name="FromTime" maxlength="5" placeholder="14:00" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">To (HH:mm)</span>
+                                <input class="input" name="ToTime" maxlength="5" placeholder="16:30" />
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span class="field-label">Reason</span>
+                            <input class="input" name="Reason" maxlength="200" />
+                        </label>
+                        <button type="submit" class="btn" style="margin-top:8px">
+                            <span class="icon icon-sm" aria-hidden="true">door_front</span> Raise
+                        </button>
+                        <p class="card-hint">
+                            An hourly absence does not consume a leave day — the day stays payable and
+                            is marked as an errand.
+                        </p>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</div>

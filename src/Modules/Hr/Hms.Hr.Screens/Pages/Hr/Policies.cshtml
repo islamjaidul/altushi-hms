@@ -46,6 +46,17 @@
                 <input class="input num" name="MinimumNetPay" inputmode="numeric"
                        value="@Model.MinimumNetPay" />
             </label>
+                        @* spec 0058: closes ADR-0029's commented constant. CultureInfo returns Sunday under
+               the invariant culture, which is quietly wrong for Bangladesh. *@
+            <label class="field" style="width:200px">
+                <span class="field-label">Week starts on</span>
+                <select class="input" name="WeekStartsOn">
+                    @foreach (var d in Enum.GetValues<DayOfWeek>())
+                    {
+                        <option value="@((int)d)" selected="@((int)d == Model.WeekStartsOn)">@d</option>
+                    }
+                </select>
+            </label>
             <button type="submit" class="btn btn-primary">Save</button>
         </form>
         <p class="card-hint">
@@ -148,11 +159,25 @@
                        checked="@Model.BankInsteadOfPay" />
                 <span>Bank as comp-off instead of paying</span>
             </label>
+            @* spec 0058: the banking flag has been written by this screen since the module shipped
+               and read by nothing. These two make it mean something. *@
+            <label class="check">
+                <input type="checkbox" name="RequireApproval" value="true"
+                       checked="@Model.RequireApproval" />
+                <span>Overtime must be approved to be paid</span>
+            </label>
+            <label class="field" style="width:200px">
+                <span class="field-label">Comp-off expires after (days)</span>
+                <input class="input num" name="CompOffExpiryDays" inputmode="numeric"
+                       value="@Model.CompOffExpiryDays" placeholder="0 = never" />
+            </label>
             <button type="submit" class="btn btn-primary">Save</button>
         </form>
         <p class="card-hint">
             Overtime pays the day rate's per-minute equivalent times the multiplier. Without this
-            rule, recorded overtime minutes are never paid.
+            rule, recorded overtime minutes are never paid. With approval required, only minutes
+            somebody has signed for are paid; with banking on, approved minutes credit the comp-off
+            bank instead.
         </p>
     </div>
 </div>

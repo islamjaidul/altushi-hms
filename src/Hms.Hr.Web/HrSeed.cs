@@ -37,12 +37,16 @@ public static class HrSeed
             HrPerm.Claim.SettlementManage, HrPerm.Claim.DocumentIssue,
             // Spec 0057: §11 gives the HR officer loans and the compensation runs.
             HrPerm.Claim.LoanManage, HrPerm.Claim.CompensationManage,
+            // Spec 0058: HR decides time requests too, not only the manager.
+            HrPerm.Claim.RequestDecide,
         ]),
         ("Department Head", [
             HrPerm.Claim.Read, HrPerm.Claim.AttendanceReview, HrPerm.Claim.RosterManage,
             HrPerm.Claim.LeaveApply, HrPerm.Claim.LeaveRecommend,
             // Reports but never salary reports, and a team space scoped to their own line (D6).
             HrPerm.Claim.ReportsView, HrPerm.Claim.TeamView, HrPerm.Claim.Self,
+            // Spec 0058: §11 puts regularization, OT and comp-off decisions with the manager.
+            HrPerm.Claim.RequestDecide,
         ]),
         // §12 gives Accounts the payroll-post view and the lock approval — never employee management.
         ("Accounts Manager", [

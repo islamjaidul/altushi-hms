@@ -183,7 +183,8 @@ public sealed class PolicyResolver(AuditWriter audit, TimeProvider clock)
     public async Task<OvertimeRule> SetOvertimeAsync(
         HrDbContext hr, KernelDbContext kernel, long branchId, DateOnly effectiveFrom,
         int thresholdMinutes, long multiplierBp, int maxMinutesPerMonth, bool bankInsteadOfPay,
-        long actorId, string actorName, CancellationToken ct = default)
+        long actorId, string actorName,
+        bool requireApproval = false, int compOffExpiryDays = 0, CancellationToken ct = default)
     {
         if (thresholdMinutes is < 0 or > 480)
             throw new HrException("The overtime threshold must be between 0 and 480 minutes.");
@@ -224,6 +225,10 @@ public sealed class PolicyResolver(AuditWriter audit, TimeProvider clock)
         row.MultiplierBp = multiplierBp;
         row.MaxMinutesPerMonth = maxMinutesPerMonth;
         row.BankInsteadOfPay = bankInsteadOfPay;
+        // spec 0058: overtime approval and the comp-off window. Both default to the module's
+        // existing behaviour, so an upgrade changes nothing until an employer decides it should.
+        row.RequireApproval = requireApproval;
+        row.CompOffExpiryDays = compOffExpiryDays;
         await hr.SaveChangesAsync(ct);
 
         audit.Append(kernel, branchId, actorId, actorName, "hr.policy.overtime.set",

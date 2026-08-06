@@ -47,6 +47,8 @@ public static class HrNav
 
         new(HrModule.Name, "Attendance review", "/hr/attendance", HrPerm.Claim.AttendanceReview, "fact_check", Time),
         new(HrModule.Name, "Roster", "/hr/roster", HrPerm.Claim.RosterManage, "calendar_month", Time),
+        // spec 0058: one desk for every request an employee raises about their own time.
+        new(HrModule.Name, "Time requests", "/hr/time-desk", HrPerm.Claim.RequestDecide, "pending_actions", Time),
 
         new(HrModule.Name, "Leave desk", "/hr/leave", HrPerm.Claim.Read, "event_busy", Leave),
 

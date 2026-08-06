@@ -44,6 +44,10 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
     [BindProperty, Range(0, 50_000)] public long MultiplierBp { get; set; } = 20_000;
     [BindProperty, Range(0, 44_640)] public int MaxMinutesPerMonth { get; set; }
     [BindProperty] public bool BankInsteadOfPay { get; set; }
+    // spec 0058
+    [BindProperty] public bool RequireApproval { get; set; }
+    [BindProperty, Range(0, 3650)] public int CompOffExpiryDays { get; set; }
+    [BindProperty, Range(0, 6)] public int WeekStartsOn { get; set; } = (int)DayOfWeek.Saturday;
 
     [BindProperty, Range(0, 10_000)] public long EmployeeShareBp { get; set; }
     [BindProperty, Range(0, 10_000)] public long EmployerShareBp { get; set; }
@@ -94,7 +98,8 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
         "Overtime rule saved",
         (s, today) => policies.SetOvertimeAsync(
             s.Hr, s.Kernel, BranchId, today, ThresholdMinutes, MultiplierBp,
-            MaxMinutesPerMonth, BankInsteadOfPay, ActorId, ActorName));
+            MaxMinutesPerMonth, BankInsteadOfPay, ActorId, ActorName,
+            RequireApproval, CompOffExpiryDays));
 
     public Task<IActionResult> OnPostSavePfPolicyAsync() => SaveRuleAsync(
         "Provident fund policy saved",
@@ -205,6 +210,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
                             tier: 1);
                         open.DayCountConvention = DayCount;
                         open.MinimumNetPayTaka = MinimumNetPay;
+                        open.WeekStartsOn = WeekStartsOn;
                         return;
                     }
                     if (open.EffectiveFrom > today)
@@ -220,6 +226,12 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
                     EffectiveFrom = today,
                     DayCountConvention = DayCount,
                     MinimumNetPayTaka = MinimumNetPay,
+                    WeekStartsOn = WeekStartsOn,
+                    // Carried forward, not reset: closing one policy and opening the next must not
+                    // silently lose the variance tolerance an employer already set.
+                    VarianceTolerationBp = open?.VarianceTolerationBp ?? 2_000,
+                    LeaveYearStartMonth = open?.LeaveYearStartMonth ?? 7,
+                    RoundingResidueComponentId = open?.RoundingResidueComponentId,
                     CreatedAt = DateTimeOffset.UtcNow,
                     CreatedBy = ActorId,
                 }).Entity;
@@ -286,6 +298,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
         {
             DayCount = effective.DayCountConvention;
             MinimumNetPay = effective.MinimumNetPayTaka;
+            WeekStartsOn = effective.WeekStartsOn;
         }
         var taxSlabs = await s.Hr.TaxSlabs.CountAsync(x => x.BranchId == BranchId);
         var pf = await s.Hr.PfPolicies.CountAsync(x => x.BranchId == BranchId);
@@ -366,6 +379,8 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
             MultiplierBp = overtimeRule.MultiplierBp;
             MaxMinutesPerMonth = overtimeRule.MaxMinutesPerMonth;
             BankInsteadOfPay = overtimeRule.BankInsteadOfPay;
+            RequireApproval = overtimeRule.RequireApproval;
+            CompOffExpiryDays = overtimeRule.CompOffExpiryDays;
         }
         if (pfPolicy is not null)
         {

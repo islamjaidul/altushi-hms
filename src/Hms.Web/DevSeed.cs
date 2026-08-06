@@ -90,12 +90,14 @@ public static class DevSeed
              // Spec 0056: §11 gives the HR officer the separation workflow and the letters.
              "hr.settlement.manage", "hr.document.issue",
              // Spec 0057: §11 gives the HR officer loans and the member ledgers.
-             "hr.loan.manage", "hr.compensation.manage"],
+             "hr.loan.manage", "hr.compensation.manage", "hr.request.decide"],
         ["Department Head"] =
             ["hr.read", "hr.attendance.review", "hr.roster.manage", "hr.leave.apply",
              "hr.leave.recommend",
              // Reports but never salary reports; the team space is scoped to their own line (D6).
-             "hr.reports.view", "hr.team.view", "hr.self"],
+             "hr.reports.view", "hr.team.view", "hr.self",
+             // Spec 0058: §11 puts regularization, OT and comp-off decisions with the manager.
+             "hr.request.decide"],
     };
 
     private static readonly (string User, string Display, string Role)[] Cast =

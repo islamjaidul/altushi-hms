@@ -92,6 +92,9 @@ builder.Services.AddSingleton<HrAlertService>();
 builder.Services.AddSingleton<LoanService>();
 builder.Services.AddSingleton<CompensationService>();
 builder.Services.AddSingleton<DisbursementService>();
+// spec 0058 — the surface around the attendance engine.
+builder.Services.AddSingleton<TimeRequestService>();
+builder.Services.AddSingleton<RosterPlanService>();
 // This SKU ships no notifications module at all (ADR-0025 — what the customer bought is what they
 // receive), so the alert registers work and nothing is sent. The switches screen says so.
 builder.Services.AddSingleton(HrNotificationChannel.None);

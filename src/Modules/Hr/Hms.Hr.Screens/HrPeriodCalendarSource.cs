@@ -47,7 +47,12 @@ public sealed class HrPeriodCalendarSource(
         var calendar = new PeriodCalendar(
             LeaveYearStartMonth: configured ? policy!.LeaveYearStartMonth : PeriodCalendar.Default.LeaveYearStartMonth,
             FinancialYearStartMonth: fiscal.StartMonth,
-            WeekStartsOn: PeriodCalendar.Default.WeekStartsOn,
+            // Spec 0058 closes ADR-0029's open constant. Saturday was hard-coded with a comment
+            // because CultureInfo returns Sunday under the invariant culture — quietly wrong for
+            // Bangladesh — and there was no screen to configure it. There is now.
+            WeekStartsOn: policy is not null && policy.WeekStartsOn is >= 0 and <= 6
+                ? (DayOfWeek)policy.WeekStartsOn
+                : PeriodCalendar.Default.WeekStartsOn,
             MaxRangeDays: PeriodCalendar.Default.MaxRangeDays)
         {
             IsDefault = !configured,

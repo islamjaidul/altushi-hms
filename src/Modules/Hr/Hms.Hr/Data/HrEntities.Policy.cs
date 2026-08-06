@@ -45,6 +45,14 @@ public class PayrollPolicy
     /// theirs to set, not ours.
     /// </summary>
     public int VarianceTolerationBp { get; set; } = 2_000;
+
+    /// <summary>
+    /// Spec 0058: the day an employer's week starts, as 0=Sunday … 6=Saturday. Closes the constant
+    /// ADR-0029 left commented in <c>PeriodCalendar</c>: <c>CultureInfo</c> returns Sunday under the
+    /// invariant culture, which is quietly wrong for Bangladesh, so Saturday was hard-coded until
+    /// there was a screen to configure it. There is now.
+    /// </summary>
+    public int WeekStartsOn { get; set; } = (int)DayOfWeek.Saturday;
     public DateTimeOffset CreatedAt { get; set; }
     public long CreatedBy { get; set; }
 }
@@ -117,6 +125,20 @@ public class OvertimeRule
     public long? BasedOnComponentId { get; set; }
     /// <summary>Bank the minutes as comp-off instead of paying them (§5A-16b).</summary>
     public bool BankInsteadOfPay { get; set; }
+
+    // ---- spec 0058 -------------------------------------------------------------------------------
+    /// <summary>
+    /// Overtime is payable only once somebody has approved it (G24). Off by default, which is what
+    /// the module has always done — turning it on is a decision, not a surprise on the first run
+    /// after an upgrade.
+    /// </summary>
+    public bool RequireApproval { get; set; }
+
+    /// <summary>
+    /// How long banked minutes last before they lapse (G25). 0 means they never expire, which is a
+    /// defensible employer choice and the only honest default: this project can cite no rule.
+    /// </summary>
+    public int CompOffExpiryDays { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public long CreatedBy { get; set; }
 }

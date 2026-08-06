@@ -90,6 +90,13 @@ public static class HrPerm
     /// <summary>Bonus sheets, increment runs and promotions — compensation changed in bulk.</summary>
     public const string CompensationManage = P + "hr.compensation.manage";
 
+    /// <summary>
+    /// Spec 0058. §11's own name: "regularization, OT, comp-off, swap and profile-change
+    /// decisions". A manager decides these; it is deliberately not <see cref="AttendanceReview"/>,
+    /// which is the right to correct a day directly.
+    /// </summary>
+    public const string RequestDecide = P + "hr.request.decide";
+
     // §11 also names hr.ledger.manage, for "PF, welfare and tax ledger operations and
     // withdrawals". Spec 0057 delivers the member STATEMENTS — which are reports, gated by
     // hr.reports.salary like every other salary-bearing register — and not the withdrawal and
@@ -119,6 +126,7 @@ public static class HrPerm
         public const string DocumentIssue = "hr.document.issue";
         public const string LoanManage = "hr.loan.manage";
         public const string CompensationManage = "hr.compensation.manage";
+        public const string RequestDecide = "hr.request.decide";
 
         public static readonly string[] All =
         [
@@ -126,7 +134,7 @@ public static class HrPerm
             LeaveApply, LeaveRecommend, LeaveApprove, PayrollRun, PayrollApprove, PolicyManage,
             ReportsView, ReportsSalary, TeamView, AuditView, Self,
             SettlementManage, DocumentIssue,
-            LoanManage, CompensationManage,
+            LoanManage, CompensationManage, RequestDecide,
         ];
     }
 }

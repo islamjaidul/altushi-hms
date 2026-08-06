@@ -47,6 +47,11 @@ public static class ReportCatalog
         new AttendanceExceptionsReport(),
         new CorrectionLogReport(),
         new ImportHealthReport(),
+        // spec 0058 — the surface around the attendance engine.
+        new DeviceHealthReport(),
+        new TimeRequestReport(),
+        new OvertimeBankReport(),
+        new RosterCoverageReport(),
 
         // Leave
         new LeaveRegisterReport(),

@@ -322,14 +322,35 @@ public sealed class PayrollService(
             }
         }
 
-        if (overtimeRule is { BankInsteadOfPay: false } && line.OvertimeMinutes > overtimeRule.ThresholdMinutes)
+        // Spec 0058 (G24): with approval required, only approved minutes are payable. Unapproved
+        // overtime is still derived and still visible on the exception list — it is simply not paid
+        // until somebody signs, which is what §5A-16 asks for and the module never did.
+        var payableOvertimeMinutes = line.OvertimeMinutes;
+        if (overtimeRule is { RequireApproval: true })
+        {
+            payableOvertimeMinutes = await hr.OvertimeRequests.AsNoTracking()
+                .Where(r => r.EmployeeId == employee.Id && r.State == RequestState.Approved
+                            && !r.Banked
+                            && r.OnDate >= period && r.OnDate <= periodEnd)
+                .SumAsync(r => r.Minutes, ct);
+
+            if (payableOvertimeMinutes < line.OvertimeMinutes)
+            {
+                var unapproved = line.OvertimeMinutes - payableOvertimeMinutes;
+                line.Note = Append(line.Note,
+                    $"{unapproved} overtime minute(s) are not approved and were not paid.");
+            }
+        }
+
+        if (overtimeRule is { BankInsteadOfPay: false }
+            && payableOvertimeMinutes > overtimeRule.ThresholdMinutes)
         {
             var def = components.FirstOrDefault(c => c.ComputedKind == ComputedComponent.OvertimePay);
             if (def is not null)
             {
                 var minutes = Math.Min(
-                    line.OvertimeMinutes,
-                    overtimeRule.MaxMinutesPerMonth > 0 ? overtimeRule.MaxMinutesPerMonth : line.OvertimeMinutes);
+                    payableOvertimeMinutes,
+                    overtimeRule.MaxMinutesPerMonth > 0 ? overtimeRule.MaxMinutesPerMonth : payableOvertimeMinutes);
                 // Multiply first, divide once, round once at the end (C3). The old code
                 // integer-divided the day rate to a whole-taka per-MINUTE rate before the
                 // multiplier: 29% underpayment at a 680 Tk day rate, and zero — however many

@@ -140,6 +140,9 @@ ROUTES = {
     "/hr/payslips": "hr.salary.read",
     "/hr/policies": "hr.policy.manage",
     "/hr/roster": "hr.roster.manage",
+    # Spec 0058. One desk for regularization, overtime, comp-off, short leave and shift swaps —
+    # §11's hr.request.decide covers exactly that list.
+    "/hr/time-desk": "hr.request.decide",
     # Spec 0055. One row for sixty reports: the report centre is a single page at
     # /hr/reports/{key?}, and an optional route parameter is stripped by the guard, so the
     # whole §13 inventory is reachable without sixty hand-synced rows. Salary-bearing and

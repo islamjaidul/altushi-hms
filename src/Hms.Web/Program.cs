@@ -160,6 +160,9 @@ builder.Services.AddSingleton<Hms.Hr.HrAlertService>();
 builder.Services.AddSingleton<Hms.Hr.LoanService>();
 builder.Services.AddSingleton<Hms.Hr.CompensationService>();
 builder.Services.AddSingleton<Hms.Hr.DisbursementService>();
+// spec 0058 — the surface around the attendance engine.
+builder.Services.AddSingleton<Hms.Hr.TimeRequestService>();
+builder.Services.AddSingleton<Hms.Hr.RosterPlanService>();
 // This SKU ships M20, so a lifecycle alert can actually be sent.
 builder.Services.AddSingleton(new Hms.Hr.HrNotificationChannel(true, "SMS"));
 builder.Services.AddSingleton<Hms.Registration.RegistrationService>();

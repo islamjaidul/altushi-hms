@@ -69,6 +69,18 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
     public DbSet<AttendanceCorrection> AttendanceCorrections => Set<AttendanceCorrection>();
     public DbSet<PunchImportBatch> PunchImportBatches => Set<PunchImportBatch>();
 
+    // time depth (spec 0058)
+    public DbSet<AttendanceDevice> Devices => Set<AttendanceDevice>();
+    public DbSet<RegularizationRequest> RegularizationRequests => Set<RegularizationRequest>();
+    public DbSet<OvertimeRequest> OvertimeRequests => Set<OvertimeRequest>();
+    public DbSet<OvertimeBankEntry> OvertimeBank => Set<OvertimeBankEntry>();
+    public DbSet<CompOffRequest> CompOffRequests => Set<CompOffRequest>();
+    public DbSet<ShortLeaveRequest> ShortLeaveRequests => Set<ShortLeaveRequest>();
+    public DbSet<ShiftSwapRequest> ShiftSwapRequests => Set<ShiftSwapRequest>();
+    public DbSet<RosterPattern> RosterPatterns => Set<RosterPattern>();
+    public DbSet<RosterPatternStep> RosterPatternSteps => Set<RosterPatternStep>();
+    public DbSet<ShiftRequirement> ShiftRequirements => Set<ShiftRequirement>();
+
     // leave
     public DbSet<LeavePolicy> LeavePolicies => Set<LeavePolicy>();
     public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
@@ -517,6 +529,83 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
                 .OnDelete(DeleteBehavior.Restrict);
             e.HasOne<PayrollLine>().WithMany().HasForeignKey(x => x.PayrollLineId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---- time depth (spec 0058). RESTRICT throughout: hard rule 4 forbids the delete a
+        // cascade would amplify, and a bank entry orphaned from its employee is minutes nobody owns.
+        b.Entity<AttendanceDevice>(e =>
+        {
+            e.ToTable("attendance_device");
+            e.HasIndex(x => new { x.BranchId, x.Code }).IsUnique();
+            e.HasIndex(x => new { x.BranchId, x.Active, x.LastSeenAt });
+        });
+        b.Entity<RegularizationRequest>(e =>
+        {
+            e.ToTable("regularization_request");
+            // One live request per employee-day: two people arguing about one Tuesday is a
+            // conversation, not two corrections.
+            e.HasIndex(x => new { x.EmployeeId, x.OnDate }).IsUnique()
+                .HasFilter("state IN ('raised', 'recommended', 'approved')");
+            e.HasIndex(x => new { x.BranchId, x.State });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<OvertimeRequest>(e =>
+        {
+            e.ToTable("overtime_request");
+            e.HasIndex(x => new { x.EmployeeId, x.OnDate }).IsUnique()
+                .HasFilter("state IN ('raised', 'recommended', 'approved')");
+            e.HasIndex(x => new { x.BranchId, x.State, x.OnDate });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<OvertimeBankEntry>(e =>
+        {
+            e.ToTable("overtime_bank_entry");
+            e.HasIndex(x => new { x.EmployeeId, x.OnDate });
+            e.HasIndex(x => new { x.BranchId, x.Kind, x.ExpiresOn });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<CompOffRequest>(e =>
+        {
+            e.ToTable("comp_off_request");
+            e.HasIndex(x => new { x.EmployeeId, x.OnDate }).IsUnique()
+                .HasFilter("state IN ('raised', 'recommended', 'approved', 'applied')");
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ShortLeaveRequest>(e =>
+        {
+            e.ToTable("short_leave_request");
+            e.HasIndex(x => new { x.EmployeeId, x.OnDate });
+            e.HasIndex(x => new { x.BranchId, x.State });
+            e.Ignore(x => x.Minutes);
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ShiftSwapRequest>(e =>
+        {
+            e.ToTable("shift_swap_request");
+            e.HasIndex(x => new { x.BranchId, x.State });
+            e.HasIndex(x => new { x.RequesterEmployeeId, x.RequesterDate });
+        });
+        b.Entity<RosterPattern>(e =>
+        {
+            e.ToTable("roster_pattern");
+            e.HasIndex(x => new { x.BranchId, x.Code }).IsUnique();
+        });
+        b.Entity<RosterPatternStep>(e =>
+        {
+            e.ToTable("roster_pattern_step");
+            e.HasIndex(x => new { x.PatternId, x.Ordinal }).IsUnique();
+            e.HasOne<RosterPattern>().WithMany().HasForeignKey(x => x.PatternId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ShiftRequirement>(e =>
+        {
+            e.ToTable("shift_requirement");
+            e.HasIndex(x => new { x.OrgUnitId, x.ShiftId, x.Weekday }).IsUnique();
         });
 
         b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
