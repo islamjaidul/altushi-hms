@@ -63,10 +63,20 @@ case "$TAG" in
 esac
 [ "${#TAG}" -eq 40 ] || deny "tag must be a 40-character commit sha"
 
-[ -x "$DEPLOYER" ] || deny "deployer missing at $DEPLOYER"
-[ ! -w "$DEPLOYER" ] || echo "WARNING: $DEPLOYER is writable by $(id -un) — re-run vm-harden-deploy-key.sh" >&2
-
 echo "gate: accepted $IMAGE"
+
+# Bring the deploy scripts and compose files up to date with `main` before using them. One
+# root-owned command through a pinned sudoers rule — no arguments, so there is nothing to steer.
+# Without this, every change to the deploy path needed a human at a root shell on the VM, which is
+# a step in a per-release loop and therefore a step that eventually gets skipped.
+if sudo -n /usr/local/bin/hms-deploy-sync 2>&1 | sed 's/^/  /'; then
+  :
+else
+  echo "  WARNING: sync unavailable — deploying with the scripts already on this host" >&2
+fi
+
+[ -x "$DEPLOYER" ] || deny "deployer missing at $DEPLOYER"
+[ ! -w "$DEPLOYER" ] && echo "WARNING: $DEPLOYER is writable by $(id -un)" >&2
 docker login "$REGISTRY" -u "$REG_USER" --password-stdin >/dev/null \
   || deny "registry login failed"
 

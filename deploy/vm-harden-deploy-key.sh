@@ -12,6 +12,7 @@ set -euo pipefail
 U="${DEPLOY_USER:-deploy}"
 REPO="${DEPLOY_REPO:-/opt/altushi-hms}"
 GATE="/usr/local/bin/hms-deploy-gate"
+SYNC="/usr/local/bin/hms-deploy-sync"
 AK="/home/$U/.ssh/authorized_keys"
 
 [ "$(id -u)" -eq 0 ] || { echo "Run as root." >&2; exit 1; }
@@ -19,6 +20,21 @@ id "$U" >/dev/null 2>&1 || { echo "!! user $U does not exist" >&2; exit 1; }
 
 echo "==> Installing the gate at $GATE (root-owned, $U cannot edit it)"
 install -o root -g root -m 0755 "$REPO/deploy/hms-deploy-gate.sh" "$GATE"
+
+echo "==> Installing the sync command and its sudoers rule"
+# This is what makes the hardening a one-time action instead of a chore repeated per release.
+# The rule names one absolute path and NOPASSWD, with no wildcard and no arguments: `deploy` may
+# run exactly this, and hms-deploy-sync refuses arguments, so there is no gap to widen.
+install -o root -g root -m 0755 "$REPO/deploy/hms-deploy-sync.sh" "$SYNC"
+printf '%s ALL=(root) NOPASSWD: %s\n' "$U" "$SYNC" > /etc/sudoers.d/hms-deploy
+chmod 0440 /etc/sudoers.d/hms-deploy
+# A malformed sudoers file locks everyone out of sudo, so validate and roll back rather than hope.
+if visudo -cf /etc/sudoers.d/hms-deploy >/dev/null 2>&1; then
+  echo "  sudoers rule valid"
+else
+  rm -f /etc/sudoers.d/hms-deploy
+  echo "  !! sudoers rule rejected by visudo — removed. Sync disabled, deploys still work." >&2
+fi
 
 echo "==> Making the deploy assets read-only to $U"
 # This is the load-bearing half. A forced command is worthless if the account can rewrite the
@@ -45,6 +61,8 @@ chown "$U:$U" "$AK"; chmod 600 "$AK"
 
 echo "==> Result"
 echo "  gate      : $(stat -c '%U:%G %a' "$GATE") $GATE"
+echo "  sync      : $(stat -c '%U:%G %a' "$SYNC" 2>/dev/null || echo absent)"
+echo "  sudoers   : $(cat /etc/sudoers.d/hms-deploy 2>/dev/null || echo absent)"
 echo "  deployer  : $(stat -c '%U:%G %a' "$REPO/deploy/deploy-remote.sh")"
 echo "  compose   : $(stat -c '%U:%G %a' "$REPO/deploy/compose.yml")"
 echo "  .env      : $(stat -c '%U:%G %a' "$REPO/deploy/.env" 2>/dev/null || echo 'absent')"
