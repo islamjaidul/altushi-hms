@@ -40,6 +40,17 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
     public DbSet<EmployeePayComponent> PayStructureComponents => Set<EmployeePayComponent>();
     public DbSet<EmploymentEvent> EmploymentEvents => Set<EmploymentEvent>();
 
+    // lifecycle (spec 0056)
+    public DbSet<EmployeeDependant> Dependants => Set<EmployeeDependant>();
+    public DbSet<EmployeeDocument> Documents => Set<EmployeeDocument>();
+    public DbSet<Separation> Separations => Set<Separation>();
+    public DbSet<ClearanceItem> ClearanceItems => Set<ClearanceItem>();
+    public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();
+    public DbSet<LetterTemplate> LetterTemplates => Set<LetterTemplate>();
+    public DbSet<IssuedLetter> IssuedLetters => Set<IssuedLetter>();
+    public DbSet<NotificationSetting> NotificationSettings => Set<NotificationSetting>();
+    public DbSet<EmploymentPolicy> EmploymentPolicies => Set<EmploymentPolicy>();
+
     // time
     public DbSet<Roster> Rosters => Set<Roster>();
     public DbSet<RosterEntry> RosterEntries => Set<RosterEntry>();
@@ -141,6 +152,12 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             // Self-service reads its own row through the identity link; must be fast and unique.
             e.HasIndex(x => x.UserRef).IsUnique().HasFilter("user_ref IS NOT NULL");
             e.Property(x => x.DocumentsJson).HasColumnType("jsonb");
+            // The two registers spec 0056 adds, each a partial index over the few rows that qualify
+            // rather than a scan of the whole directory.
+            e.HasIndex(x => new { x.BranchId, x.ProbationDueOn })
+                .HasFilter("probation_due_on IS NOT NULL AND separated_on IS NULL");
+            e.HasIndex(x => new { x.BranchId, x.ContractEndsOn })
+                .HasFilter("contract_ends_on IS NOT NULL AND separated_on IS NULL");
         });
         b.Entity<EmployeeAssignment>(e =>
         {
@@ -163,6 +180,83 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             e.ToTable("employment_event");
             e.HasIndex(x => new { x.EmployeeId, x.OnDate });
             e.Property(x => x.DetailJson).HasColumnType("jsonb");
+        });
+
+        // ---- lifecycle (spec 0056). Intra-schema foreign keys with RESTRICT, never cascade: hard
+        // rule 4 forbids the delete a cascade would amplify, and a settlement line orphaned from its
+        // separation is a money document nobody can explain.
+        b.Entity<EmployeeDependant>(e =>
+        {
+            e.ToTable("employee_dependant");
+            e.HasIndex(x => x.EmployeeId);
+            // The nominee-share query reads exactly this: live nominations for one person.
+            e.HasIndex(x => new { x.EmployeeId, x.IsNominee, x.SupersededAt });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<EmployeeDocument>(e =>
+        {
+            e.ToTable("employee_document");
+            e.HasIndex(x => x.EmployeeId);
+            // The expiry register's whole query: live documents in a branch, ordered by expiry.
+            e.HasIndex(x => new { x.BranchId, x.ExpiresOn })
+                .HasFilter("expires_on IS NOT NULL AND superseded_at IS NULL");
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Separation>(e =>
+        {
+            e.ToTable("separation");
+            // One live separation per employment. A second is a rehire, which is a new employment.
+            e.HasIndex(x => x.EmployeeId).IsUnique().HasFilter("state <> 'cancelled'");
+            e.HasIndex(x => new { x.BranchId, x.State });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ClearanceItem>(e =>
+        {
+            e.ToTable("clearance_item");
+            e.HasIndex(x => new { x.SeparationId, x.Department }).IsUnique();
+            e.HasOne<Separation>().WithMany().HasForeignKey(x => x.SeparationId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<SettlementLine>(e =>
+        {
+            e.ToTable("settlement_line");
+            e.HasIndex(x => new { x.SeparationId, x.Ordinal });
+            e.HasOne<Separation>().WithMany().HasForeignKey(x => x.SeparationId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<LetterTemplate>(e =>
+        {
+            e.ToTable("letter_template");
+            // One active template per kind: "which one did it use" must never be a question.
+            e.HasIndex(x => new { x.BranchId, x.Kind }).IsUnique().HasFilter("active");
+        });
+        b.Entity<IssuedLetter>(e =>
+        {
+            e.ToTable("issued_letter");
+            // Unique per BRANCH, not globally. NumberSeriesService is keyed
+            // (branch_id, doc_type, fiscal_year), so a second branch issues LTR-2026-27-0001 too;
+            // a global unique index would reject the second employer's first letter.
+            //
+            // hr.payroll_run.run_no, hr.payslip.payslip_no and hr.leave_application.application_no
+            // are all per-branch series behind globally unique indexes and have the same latent
+            // collision — a separate, tracked cleanup (spec 0056 notes), not this table's problem.
+            e.HasIndex(x => new { x.BranchId, x.LetterNo }).IsUnique();
+            e.HasIndex(x => new { x.EmployeeId, x.IssuedOn });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<NotificationSetting>(e =>
+        {
+            e.ToTable("notification_setting");
+            e.HasIndex(x => new { x.BranchId, x.Kind }).IsUnique();
+        });
+        b.Entity<EmploymentPolicy>(e =>
+        {
+            e.ToTable("employment_policy");
+            e.HasIndex(x => new { x.BranchId, x.EffectiveFrom });
         });
 
         // ---- time

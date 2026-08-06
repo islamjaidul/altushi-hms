@@ -76,11 +76,19 @@ public sealed record ReportContext
             pairs.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}"));
     }
 
-    /// <summary>A link to one employee's record, keeping the period so the timeline opens on it.</summary>
+    /// <summary>
+    /// A link to one employee's record, keeping the period so the timeline opens on it.
+    /// <para>
+    /// The path is <c>/hr/employees/…</c>, plural, because that is the route the page serves.
+    /// Spec 0055 shipped it singular, so <b>every employee drill-through in every report was a
+    /// 404</b> — the most-clicked link in the report centre. <c>ReportRouteTests</c> now checks
+    /// every URL a report can build against the routes on disk.
+    /// </para>
+    /// </summary>
     public string Employee(long employeeId)
     {
         var pairs = PeriodPairs.Select(p => $"{Uri.EscapeDataString(p.Key)}={Uri.EscapeDataString(p.Value)}");
-        return $"/hr/employee/{employeeId}?" + string.Join('&', pairs);
+        return $"/hr/employees/{employeeId}?" + string.Join('&', pairs);
     }
 }
 

@@ -58,6 +58,16 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
     [BindProperty] public List<long?> UpToTaka { get; set; } = [];
     [BindProperty] public List<long?> RateBp { get; set; } = [];
 
+    // ---- spec 0056: employment rules (probation length, notice, settlement treatment)
+    [BindProperty, Range(0, 60)] public int ProbationMonths { get; set; }
+    [BindProperty, Range(0, 365)] public int NoticePeriodDays { get; set; }
+    [BindProperty] public bool AdjustNoticePay { get; set; }
+    [BindProperty] public bool EncashLeaveOnSettlement { get; set; }
+    [BindProperty] public long? EncashableLeaveTypeId { get; set; }
+
+    public bool HasEmploymentPolicy { get; private set; }
+    public IReadOnlyList<LeaveType> LeaveTypes { get; private set; } = [];
+
     public bool HasDeductionRule { get; private set; }
     public bool HasGraceRule { get; private set; }
     public bool HasOvertimeRule { get; private set; }
@@ -97,6 +107,13 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
         (s, today) => policies.SetGratuityAsync(
             s.Hr, s.Kernel, BranchId, today, MinimumServiceMonths, DaysPerYearBp,
             ActorId, ActorName));
+
+    // spec 0056: the three numbers probation and settlement would otherwise have to invent.
+    public Task<IActionResult> OnPostSaveEmploymentPolicyAsync() => SaveRuleAsync(
+        "Employment rules saved",
+        (s, today) => policies.SetEmploymentPolicyAsync(
+            s.Hr, s.Kernel, BranchId, today, ProbationMonths, NoticePeriodDays, AdjustNoticePay,
+            EncashLeaveOnSettlement, EncashableLeaveTypeId, ActorId, ActorName));
 
     public Task<IActionResult> OnPostSaveTaxSlabsAsync() => SaveRuleAsync(
         "Income tax table saved",
@@ -276,6 +293,7 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
         var deduction = await s.Hr.DeductionRules.CountAsync(x => x.BranchId == BranchId);
         var grace = await s.Hr.GraceTimeRules.CountAsync(x => x.BranchId == BranchId);
         var gratuity = await s.Hr.GratuityRules.CountAsync(x => x.BranchId == BranchId);
+        var employment = await s.Hr.EmploymentPolicies.CountAsync(x => x.BranchId == BranchId);
 
         PayRules =
         [
@@ -288,6 +306,8 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
             new("Absence deduction", deduction, "What an unpaid day costs.", null),
             new("Grace time", grace, "Late tolerance before a deduction applies.", null),
             new("Gratuity", gratuity, "End-of-service days per completed year, if you pay one.", null),
+            new("Employment rules", employment,
+                "Probation length, notice period, and what a settlement does about them.", null),
         ];
 
         PayrollPossible = payrollPolicy > 0 && components > 0;
@@ -311,7 +331,23 @@ public class PoliciesModel(IHrTx tx, PolicyResolver policies, AuditWriter audit)
         HasGratuity = gratuityRule is not null;
         CurrentSlabs = await policies.TaxSlabsAsync(s.Hr, BranchId, today);
 
+        var employmentPolicy = await SeparationService.EmploymentPolicyAsync(s.Hr, BranchId, today);
+        HasEmploymentPolicy = employmentPolicy is not null;
+        LeaveTypes = await s.Hr.LeaveTypes.AsNoTracking()
+            .Where(t => t.BranchId == BranchId && t.Active)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
         if (!fillForm) return;
+
+        if (employmentPolicy is not null)
+        {
+            ProbationMonths = employmentPolicy.ProbationMonths;
+            NoticePeriodDays = employmentPolicy.NoticePeriodDays;
+            AdjustNoticePay = employmentPolicy.AdjustNoticePay;
+            EncashLeaveOnSettlement = employmentPolicy.EncashLeaveOnSettlement;
+            EncashableLeaveTypeId = employmentPolicy.EncashableLeaveTypeId;
+        }
 
         if (deductionRule is not null)
         {

@@ -1,0 +1,48 @@
+@page "/hr/letters/{id:long}"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.LetterModel
+@{
+    var letter = Model.Letter!;
+    ViewData["Title"] = letter.Title;
+    ViewData["Crumb"] = HrNav.People;
+    var letterhead = new Letterhead(letter.Title, letter.LetterNo, letter.CreatedAt);
+}
+
+<partial name="_Letterhead" model="letterhead" />
+
+<div class="card card-clip">
+    <div class="card-head">
+        @letter.Title
+        <span class="spacer"></span>
+        <span class="section-sub">@letter.LetterNo</span>
+        @if (Model.Person is { } who)
+        {
+            <a class="btn no-print" href="/hr/employees/@who.Id">Record</a>
+        }
+        <button type="button" class="btn btn-primary no-print" onclick="window.print()">
+            <span class="icon icon-sm" aria-hidden="true">print</span> Print
+        </button>
+    </div>
+    <div class="report-meta">
+        <span>@Ui.DateLong(letter.IssuedOn)</span>
+        @if (Model.Person is { } p)
+        {
+            <span>@p.FullName · @p.EmployeeCode</span>
+        }
+        <span>Issued by @letter.CreatedByName</span>
+    </div>
+</div>
+
+@* The body as it was rendered at issue. Whitespace is preserved because a letter's paragraphs are
+   the employer's, not this page's. *@
+<div class="card">
+    <div class="card-body">
+        <div class="letter-body">@letter.Body</div>
+    </div>
+</div>
+
+<div class="sheet-signs">
+    <div>Authorised signatory</div>
+</div>
+
+<partial name="_SheetFooter" />

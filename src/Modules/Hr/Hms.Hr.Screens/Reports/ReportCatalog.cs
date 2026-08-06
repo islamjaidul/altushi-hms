@@ -28,6 +28,15 @@ public static class ReportCatalog
         new NewJoinersReport(),
         new SeparationsReport(),
         new ServiceLengthReport(),
+        // spec 0056 — the lifecycle registers. §12.2 lists some as screens; ADR-0029 makes every
+        // read a report, and each row drills to the record where the decision actually lives.
+        new ProbationDueReport(),
+        new ContractExpiryReport(),
+        new DocumentExpiryReport(),
+        new LicenceRegisterReport(),
+        new NomineeRegisterReport(),
+        new SeparationClearanceReport(),
+        new AnniversariesReport(),
 
         // Time & attendance
         new AttendanceRegisterReport(),
@@ -52,10 +61,12 @@ public static class ReportCatalog
         new ComponentRegisterReport(),
         new EmployerCostReport(),
         new PayrollRunAuditReport(),
+        new SettlementRegisterReport(),
 
         // Governance
         new ActivityLogReport(),
         new EmployeeAuditReport(),
+        new LettersIssuedReport(),
     ];
 
     public static IReadOnlyList<IHrReport> All => Reports;

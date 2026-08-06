@@ -1,0 +1,197 @@
+@page "/hr/letters"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.LettersModel
+@{
+    ViewData["Title"] = "Letters";
+    ViewData["Crumb"] = HrNav.Setup;
+    Model.Templates.TryGetValue(Model.SelectedKind, out var current);
+    var subject = Model.Subject;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="filter-row" style="margin-bottom:14px">
+    @foreach (var k in LetterKind.All)
+    {
+        var href = "/hr/letters?kind=" + k + (subject is not null ? "&employee=" + subject.Id : "");
+        <a class="btn @(k == Model.SelectedKind ? "btn-primary" : "")" href="@href">
+            @LetterKind.Label(k)
+            @if (!Model.Templates.ContainsKey(k))
+            {
+                <span class="card-hint"> — none</span>
+            }
+        </a>
+    }
+</div>
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        @if (subject is not null)
+        {
+            <div class="card">
+                <div class="card-head">
+                    Issue to @subject.FullName
+                    <span class="spacer"></span>
+                    <span class="card-hint">@subject.EmployeeCode</span>
+                </div>
+                <div class="card-body">
+                    @if (current is null)
+                    {
+                        <div class="empty-state">
+                            No @LetterKind.Label(Model.SelectedKind).ToLowerInvariant() template yet.
+                            Write one on the right — the product ships none, so nothing goes out in
+                            words the employer did not choose.
+                        </div>
+                    }
+                    else if (LetterKind.SalaryBearing(Model.SelectedKind) && !Model.CanSeeSalary)
+                    {
+                        <div class="empty-state">
+                            This letter states what someone earns, so issuing it needs salary read.
+                        </div>
+                    }
+                    else
+                    {
+                        @if (Model.PreviewGaps.Count > 0)
+                        {
+                            <div class="alert warn">
+                                <span class="icon icon-sm" aria-hidden="true">warning</span>
+                                <span>
+                                    Nothing on record for
+                                    @string.Join(", ", Model.PreviewGaps.Select(g => "{{" + g + "}}"))
+                                    — fill it in below, or the letter prints the placeholder.
+                                </span>
+                            </div>
+                        }
+                        <form method="post" asp-page-handler="Issue"
+                              asp-route-employee="@subject.Id" asp-route-kind="@Model.SelectedKind">
+                            @Html.AntiForgeryToken()
+                            <div class="field-grid cols-2">
+                                <label class="field">
+                                    <span class="field-label">Heading</span>
+                                    <input class="input" name="IssueTitle" maxlength="120" value="@current.Title" />
+                                </label>
+                                <label class="field">
+                                    <span class="field-label">Issued on</span>
+                                    <input class="input" name="IssueOn" hms-date />
+                                </label>
+                            </div>
+                            <label class="field">
+                                <span class="field-label">Letter</span>
+                                <textarea class="input" name="IssueBody" rows="16">@Model.Preview</textarea>
+                            </label>
+                            <div class="filter-row" style="margin-top:8px">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="icon icon-sm" aria-hidden="true">mail</span> Issue letter
+                                </button>
+                            </div>
+                            <p class="card-hint">
+                                Edit freely before issuing. Once issued the wording is frozen and
+                                numbered — changing the template afterwards never rewrites it.
+                            </p>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card card-clip">
+            <div class="card-head">
+                Letters issued
+                <span class="spacer"></span>
+                <span class="card-hint">most recent 50</span>
+            </div>
+            @if (Model.Issued.Count == 0)
+            {
+                <div class="empty-state">
+                    Nothing issued yet. Open an employee's record and choose Issue a letter.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr><th>No</th><th>Letter</th><th>Employee</th><th>Issued</th><th>By</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var l in Model.Issued)
+                        {
+                            <tr>
+                                <td class="tabular"><a href="/hr/letters/@l.Id">@l.LetterNo</a></td>
+                                <td>@LetterKind.Label(l.Kind)</td>
+                                <td>
+                                    @l.EmployeeName
+                                    <div class="text-muted" style="font-size:0.6875rem">@l.EmployeeCode</div>
+                                </td>
+                                <td class="tabular">@Ui.DateLong(l.IssuedOn)</td>
+                                <td class="text-muted">@l.IssuedBy</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <div class="card-head">
+                @LetterKind.Label(Model.SelectedKind) template
+                <span class="spacer"></span>
+                <span class="card-hint">@(current is null ? "not written" : "active")</span>
+            </div>
+            <div class="card-body">
+                @if (!Model.CanEditTemplates)
+                {
+                    <div class="empty-state">
+                        Templates are configuration — editing them needs policy management.
+                    </div>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="SaveTemplate"
+                          asp-route-employee="@(subject?.Id)">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="TemplateKind" value="@Model.SelectedKind" />
+                        <label class="field">
+                            <span class="field-label">Heading</span>
+                            <input class="input" name="TemplateTitle" maxlength="120"
+                                   value="@(current?.Title ?? LetterKind.Label(Model.SelectedKind))" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Body</span>
+                            <textarea class="input" name="TemplateBody" rows="18">@(current?.Body ?? Hms.Hr.Screens.Pages.Hr.LettersModel.Starter(Model.SelectedKind))</textarea>
+                        </label>
+                        <div class="filter-row" style="margin-top:8px">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon icon-sm" aria-hidden="true">edit_document</span> Save template
+                            </button>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">Words the product fills in</div>
+            <table class="data">
+                <tbody>
+                @foreach (var (token, means) in Model.Tokens)
+                {
+                    <tr>
+                        <td class="tabular">@("{{" + token + "}}")</td>
+                        <td class="text-muted">@means</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -151,6 +151,13 @@ builder.Services.AddSingleton<Hms.Hr.EmployeeService>();
 builder.Services.AddSingleton<Hms.Hr.AttendanceService>();
 builder.Services.AddSingleton<Hms.Hr.LeaveService>();
 builder.Services.AddSingleton<Hms.Hr.PayrollService>();
+// spec 0056 — the employment lifecycle between the hire and the payslip.
+builder.Services.AddSingleton<Hms.Hr.EmployeeFileService>();
+builder.Services.AddSingleton<Hms.Hr.SeparationService>();
+builder.Services.AddSingleton<Hms.Hr.LetterService>();
+builder.Services.AddSingleton<Hms.Hr.HrAlertService>();
+// This SKU ships M20, so a lifecycle alert can actually be sent.
+builder.Services.AddSingleton(new Hms.Hr.HrNotificationChannel(true, "SMS"));
 builder.Services.AddSingleton<Hms.Registration.RegistrationService>();
 builder.Services.AddSingleton<Hms.Billing.BillingService>();
 builder.Services.AddSingleton<Hms.Billing.DayCloseService>();
@@ -183,6 +190,7 @@ builder.Services.AddSingleton<IRecurringJob, Hms.Notifications.SmsDispatchJob>()
 builder.Services.AddSingleton<IRecurringJob, DailyJobScheduler>();
 builder.Services.AddSingleton<IJobHandler, DueRemindersHandler>();
 builder.Services.AddSingleton<IJobHandler, EodDigestHandler>();
+builder.Services.AddSingleton<IJobHandler, HrAlertsHandler>();
 builder.Services.AddSingleton(OrgIdentity.From(
     builder.Configuration, "Sylhet Evergreen Hospital", "Hospital ERP",
     logoMark: "/_content/Hms.Shell/img/logo-mark.png",

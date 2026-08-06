@@ -41,8 +41,11 @@ public class TimelineModel(IHrTx tx, IPeriodCalendarSource calendars, TimeProvid
     public const string LeaveCategory = "Leave";
     public const string MoneyOwed = "Money owed";
 
+    /// <summary>Spec 0056 — the paperwork side of a service record: documents and letters issued.</summary>
+    public const string DocumentCategory = "Documents";
+
     public static readonly IReadOnlyList<string> Categories =
-        [Employment, Compensation, TimeCategory, LeaveCategory, MoneyOwed];
+        [Employment, Compensation, TimeCategory, LeaveCategory, MoneyOwed, DocumentCategory];
 
     [BindProperty(SupportsGet = true)]
     public long Id { get; set; }
@@ -169,6 +172,30 @@ public class TimelineModel(IHrTx tx, IPeriodCalendarSource calendars, TimeProvid
         entries.AddRange(ledger.Select(l => new TimelineEntry(
             l.OnDate, MoneyOwed, l.Kind, l.Narration, null, "—", null)));
 
+        // ---- documents and letters (spec 0056): the paperwork a service record is asked to prove.
+        // Documents appear on the day they were issued; a renewal appears as its own entry, which is
+        // what makes "when did this registration lapse" answerable from the record itself.
+        var documents = await s.Hr.Documents.AsNoTracking()
+            .Where(d => d.EmployeeId == Id && d.IssuedOn != null
+                        && d.IssuedOn >= from && d.IssuedOn <= to)
+            .ToListAsync(ct);
+
+        entries.AddRange(documents.Select(d => new TimelineEntry(
+            d.IssuedOn!.Value, DocumentCategory,
+            $"{DocumentKind.Label(d.Kind)} recorded",
+            string.Join(" · ", new[] { d.Title, d.Number, d.IssuingBody }
+                .Where(x => !string.IsNullOrWhiteSpace(x))!),
+            d.ExpiresOn is { } x ? $"expires {Ui.DateLong(x)}" : null,
+            d.CreatedByName, null)));
+
+        var issued = await s.Hr.IssuedLetters.AsNoTracking()
+            .Where(l => l.EmployeeId == Id && l.IssuedOn >= from && l.IssuedOn <= to)
+            .ToListAsync(ct);
+
+        entries.AddRange(issued.Select(l => new TimelineEntry(
+            l.IssuedOn, DocumentCategory, LetterKind.Label(l.Kind) + " issued",
+            l.LetterNo, null, l.CreatedByName, $"/hr/letters/{l.Id}")));
+
         // ---- compensation: salary-bearing, so counted before it is either shown or withheld
         var payStructures = await s.Hr.PayStructures.AsNoTracking()
             .Where(p => p.EmployeeId == Id && p.EffectiveFrom >= from && p.EffectiveFrom <= to)
@@ -229,6 +256,13 @@ public class TimelineModel(IHrTx tx, IPeriodCalendarSource calendars, TimeProvid
         EmploymentEventKind.Terminated => "Terminated",
         EmploymentEventKind.Retired => "Retired",
         EmploymentEventKind.Rehired => "Rehired",
+        // spec 0056
+        EmploymentEventKind.ProbationExtended => "Probation extended",
+        EmploymentEventKind.TypeChanged => "Employment type changed",
+        EmploymentEventKind.ContractEnded => "Contract ended",
+        EmploymentEventKind.Deceased => "Died in service",
+        EmploymentEventKind.Relieved => "Relieved",
+        EmploymentEventKind.Settled => "Final settlement paid",
         _ => kind.Replace('_', ' '),
     };
 

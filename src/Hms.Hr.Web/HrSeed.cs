@@ -33,6 +33,8 @@ public static class HrSeed
             // Spec 0055. The report centre is the HR officer's day; salary reports follow the
             // salary grant they already hold, never the plain report grant.
             HrPerm.Claim.ReportsView, HrPerm.Claim.ReportsSalary, HrPerm.Claim.Self,
+            // Spec 0056: §11 gives the HR officer the separation workflow and the letters.
+            HrPerm.Claim.SettlementManage, HrPerm.Claim.DocumentIssue,
         ]),
         ("Department Head", [
             HrPerm.Claim.Read, HrPerm.Claim.AttendanceReview, HrPerm.Claim.RosterManage,
@@ -50,6 +52,8 @@ public static class HrSeed
             // US16.14: the board's question is a report, and the audit log is how a dispute is settled.
             HrPerm.Claim.ReportsView, HrPerm.Claim.ReportsSalary, HrPerm.Claim.AuditView,
             HrPerm.Claim.Self,
+            // Spec 0056: §12 makes the MD the second approver on a final settlement.
+            HrPerm.Claim.SettlementManage,
         ]),
         // The self-service role every employee gets: apply for own leave, read own payslip. It
         // deliberately does NOT carry hr.read — a colleague's record is not theirs to browse.

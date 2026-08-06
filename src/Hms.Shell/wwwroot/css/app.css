@@ -1065,6 +1065,15 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
   background: var(--warning-bg); color: var(--ink-2); font-size: 0.8125rem;
 }
 
+/* Spec 0056: an issued letter's frozen body. The employer's paragraphs and line breaks are the
+   document, so whitespace is preserved rather than collapsed — a relieving letter that reflows
+   into one paragraph is not the letter that was signed. Measure is capped at the reading width a
+   printed A4 letter actually has. */
+.letter-body {
+  white-space: pre-wrap; max-width: 42rem; line-height: 1.7;
+  font-size: 0.9375rem; color: var(--ink-1);
+}
+
 /* ====================================================================== */
 /* Print media — the sheet is the page (§7 U10)                           */
 /* ====================================================================== */

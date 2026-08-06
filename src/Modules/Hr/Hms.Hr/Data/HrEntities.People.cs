@@ -12,6 +12,10 @@ public static class EmploymentStatus
     public const string Resigned = "resigned";
     public const string Terminated = "terminated";
     public const string Retired = "retired";
+    // spec 0056: §9's terminal variants that had no status to land on, so both used to be recorded
+    // as a resignation — which is not what either of them is.
+    public const string ContractEnded = "contract_ended";
+    public const string Deceased = "deceased";
 }
 
 /// <summary>
@@ -45,6 +49,25 @@ public class Employee
     public DateOnly? ConfirmedOn { get; set; }
     public DateOnly? SeparatedOn { get; set; }
     public string Status { get; set; } = EmploymentStatus.Probation;
+
+    // ---- spec 0056: what kind of engagement this is, and when it comes due ------------------------
+
+    /// <summary>
+    /// One of <see cref="Data.EmploymentType"/> (G12). Defaults to permanent because that is what
+    /// every row created before spec 0056 actually is — the module could only ever make one shape of
+    /// employment, so the default states a fact rather than guessing one.
+    /// </summary>
+    public string EmploymentType { get; set; } = Data.EmploymentType.Permanent;
+
+    /// <summary>Required for a contract engagement; feeds the contract-expiring register.</summary>
+    public DateOnly? ContractEndsOn { get; set; }
+
+    /// <summary>
+    /// When probation falls due for a decision. The date the module never had: <c>ConfirmedOn</c> and
+    /// <c>EmploymentStatus.Confirmed</c> existed from the start and, before this, were written by the
+    /// demo seed alone — an employee hired through the UI stayed on probation forever.
+    /// </summary>
+    public DateOnly? ProbationDueOn { get; set; }
 
     // §3.4: BEFTN needs bank routing + account on employees, doctors, referrers and suppliers.
     public string? BankName { get; set; }
@@ -126,6 +149,18 @@ public static class EmploymentEventKind
     public const string Terminated = "terminated";
     public const string Retired = "retired";
     public const string Rehired = "rehired";
+
+    // ---- spec 0056 -------------------------------------------------------------------------------
+    /// <summary>Probation pushed to a new due date, with a reason. Both dates land in DetailJson.</summary>
+    public const string ProbationExtended = "probation_extended";
+    /// <summary>The engagement itself changed — contract made permanent, part-time made full.</summary>
+    public const string TypeChanged = "type_changed";
+    public const string ContractEnded = "contract_ended";
+    public const string Deceased = "deceased";
+    /// <summary>Clearance complete and the employment formally released.</summary>
+    public const string Relieved = "relieved";
+    /// <summary>The final settlement was approved and paid.</summary>
+    public const string Settled = "settled";
 }
 
 /// <summary>

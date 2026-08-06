@@ -55,6 +55,100 @@ public class EmployeeModel(IHrTx tx, EmployeeService employees) : HmsPageModel
 
     public bool CanSeePay => Can(HrPerm.Claim.SalaryRead);
 
+    // ---- spec 0056: the lifecycle panel -----------------------------------------------------
+    public Separation? Separation { get; private set; }
+    public int DependantCount { get; private set; }
+    public int NomineeCount { get; private set; }
+    public int DocumentCount { get; private set; }
+    public int ExpiringCount { get; private set; }
+    public DateOnly Today { get; private set; }
+
+    /// <summary>Amending an employment record — confirming, extending, changing the engagement.</summary>
+    public bool CanManage => Can("hr.employee.manage");
+
+    /// <summary>Serving notice and running clearance is a separate trust from editing a phone number.</summary>
+    public bool CanSeparate => Can("hr.settlement.manage");
+
+    public bool CanIssueLetter => Can("hr.document.issue");
+
+    [BindProperty] public string? ConfirmOn { get; set; }
+    [BindProperty] public string? ConfirmNote { get; set; }
+    [BindProperty] public string? ExtendTo { get; set; }
+    [BindProperty] public string? ExtendReason { get; set; }
+    [BindProperty] public string? NewType { get; set; }
+    [BindProperty] public string? NewContractEnd { get; set; }
+
+    public async Task<IActionResult> OnPostConfirmAsync(long id)
+    {
+        if (!CanManage) return Forbid();
+
+        if (!FlexibleDate.TryParse(ConfirmOn ?? "", out var on) || on == default)
+            return await BackWith(id, "Enter the date the confirmation takes effect, for example 01/09/2026.");
+
+        try
+        {
+            await tx.RunAsync(s => employees.ConfirmProbationAsync(
+                s.Hr, s.Kernel, BranchId, id, on, ConfirmNote, ActorId, ActorName));
+        }
+        catch (HrException e)
+        {
+            return await BackWith(id, e.Message);
+        }
+
+        Toast($"Confirmed with effect from {on:dd MMM yyyy}", "verified");
+        return Redirect($"/hr/employees/{id}");
+    }
+
+    public async Task<IActionResult> OnPostExtendAsync(long id)
+    {
+        if (!CanManage) return Forbid();
+
+        if (!FlexibleDate.TryParse(ExtendTo ?? "", out var due) || due == default)
+            return await BackWith(id, "Enter the new date probation falls due.");
+
+        try
+        {
+            await tx.RunAsync(s => employees.ExtendProbationAsync(
+                s.Hr, s.Kernel, BranchId, id, due, ExtendReason ?? "", ActorId, ActorName));
+        }
+        catch (HrException e)
+        {
+            return await BackWith(id, e.Message);
+        }
+
+        Toast($"Probation extended to {due:dd MMM yyyy}", "event_repeat");
+        return Redirect($"/hr/employees/{id}");
+    }
+
+    public async Task<IActionResult> OnPostChangeTypeAsync(long id)
+    {
+        if (!CanManage) return Forbid();
+
+        DateOnly? ends = FlexibleDate.TryParse(NewContractEnd ?? "", out var e2) && e2 != default
+            ? e2 : null;
+
+        try
+        {
+            await tx.RunAsync(s => employees.ChangeEmploymentTypeAsync(
+                s.Hr, s.Kernel, BranchId, id, NewType ?? "", ends,
+                Dhaka.Today(TimeProvider.System), null, ActorId, ActorName));
+        }
+        catch (HrException e)
+        {
+            return await BackWith(id, e.Message);
+        }
+
+        Toast($"Employment type set to {EmploymentType.Label(NewType!)}", "badge");
+        return Redirect($"/hr/employees/{id}");
+    }
+
+    private async Task<IActionResult> BackWith(long id, string message)
+    {
+        await OnGetAsync(id);
+        Fail(message);
+        return Page();
+    }
+
     /// <summary>
     /// Setting pay needs both halves: the right to manage employees AND the right to see salary.
     /// Deliberately NOT <c>hr.payroll.approve</c> — §12's maker-checker splits the person who
@@ -201,6 +295,28 @@ public class EmployeeModel(IHrTx tx, EmployeeService employees) : HmsPageModel
                 .OrderByDescending(e => e.OnDate).ThenByDescending(e => e.Id)
                 .Select(e => new EventView(e.Kind, e.OnDate, e.Note, e.RecordedByName))
                 .ToListAsync();
+
+            // ---- the lifecycle panel (spec 0056). Counts only: the file itself is a page of its
+            // own, so the record stays readable rather than growing a fifth table.
+            Today = Dhaka.Today(TimeProvider.System);
+
+            Separation = await s.Hr.Separations.AsNoTracking()
+                .Where(x => x.EmployeeId == id && x.State != SeparationState.Cancelled)
+                .FirstOrDefaultAsync();
+
+            var dependants = await s.Hr.Dependants.AsNoTracking()
+                .Where(d => d.EmployeeId == id && d.SupersededAt == null)
+                .Select(d => d.IsNominee)
+                .ToListAsync();
+            DependantCount = dependants.Count;
+            NomineeCount = dependants.Count(x => x);
+
+            var documents = await s.Hr.Documents.AsNoTracking()
+                .Where(d => d.EmployeeId == id && d.SupersededAt == null)
+                .Select(d => d.ExpiresOn)
+                .ToListAsync();
+            DocumentCount = documents.Count;
+            ExpiringCount = documents.Count(x => x is { } on && on <= Today.AddDays(45));
 
             // The pay structure is loaded only when the viewer may see it. Fetching it and hiding it
             // in the view would put salary figures in a response that a permission check said no to.

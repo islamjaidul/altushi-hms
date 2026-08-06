@@ -59,6 +59,10 @@ public static class HrNav
         new(HrModule.Name, "Reports", "/hr/reports", HrPerm.Claim.ReportsView, "bar_chart", Reports),
 
         new(HrModule.Name, "Policies", "/hr/policies", HrPerm.Claim.PolicyManage, "rule", Setup),
+        // spec 0056: letter templates and alert switches are employer configuration, so they sit
+        // beside the policies rather than beside the people they are applied to.
+        new(HrModule.Name, "Letters", "/hr/letters", HrPerm.Claim.DocumentIssue, "mail", Setup),
+        new(HrModule.Name, "Alerts", "/hr/notifications", HrPerm.Claim.PolicyManage, "notifications", Setup),
 
         // Always present for anyone with a linked employment — for most employees it is the only
         // group they will ever see, and permission filtering therefore makes it their first.

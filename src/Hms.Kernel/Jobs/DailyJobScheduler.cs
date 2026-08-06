@@ -24,6 +24,13 @@ public sealed class DailyJobScheduler(
     public const string DueRemindersJobType = "notif.due_reminders";
     public const string EodDigestJobType = "notif.eod_digest";
 
+    /// <summary>
+    /// Spec 0056: probations falling due, contracts ending, documents and professional licences
+    /// expiring, birthdays and anniversaries. A separate type from the billing due reminders because
+    /// the two answer to different employers' switches and one failing must not silence the other.
+    /// </summary>
+    public const string HrAlertsJobType = "hr.lifecycle_alerts";
+
     public string Name => "daily.scheduler";
 
     public async Task RunAsync(IServiceProvider services, CancellationToken ct)
@@ -58,6 +65,7 @@ public sealed class DailyJobScheduler(
         var closedDay = today.AddDays(-1).ToString("yyyy-MM-dd");
         queue.Enqueue(kernel, EodDigestJobType, JsonSerializer.Serialize(new DailyJobPayload(closedDay)));
         queue.Enqueue(kernel, DueRemindersJobType, JsonSerializer.Serialize(new DailyJobPayload(todayText)));
+        queue.Enqueue(kernel, HrAlertsJobType, JsonSerializer.Serialize(new DailyJobPayload(todayText)));
         await kernel.SaveChangesAsync(ct);
     }
 }

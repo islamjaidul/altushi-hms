@@ -1,0 +1,545 @@
+@page "/hr/employees/{id:long}/separation"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.SeparationModel
+@{
+    var p = Model.Person!;
+    var rec = Model.Record;
+    ViewData["Title"] = p.FullName + " — separation";
+    ViewData["Crumb"] = HrNav.People;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="row-end" style="margin-bottom:14px">
+    <div>
+        <a class="btn" href="/hr/employees/@p.Id">
+            <span class="icon icon-sm" aria-hidden="true">arrow_back</span> @p.FullName
+        </a>
+    </div>
+    @if (rec is not null)
+    {
+        <span class="pill @(rec.State == SeparationState.DocumentsIssued ? "good" : "warn")">
+            @SeparationState.Label(rec.State)
+        </span>
+    }
+</div>
+
+@if (rec is null)
+{
+    @if (p.SeparatedOn is { } gone)
+    {
+        <div class="card">
+            <div class="card-body">
+                <div class="empty-state">
+                    @p.FullName left on @Ui.DateLong(gone) without going through this workflow.
+                    The record is kept and stays fully reportable.
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-head">Serve notice</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Initiate" asp-route-id="@p.Id">
+                    @Html.AntiForgeryToken()
+                    <div class="field-grid cols-3">
+                        <label class="field">
+                            <span class="field-label">How is it ending?</span>
+                            <select class="input" name="Kind">
+                                @foreach (var k in SeparationKind.All)
+                                {
+                                    <option value="@k">@SeparationKind.Label(k)</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Notice served on</span>
+                            <input class="input" name="NoticeOn" hms-date placeholder="e.g. 01/09/2026" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Intended last working day</span>
+                            <input class="input" name="IntendedLastDay" hms-date placeholder="e.g. 30/11/2026" />
+                        </label>
+                        <label class="field span-3">
+                            <span class="field-label">Reason</span>
+                            <input class="input" name="Reason" maxlength="300" />
+                        </label>
+                    </div>
+                    <div class="filter-row" style="margin-top:8px">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="icon icon-sm" aria-hidden="true">logout</span> Record notice
+                        </button>
+                    </div>
+                    <p class="card-hint">
+                        Recording notice moves the employment to <b>on notice</b> and opens the
+                        clearance checklist. Nothing is paid and nothing ends until the settlement is
+                        approved and paid through a supplementary run.
+                    </p>
+                </form>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="grid grid-main-side">
+        <div class="stack">
+            <div class="card">
+                <div class="card-head">
+                    @SeparationKind.Label(rec.Kind)
+                    <span class="spacer"></span>
+                    <span class="card-hint">notice served @Ui.DateLong(rec.NoticeOn)</span>
+                </div>
+                <div class="card-body">
+                    <div class="field-grid cols-3">
+                        <div class="field">
+                            <span class="micro-label">Notice required</span>
+                            @(rec.NoticeDays > 0 ? rec.NoticeDays + " days" : "not configured")
+                        </div>
+                        <div class="field">
+                            <span class="micro-label">Intended last day</span>
+                            @Ui.DateLong(rec.IntendedLastWorkingDay)
+                        </div>
+                        <div class="field">
+                            <span class="micro-label">Actual last day</span>@Ui.DateLong(rec.LastWorkingDay)
+                        </div>
+                        <div class="field">
+                            <span class="micro-label">Relieving</span>
+                            @(rec.RelievingOn is { } r ? Ui.DateLong(r) : "—")
+                        </div>
+                        <div class="field span-2">
+                            <span class="micro-label">Reason</span>@(rec.Reason ?? "—")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-clip">
+                <div class="card-head">
+                    Clearance
+                    <span class="spacer"></span>
+                    <span class="card-hint">
+                        @Model.Clearance.Count(c => !c.Outstanding) of @Model.Clearance.Count signed off
+                    </span>
+                </div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Department</th><th>Status</th><th>Note</th><th class="num">Dues</th><th>By</th></tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var c in Model.Clearance)
+                        {
+                            var tone = c.Status switch
+                            {
+                                ClearanceStatus.Cleared => "good",
+                                ClearanceStatus.ClearedWithDues => "warn",
+                                ClearanceStatus.Blocked => "bad",
+                                _ => "",
+                            };
+                            <tr>
+                                <td>
+                                    @ClearanceDepartment.Label(c.Department)
+                                    @if (c.OrgUnitName is not null)
+                                    {
+                                        <div class="text-muted" style="font-size:0.6875rem">@c.OrgUnitName</div>
+                                    }
+                                </td>
+                                <td><span class="pill @tone">@c.Status.Replace("_", " ")</span></td>
+                                <td class="text-muted">@(c.Note ?? "—")</td>
+                                <td class="num">@(c.DuesTaka > 0 ? Ui.Money(c.DuesTaka) : "—")</td>
+                                <td class="text-muted">
+                                    @(c.SignedOffByName ?? "—")
+                                    @if (c.SignedOffAt is { } at)
+                                    {
+                                        <div style="font-size:0.6875rem">@Ui.DateLong(DateOnly.FromDateTime(Ui.Local(at).DateTime))</div>
+                                    }
+                                </td>
+                            </tr>
+                            @if (c.Outstanding && Model.CanSignOff(c)
+                                 && rec.State is SeparationState.Initiated or SeparationState.InClearance
+                                     or SeparationState.Computed)
+                            {
+                                <tr>
+                                    <td colspan="5">
+                                        <form method="post" asp-page-handler="SignOff"
+                                              asp-route-id="@p.Id" asp-route-itemId="@c.Id">
+                                            @Html.AntiForgeryToken()
+                                            <div class="field-grid cols-4">
+                                                <label class="field">
+                                                    <span class="field-label">Outcome</span>
+                                                    <select class="input" name="ClearanceStatusValue">
+                                                        <option value="cleared">Cleared</option>
+                                                        <option value="cleared_with_dues">Cleared, with dues to recover</option>
+                                                        <option value="blocked">Blocked</option>
+                                                    </select>
+                                                </label>
+                                                <label class="field">
+                                                    <span class="field-label">Dues (৳)</span>
+                                                    <input class="input num" name="DuesTaka" inputmode="numeric" value="0" />
+                                                </label>
+                                                <label class="field span-2">
+                                                    <span class="field-label">Note</span>
+                                                    <input class="input" name="ClearanceNote" maxlength="300" />
+                                                </label>
+                                            </div>
+                                            <button type="submit" class="btn" style="margin-top:8px">
+                                                <span class="icon icon-sm" aria-hidden="true">task_alt</span>
+                                                Sign off @ClearanceDepartment.Label(c.Department)
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @if (!Model.CanSeeMoney)
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <div class="empty-state">
+                            The final settlement states what this person is owed, so it needs
+                            salary read. Clearance above does not.
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card card-clip">
+                    <div class="card-head">
+                        Final settlement
+                        @if (rec.ComputedAt is not null)
+                        {
+                            <span class="spacer"></span>
+                            <span class="card-hint">computed @Ui.DateLong(DateOnly.FromDateTime(Ui.Local(rec.ComputedAt.Value).DateTime))</span>
+                        }
+                    </div>
+
+                    @if (Model.Lines.Count == 0)
+                    {
+                        <div class="empty-state">
+                            Not computed yet. Every department must sign off first — a statement
+                            computed over an incomplete clearance is a number that will change.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-wrap">
+                            <table class="data">
+                                <thead>
+                                <tr><th>#</th><th>Line</th><th>Why this number</th><th class="num">Amount</th></tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var l in Model.Lines)
+                                {
+                                    <tr>
+                                        <td class="tabular">@l.Ordinal</td>
+                                        <td>
+                                            @l.Label
+                                            @if (l.Kind == PayComponentKind.Deduction)
+                                            {
+                                                <span class="text-muted"> (deduction)</span>
+                                            }
+                                        </td>
+                                        <td class="text-muted">@(l.Basis ?? "—")</td>
+                                        <td class="num @(l.Kind == PayComponentKind.Deduction ? "text-danger" : "")">
+                                            @(l.Kind == PayComponentKind.Deduction ? "−" : "")@Ui.Money(l.AmountTaka)
+                                        </td>
+                                    </tr>
+                                }
+                                </tbody>
+                                <tfoot>
+                                <tr><td colspan="3">Earnings</td><td class="num">@Ui.Money(Model.EarningsTaka)</td></tr>
+                                <tr><td colspan="3">Deductions</td><td class="num">−@Ui.Money(Model.DeductionsTaka)</td></tr>
+                                <tr><td colspan="3"><b>Net payable</b></td>
+                                    <td class="num"><b>@Ui.Money(rec.NetPayableTaka)</b></td></tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(rec.ComputationNotes))
+                    {
+                        @* D2: what could not be computed, and why, said on the statement rather
+                           than discovered when the employee asks. *@
+                        <div class="card-body">
+                            <div class="alert warn">
+                                <span class="icon icon-sm" aria-hidden="true">info</span>
+                                <div>
+                                    @foreach (var note in rec.ComputationNotes.Split('\n'))
+                                    {
+                                        <div>@note</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (rec.State is SeparationState.Initiated or SeparationState.InClearance
+                         or SeparationState.Computed)
+                {
+                    <div class="card">
+                        <div class="card-head">@(Model.Lines.Count == 0 ? "Compute the settlement" : "Recompute")</div>
+                        <div class="card-body">
+                            <form method="post" asp-page-handler="Compute"
+                                  asp-route-id="@p.Id" asp-route-separationId="@rec.Id">
+                                @Html.AntiForgeryToken()
+                                <div class="field-grid cols-3">
+                                    <label class="field">
+                                        <span class="field-label">Actual last working day</span>
+                                        <input class="input" name="LastWorkingDay" hms-date
+                                               value="@rec.LastWorkingDay.ToString("dd/MM/yyyy")" />
+                                    </label>
+                                    <div class="field" style="align-self:end">
+                                        <button type="submit" class="btn btn-primary">
+                                            <span class="icon icon-sm" aria-hidden="true">calculate</span> Compute
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            <p class="card-hint">
+                                Reads the pay structure, gratuity rule and leave policy in force on
+                                the last working day — not today's — so the statement reproduces
+                                itself years later. Recomputing replaces the lines.
+                            </p>
+                        </div>
+                    </div>
+                }
+
+                @if (rec.State == SeparationState.Computed && Model.Lines.Count > 0)
+                {
+                    <div class="card">
+                        <div class="card-head">Add a line</div>
+                        <div class="card-body">
+                            <form method="post" asp-page-handler="AddLine"
+                                  asp-route-id="@p.Id" asp-route-separationId="@rec.Id">
+                                @Html.AntiForgeryToken()
+                                <div class="field-grid cols-4">
+                                    <label class="field">
+                                        <span class="field-label">Line</span>
+                                        <input class="input" name="LineLabel" maxlength="80"
+                                               placeholder="e.g. Ex-gratia" />
+                                    </label>
+                                    <label class="field">
+                                        <span class="field-label">Kind</span>
+                                        <select class="input" name="LineKind">
+                                            <option value="earning">Earning</option>
+                                            <option value="deduction">Deduction</option>
+                                        </select>
+                                    </label>
+                                    <label class="field">
+                                        <span class="field-label">Amount (৳)</span>
+                                        <input class="input num" name="LineAmount" inputmode="numeric" />
+                                    </label>
+                                    <label class="field">
+                                        <span class="field-label">Why this number</span>
+                                        <input class="input" name="LineBasis" maxlength="200" />
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn" style="margin-top:8px">
+                                    <span class="icon icon-sm" aria-hidden="true">add</span> Add line
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="stack">
+            <div class="card">
+                <div class="card-head">Where it stands</div>
+                <div class="card-body">
+                    <ol class="report-list">
+                        @foreach (var state in SeparationState.Order)
+                        {
+                            var reached = Array.IndexOf(SeparationState.Order, rec.State)
+                                          >= Array.IndexOf(SeparationState.Order, state);
+                            <li class="report-item @(reached ? "" : "locked")">
+                                <span class="report-item-name">@SeparationState.Label(state)</span>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </div>
+
+            @if (Model.CanSeeMoney && rec.State == SeparationState.Computed)
+            {
+                <div class="card">
+                    <div class="card-head">Approval</div>
+                    <div class="card-body">
+                        @if (Model.Approval is null)
+                        {
+                            <form method="post" asp-page-handler="SendForApproval"
+                                  asp-route-id="@p.Id" asp-route-separationId="@rec.Id">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="icon icon-sm" aria-hidden="true">how_to_reg</span>
+                                    Send for approval
+                                </button>
+                            </form>
+                            <p class="card-hint">Accounts Manager, then the MD (§12).</p>
+                        }
+                        else
+                        {
+                            <div class="field-grid">
+                                <div class="field">
+                                    <span class="micro-label">Request</span>#@Model.Approval.Id
+                                </div>
+                                <div class="field">
+                                    <span class="micro-label">State</span>@Model.Approval.State
+                                </div>
+                            </div>
+                            <form method="post" asp-page-handler="ApplyApproval"
+                                  asp-route-id="@p.Id" asp-route-separationId="@rec.Id"
+                                  style="margin-top:10px">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn">
+                                    <span class="icon icon-sm" aria-hidden="true">refresh</span>
+                                    Apply the decision
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (Model.CanSeeMoney && rec.State == SeparationState.Approved)
+            {
+                <div class="card">
+                    <div class="card-head">Pay</div>
+                    <div class="card-body">
+                        @if (Model.Runs.Count == 0)
+                        {
+                            <div class="empty-state">
+                                No locked supplementary run to pay it through. Create one on
+                                <a href="/hr/payroll">Payroll runs</a> — a settlement is never paid
+                                outside payroll, or the journal Accounts receives is not true.
+                            </div>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="MarkPaid"
+                                  asp-route-id="@p.Id" asp-route-separationId="@rec.Id">
+                                @Html.AntiForgeryToken()
+                                <label class="field">
+                                    <span class="field-label">Supplementary run</span>
+                                    <select class="input" name="PayRunId">
+                                        @foreach (var r in Model.Runs)
+                                        {
+                                            <option value="@r.Id">@r.RunNo — @r.Period.ToString("MMM yyyy")</option>
+                                        }
+                                    </select>
+                                </label>
+                                <button type="submit" class="btn btn-primary" style="margin-top:8px">
+                                    <span class="icon icon-sm" aria-hidden="true">payments</span> Mark paid
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (rec.State == SeparationState.Paid)
+            {
+                <div class="card">
+                    <div class="card-head">Close and issue documents</div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="IssueDocuments"
+                              asp-route-id="@p.Id" asp-route-separationId="@rec.Id">
+                            @Html.AntiForgeryToken()
+                            <label class="field">
+                                <span class="field-label">Relieving date</span>
+                                <input class="input" name="RelievingOn" hms-date
+                                       value="@rec.LastWorkingDay.ToString("dd/MM/yyyy")" />
+                            </label>
+                            <button type="submit" class="btn btn-primary" style="margin-top:8px">
+                                <span class="icon icon-sm" aria-hidden="true">task_alt</span> Close
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+
+            @if (Model.CanIssueLetter
+                 && rec.State is SeparationState.Paid or SeparationState.DocumentsIssued)
+            {
+                <div class="card">
+                    <div class="card-head">Closing documents</div>
+                    <div class="card-body">
+                        <div class="filter-row">
+                            @foreach (var kind in Hms.Hr.Screens.Pages.Hr.SeparationModel.ClosingLetters(rec.Kind))
+                            {
+                                <a class="btn" href="/hr/letters?employee=@p.Id&kind=@kind">
+                                    <span class="icon icon-sm" aria-hidden="true">mail</span>
+                                    @Hms.Hr.Screens.Pages.Hr.SeparationModel.LetterLabel(kind)
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (Model.Letters.Count > 0)
+            {
+                <div class="card card-clip">
+                    <div class="card-head">Letters issued</div>
+                    <table class="data">
+                        <thead><tr><th>Letter</th><th>No</th><th>On</th></tr></thead>
+                        <tbody>
+                        @foreach (var l in Model.Letters)
+                        {
+                            <tr>
+                                <td><a href="/hr/letters/@l.Id">@LetterKind.Label(l.Kind)</a></td>
+                                <td class="tabular">@l.LetterNo</td>
+                                <td class="tabular">@Ui.DateLong(l.IssuedOn)</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (rec.State is SeparationState.Initiated or SeparationState.InClearance
+                     or SeparationState.Computed)
+            {
+                <div class="card">
+                    <div class="card-head">Withdraw</div>
+                    <div class="card-body">
+                        <form method="post" asp-page-handler="Cancel"
+                              asp-route-id="@p.Id" asp-route-separationId="@rec.Id">
+                            @Html.AntiForgeryToken()
+                            <label class="field">
+                                <span class="field-label">Why</span>
+                                <input class="input" name="Reason" maxlength="300"
+                                       placeholder="resignation retracted, appeal upheld…" />
+                            </label>
+                            <button type="submit" class="btn" style="margin-top:8px">
+                                <span class="icon icon-sm" aria-hidden="true">undo</span>
+                                Withdraw the separation
+                            </button>
+                        </form>
+                        <p class="card-hint">
+                            Only before the money is approved. Afterwards the correction is a
+                            payroll reversal, never a delete.
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}

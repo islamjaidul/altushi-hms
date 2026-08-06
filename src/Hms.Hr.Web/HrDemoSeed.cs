@@ -401,6 +401,11 @@ public static class HrDemoSeed
                 EmergencyContact = $"+8801{rng.Next(3, 10)}{rng.Next(10_000_000, 99_999_999)}",
                 JoinedOn = joined,
                 ConfirmedOn = confirmed,
+                // Spec 0056: a demo that shows every employment as the same shape shows nothing
+                // about the lifecycle. One in six is a contract, and anyone still unconfirmed has a
+                // probation date, so the probation and contract registers have rows in them.
+                EmploymentType = rng.Next(6) == 0 ? EmploymentType.Contract : EmploymentType.Permanent,
+                ProbationDueOn = confirmed is null ? joined.AddMonths(6) : null,
                 BankName = Banks[rng.Next(Banks.Length)],
                 BankBranch = BankBranches[rng.Next(BankBranches.Length)],
                 BankAccountNo = $"{rng.NextInt64(1000_0000_0000, 9999_9999_9999)}",
@@ -434,6 +439,60 @@ public static class HrDemoSeed
                     new EmployeePayComponent { ComponentId = conv.Id, AmountTaka = 1_500 },
                 ],
                 actorId, actorName);
+
+            // ---- spec 0056: the personal file. A hospital's compliance register is only a
+            // demonstration if some licences are near expiry and one or two have already lapsed.
+            if (rng.Next(3) > 0)
+            {
+                var expires = today.AddDays(rng.Next(-90, 900));
+                s.Hr.Documents.Add(new EmployeeDocument
+                {
+                    BranchId = branchId,
+                    EmployeeId = employee.Id,
+                    Kind = DocumentKind.Licence,
+                    Title = designation.Name.Contains("Nurse", StringComparison.OrdinalIgnoreCase)
+                        ? "BNMC registration" : "Professional registration",
+                    Number = $"REG-{rng.Next(10_000, 99_999)}",
+                    IssuingBody = "Bangladesh Nursing & Midwifery Council",
+                    IssuedOn = expires.AddYears(-5),
+                    ExpiresOn = expires,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    CreatedBy = actorId,
+                    CreatedByName = actorName,
+                });
+            }
+
+            s.Hr.Documents.Add(new EmployeeDocument
+            {
+                BranchId = branchId,
+                EmployeeId = employee.Id,
+                Kind = DocumentKind.NationalId,
+                Title = "National ID card",
+                Number = draft.NationalId,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = actorId,
+                CreatedByName = actorName,
+            });
+
+            // A nominee for both benefits, so the nominee register reads "complete" for most people
+            // and the gaps that remain are real gaps rather than an unseeded table.
+            if (rng.Next(4) > 0)
+            {
+                s.Hr.Dependants.Add(new EmployeeDependant
+                {
+                    BranchId = branchId,
+                    EmployeeId = employee.Id,
+                    Name = $"{(female ? MaleGiven[rng.Next(MaleGiven.Length)] : FemaleGiven[rng.Next(FemaleGiven.Length)])} "
+                           + Surnames[rng.Next(Surnames.Length)],
+                    Relation = DependantRelation.Spouse,
+                    IsNominee = true,
+                    Purpose = NomineePurpose.Both,
+                    ShareBp = 10_000,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    CreatedBy = actorId,
+                    CreatedByName = actorName,
+                });
+            }
 
             await s.Hr.SaveChangesAsync();
         }

@@ -64,6 +64,111 @@
             </div>
         </div>
 
+        @* ---- spec 0056: the engagement, and where it has got to (G12, G13, G18). Until this
+           panel existed the module could hire someone and never confirm them: ConfirmedOn was
+           written only by the demo seed. *@
+        <div class="card">
+            <div class="card-head">
+                Employment
+                <span class="spacer"></span>
+                <span class="card-hint">@EmploymentType.Label(p.EmploymentType)</span>
+            </div>
+            <div class="card-body">
+                <div class="field-grid cols-3">
+                    <div class="field">
+                        <span class="micro-label">Kind</span>@EmploymentType.Label(p.EmploymentType)
+                    </div>
+                    <div class="field">
+                        <span class="micro-label">Contract ends</span>
+                        @(p.ContractEndsOn is { } ce ? Ui.DateLong(ce) : "—")
+                    </div>
+                    <div class="field">
+                        <span class="micro-label">Probation due</span>
+                        @if (p.ProbationDueOn is { } due)
+                        {
+                            var overdue = due < Model.Today;
+                            <span class="@(overdue ? "text-danger" : "")">@Ui.DateLong(due)</span>
+                        }
+                        else
+                        {
+                            <text>@(p.ConfirmedOn is null ? "not scheduled" : "—")</text>
+                        }
+                    </div>
+                </div>
+
+                @if (p.ConfirmedOn is null && p.SeparatedOn is null && Model.CanManage)
+                {
+                    <div class="grid grid-2col" style="margin-top:12px">
+                        <form method="post" asp-page-handler="Confirm" asp-route-id="@p.Id">
+                            @Html.AntiForgeryToken()
+                            <div class="field-grid cols-2">
+                                <label class="field">
+                                    <span class="field-label">Confirm from</span>
+                                    <input class="input" name="ConfirmOn" hms-date placeholder="e.g. 01/09/2026" />
+                                </label>
+                                <label class="field">
+                                    <span class="field-label">Note (optional)</span>
+                                    <input class="input" name="ConfirmNote" maxlength="200" />
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="margin-top:8px">
+                                <span class="icon icon-sm" aria-hidden="true">verified</span> Confirm
+                            </button>
+                        </form>
+
+                        <form method="post" asp-page-handler="Extend" asp-route-id="@p.Id">
+                            @Html.AntiForgeryToken()
+                            <div class="field-grid cols-2">
+                                <label class="field">
+                                    <span class="field-label">Extend probation to</span>
+                                    <input class="input" name="ExtendTo" hms-date placeholder="e.g. 01/12/2026" />
+                                </label>
+                                <label class="field">
+                                    <span class="field-label">Reason</span>
+                                    <input class="input" name="ExtendReason" maxlength="200"
+                                           placeholder="what the employee will be shown" />
+                                </label>
+                            </div>
+                            <button type="submit" class="btn" style="margin-top:8px">
+                                <span class="icon icon-sm" aria-hidden="true">event_repeat</span> Extend
+                            </button>
+                        </form>
+                    </div>
+                }
+
+                @if (Model.CanManage && p.SeparatedOn is null)
+                {
+                    <form method="post" asp-page-handler="ChangeType" asp-route-id="@p.Id"
+                          style="margin-top:12px">
+                        @Html.AntiForgeryToken()
+                        <div class="field-grid cols-3">
+                            <label class="field">
+                                <span class="field-label">Change kind of employment</span>
+                                <select class="input" name="NewType">
+                                    @foreach (var t in EmploymentType.All)
+                                    {
+                                        <option value="@t" selected="@(t == p.EmploymentType)">
+                                            @EmploymentType.Label(t)
+                                        </option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Contract ends (if a contract)</span>
+                                <input class="input" name="NewContractEnd" hms-date
+                                       value="@(p.ContractEndsOn is { } x ? x.ToString("dd/MM/yyyy") : "")" />
+                            </label>
+                            <div class="field" style="align-self:end">
+                                <button type="submit" class="btn">
+                                    <span class="icon icon-sm" aria-hidden="true">badge</span> Save kind
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+
         @if (Model.CanSeePay)
         {
             <div class="card card-clip">
@@ -215,6 +320,76 @@
                 }
             </div>
         </div>
+
+        @* ---- spec 0056: the rest of the file, one click away rather than four more tables here. *@
+        <div class="card">
+            <div class="card-head">Personal file</div>
+            <div class="card-body">
+                <div class="field-grid">
+                    <div class="field">
+                        <span class="micro-label">Family &amp; nominees</span>
+                        @Model.DependantCount recorded, @Model.NomineeCount nominated
+                    </div>
+                    <div class="field">
+                        <span class="micro-label">Documents</span>
+                        @Model.DocumentCount on file@(Model.ExpiringCount > 0
+                            ? $", {Model.ExpiringCount} expiring or expired" : "")
+                    </div>
+                </div>
+                <div class="filter-row" style="margin-top:10px">
+                    <a class="btn" href="/hr/employees/@p.Id/file">
+                        <span class="icon icon-sm" aria-hidden="true">folder_shared</span> Open file
+                    </a>
+                    @if (Model.CanIssueLetter)
+                    {
+                        <a class="btn" href="/hr/letters?employee=@p.Id">
+                            <span class="icon icon-sm" aria-hidden="true">mail</span> Issue a letter
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (Model.CanSeparate)
+        {
+            <div class="card">
+                <div class="card-head">
+                    Separation
+                    @if (Model.Separation is { } live)
+                    {
+                        <span class="spacer"></span>
+                        <span class="card-hint">@SeparationState.Label(live.State)</span>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (Model.Separation is { } s2)
+                    {
+                        <div class="field-grid">
+                            <div class="field">
+                                <span class="micro-label">Kind</span>@SeparationKind.Label(s2.Kind)
+                            </div>
+                            <div class="field">
+                                <span class="micro-label">Last working day</span>@Ui.DateLong(s2.LastWorkingDay)
+                            </div>
+                        </div>
+                        <a class="btn btn-primary" href="/hr/employees/@p.Id/separation" style="margin-top:10px">
+                            <span class="icon icon-sm" aria-hidden="true">logout</span> Open separation
+                        </a>
+                    }
+                    else if (p.SeparatedOn is null)
+                    {
+                        <div class="empty-state">Still employed.</div>
+                        <a class="btn" href="/hr/employees/@p.Id/separation">
+                            <span class="icon icon-sm" aria-hidden="true">logout</span> Serve notice
+                        </a>
+                    }
+                    else
+                    {
+                        <div class="empty-state">Left on @Ui.DateLong(p.SeparatedOn.Value).</div>
+                    }
+                </div>
+            </div>
+        }
 
         <div class="card">
             <div class="card-head">Bank <span class="card-hint">for the BEFTN file</span></div>

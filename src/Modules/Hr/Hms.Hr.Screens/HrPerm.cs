@@ -65,6 +65,23 @@ public static class HrPerm
     /// </summary>
     public const string Self = P + "hr.self";
 
+    // ---- spec 0056 (module PRD §11) ------------------------------------------------------------
+    // Both names are §11's own. Inventing a permission would be inventing scope (hard rule 2).
+
+    /// <summary>
+    /// Separation, clearance and final settlement. Deliberately not <see cref="EmployeeManage"/>:
+    /// ending someone's employment and computing what they are owed is a different trust from
+    /// correcting their phone number.
+    /// </summary>
+    public const string SettlementManage = P + "hr.settlement.manage";
+
+    /// <summary>
+    /// Generating letters and certificates. A salary certificate additionally needs
+    /// <see cref="SalaryRead"/> — the clerk who may issue an experience certificate is not
+    /// necessarily the person who tells a landlord what a nurse earns (D6).
+    /// </summary>
+    public const string DocumentIssue = P + "hr.document.issue";
+
     /// <summary>The bare claim strings — what nav entries and <c>Can(...)</c> take.</summary>
     public static class Claim
     {
@@ -84,12 +101,15 @@ public static class HrPerm
         public const string TeamView = "hr.team.view";
         public const string AuditView = "hr.audit.view";
         public const string Self = "hr.self";
+        public const string SettlementManage = "hr.settlement.manage";
+        public const string DocumentIssue = "hr.document.issue";
 
         public static readonly string[] All =
         [
             Read, SalaryRead, EmployeeManage, AttendanceReview, RosterManage,
             LeaveApply, LeaveRecommend, LeaveApprove, PayrollRun, PayrollApprove, PolicyManage,
             ReportsView, ReportsSalary, TeamView, AuditView, Self,
+            SettlementManage, DocumentIssue,
         ];
     }
 }

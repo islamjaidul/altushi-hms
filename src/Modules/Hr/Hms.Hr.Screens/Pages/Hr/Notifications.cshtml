@@ -1,0 +1,128 @@
+@page "/hr/notifications"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.NotificationsModel
+@{
+    ViewData["Title"] = "Alerts";
+    ViewData["Crumb"] = HrNav.Setup;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+@if (!Model.ChannelAvailable)
+{
+    @* Honest rather than convenient: this build ships no gateway, so "send" would be a promise
+       nothing keeps. The horizons still drive the registers and the command centre. *@
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">info</span>
+        <span>
+            This installation has no messaging gateway, so nothing is sent. The warning periods below
+            still decide how far ahead the registers and the dashboard look.
+        </span>
+    </div>
+}
+
+<div class="card">
+    <div class="card-head">
+        What the module warns about
+        <span class="spacer"></span>
+        <span class="card-hint">
+            @(Model.ChannelAvailable ? Model.ChannelName + " · " : "")@Model.DueNow.Count due right now
+        </span>
+    </div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="Save">
+            @Html.AntiForgeryToken()
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Alert</th>
+                        <th>@(Model.ChannelAvailable ? "Send" : "Track")</th>
+                        <th>Warning period</th>
+                        <th class="num">Due now</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var s in Model.Settings)
+                    {
+                        var count = Model.CountFor(s.Kind);
+                        <tr>
+                            <td>@HrNotificationKind.Label(s.Kind)</td>
+                            <td>
+                                <label class="check">
+                                    <input type="checkbox" name="Enabled[@s.Kind]" value="true"
+                                           checked="@s.Enabled" />
+                                    <span>on</span>
+                                </label>
+                            </td>
+                            <td>
+                                <input class="input num" name="DaysBefore[@s.Kind]" inputmode="numeric"
+                                       value="@s.DaysBefore" style="max-width:6rem" />
+                                <span class="text-muted"> @HrNotificationKind.Horizon(s.Kind)</span>
+                            </td>
+                            <td class="num @(count > 0 ? "text-danger" : "text-muted")">
+                                @(count == 0 ? "—" : count.ToString())
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div class="filter-row" style="margin-top:10px">
+                <button type="submit" class="btn btn-primary">
+                    <span class="icon icon-sm" aria-hidden="true">notifications</span> Save
+                </button>
+            </div>
+        </form>
+        <p class="card-hint">
+            A professional licence that has expired warns, loudly, and blocks nothing — the module
+            never refuses work because a date has passed.
+        </p>
+    </div>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        Due now
+        <span class="spacer"></span>
+        <span class="card-hint">under the settings above</span>
+    </div>
+    @if (Model.DueNow.Count == 0)
+    {
+        <div class="empty-state">Nothing falls due inside any of these windows.</div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr><th>Alert</th><th>Employee</th><th>What</th><th>Date</th><th>When</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var a in Model.DueNow.Take(200))
+                {
+                    <tr>
+                        <td class="text-muted">@HrNotificationKind.Label(a.Kind)</td>
+                        <td><a href="/hr/employees/@a.EmployeeId">@a.EmployeeName</a></td>
+                        <td>
+                            @a.Subject
+                            @if (!string.IsNullOrWhiteSpace(a.Detail))
+                            {
+                                <div class="text-muted" style="font-size:0.6875rem">@a.Detail</div>
+                            }
+                        </td>
+                        <td class="tabular">@Ui.DateLong(a.OnDate)</td>
+                        <td><span class="pill @a.Tone">@a.When</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

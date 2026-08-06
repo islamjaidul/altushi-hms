@@ -83,6 +83,14 @@ builder.Services.AddSingleton<EmployeeService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<LeaveService>();
 builder.Services.AddSingleton<PayrollService>();
+// spec 0056 — the employment lifecycle between the hire and the payslip.
+builder.Services.AddSingleton<EmployeeFileService>();
+builder.Services.AddSingleton<SeparationService>();
+builder.Services.AddSingleton<LetterService>();
+builder.Services.AddSingleton<HrAlertService>();
+// This SKU ships no notifications module at all (ADR-0025 — what the customer bought is what they
+// receive), so the alert registers work and nothing is sent. The switches screen says so.
+builder.Services.AddSingleton(HrNotificationChannel.None);
 
 // P27: this product is sold to employers that are not hospitals, so the identity is neutral.
 builder.Services.AddSingleton(OrgIdentity.From(

@@ -1,0 +1,321 @@
+@page "/hr/employees/{id:long}/file"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.EmployeeFileModel
+@{
+    var p = Model.Person!;
+    ViewData["Title"] = p.FullName + " — personal file";
+    ViewData["Crumb"] = HrNav.People;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="row-end" style="margin-bottom:14px">
+    <div>
+        <a class="btn" href="/hr/employees/@p.Id">
+            <span class="icon icon-sm" aria-hidden="true">arrow_back</span> @p.FullName
+        </a>
+    </div>
+    <span class="card-hint">@p.EmployeeCode</span>
+</div>
+
+@foreach (var complaint in Model.ShareComplaints)
+{
+    @* A nomination that does not total 100% is an instruction the employer cannot execute on the
+       day it matters. Said now, not discovered then. *@
+    <div class="alert warn">
+        <span class="icon icon-sm" aria-hidden="true">warning</span>
+        <span>@complaint</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Documents &amp; licences
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Documents.Count on file</span>
+            </div>
+            @if (Model.Documents.Count == 0)
+            {
+                <div class="empty-state">
+                    Nothing on file. A professional licence recorded here appears on the expiry
+                    register and warns before it lapses — it never blocks anything.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Kind</th><th>Document</th><th>Number</th>
+                            <th>Issued</th><th>Expiry</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var d in Model.Documents)
+                        {
+                            var expiry = Model.Expiry(d);
+                            <tr>
+                                <td>@DocumentKind.Label(d.Kind)</td>
+                                <td>
+                                    @d.Title
+                                    @if (!string.IsNullOrWhiteSpace(d.IssuingBody))
+                                    {
+                                        <div class="text-muted" style="font-size:0.6875rem">@d.IssuingBody</div>
+                                    }
+                                </td>
+                                <td class="tabular">@(d.Number ?? "—")</td>
+                                <td class="tabular">@(d.IssuedOn is { } i ? Ui.DateLong(i) : "—")</td>
+                                <td><span class="pill @expiry.Tone">@expiry.Words</span></td>
+                                <td class="num">
+                                    @if (Model.CanManage)
+                                    {
+                                        <form method="post" asp-page-handler="RetireDocument"
+                                              asp-route-id="@p.Id" asp-route-documentId="@d.Id">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm">Remove</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        @if (Model.CanManage)
+        {
+            <div class="card">
+                <div class="card-head">Add a document</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="AddDocument" asp-route-id="@p.Id">
+                        @Html.AntiForgeryToken()
+                        <div class="field-grid cols-3">
+                            <label class="field">
+                                <span class="field-label">Kind</span>
+                                <select class="input" name="DocumentKindValue">
+                                    @foreach (var k in DocumentKind.All)
+                                    {
+                                        <option value="@k">@DocumentKind.Label(k)</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Name</span>
+                                <input class="input" name="DocumentTitle" maxlength="120"
+                                       placeholder="e.g. BMDC registration" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Number</span>
+                                <input class="input" name="DocumentNumber" maxlength="60" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Issuing body</span>
+                                <input class="input" name="IssuingBody" maxlength="120"
+                                       placeholder="required for a licence" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Issued on</span>
+                                <input class="input" name="IssuedOn" hms-date placeholder="e.g. 01/07/2024" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Expires on</span>
+                                <input class="input" name="ExpiresOn" hms-date placeholder="e.g. 30/06/2029" />
+                            </label>
+                            <label class="field span-2">
+                                <span class="field-label">Note</span>
+                                <input class="input" name="DocumentNote" maxlength="200" />
+                            </label>
+                        </div>
+                        <div class="filter-row" style="margin-top:8px">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon icon-sm" aria-hidden="true">upload_file</span> Add document
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.SupersededDocuments.Count > 0)
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    Previous documents
+                    <span class="spacer"></span>
+                    <span class="card-hint">kept, never deleted</span>
+                </div>
+                <table class="data">
+                    <thead><tr><th>Kind</th><th>Document</th><th>Number</th><th>Expired</th></tr></thead>
+                    <tbody>
+                    @foreach (var d in Model.SupersededDocuments)
+                    {
+                        <tr class="text-muted">
+                            <td>@DocumentKind.Label(d.Kind)</td>
+                            <td>@d.Title</td>
+                            <td class="tabular">@(d.Number ?? "—")</td>
+                            <td class="tabular">@(d.ExpiresOn is { } e ? Ui.DateLong(e) : "—")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Family &amp; nominees
+                <span class="spacer"></span>
+                <span class="card-hint">@Model.Dependants.Count on file</span>
+            </div>
+            @if (Model.Dependants.Count == 0)
+            {
+                <div class="empty-state">
+                    Nobody recorded. Provident fund and gratuity are paid to a nominee, and until
+                    one is named there is nobody to pay.
+                </div>
+            }
+            else
+            {
+                <table class="data">
+                    <thead><tr><th>Name</th><th>Relation</th><th>Nominee</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var d in Model.Dependants)
+                    {
+                        <tr>
+                            <td>
+                                @d.Name
+                                @if (d.DateOfBirth is { } dob)
+                                {
+                                    <div class="text-muted" style="font-size:0.6875rem">@Ui.DateLong(dob)</div>
+                                }
+                            </td>
+                            <td class="text-muted">@d.Relation.Replace("_", " ")</td>
+                            <td>
+                                @if (d.IsNominee)
+                                {
+                                    <span class="pill good">@(d.ShareBp / 100m)% @d.Purpose</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td class="num">
+                                @if (Model.CanManage)
+                                {
+                                    <form method="post" asp-page-handler="RetireDependant"
+                                          asp-route-id="@p.Id" asp-route-dependantId="@d.Id">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm">Remove</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        </div>
+
+        @if (Model.CanManage)
+        {
+            <div class="card">
+                <div class="card-head">Add a family member</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="AddDependant" asp-route-id="@p.Id">
+                        @Html.AntiForgeryToken()
+                        <div class="field-grid cols-2">
+                            <label class="field">
+                                <span class="field-label">Name</span>
+                                <input class="input" name="DependantName" maxlength="120" />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Relation</span>
+                                <select class="input" name="Relation">
+                                    @foreach (var r in DependantRelation.All)
+                                    {
+                                        <option value="@r">@r.Replace("_", " ")</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Date of birth</span>
+                                <input class="input" name="DependantDob" hms-date />
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Phone</span>
+                                <input class="input" name="DependantPhone" maxlength="20" />
+                            </label>
+                            <label class="field span-2">
+                                <span class="field-label">National ID</span>
+                                <input class="input" name="DependantNid" maxlength="30" />
+                            </label>
+                            <label class="check field span-2">
+                                <input type="checkbox" name="IsNominee" value="true" />
+                                <span>Nominee for a benefit</span>
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Nominated for</span>
+                                <select class="input" name="Purpose">
+                                    <option value="both">Provident fund and gratuity</option>
+                                    <option value="pf">Provident fund</option>
+                                    <option value="gratuity">Gratuity</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span class="field-label">Share (%)</span>
+                                <input class="input num" name="SharePercent" inputmode="numeric" value="0" />
+                            </label>
+                        </div>
+                        <div class="filter-row" style="margin-top:8px">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon icon-sm" aria-hidden="true">person_add</span> Add
+                            </button>
+                        </div>
+                        <p class="card-hint">
+                            Shares are whole percentages and must total 100% for each benefit.
+                            A change replaces the previous nomination and keeps it on the record.
+                        </p>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.SupersededDependants.Count > 0)
+        {
+            <div class="card card-clip">
+                <div class="card-head">
+                    Previous entries
+                    <span class="spacer"></span>
+                    <span class="card-hint">kept, never deleted</span>
+                </div>
+                <table class="data">
+                    <thead><tr><th>Name</th><th>Relation</th><th>Was</th></tr></thead>
+                    <tbody>
+                    @foreach (var d in Model.SupersededDependants)
+                    {
+                        <tr class="text-muted">
+                            <td>@d.Name</td>
+                            <td>@d.Relation.Replace("_", " ")</td>
+                            <td>@(d.IsNominee ? $"{d.ShareBp / 100m}% {d.Purpose}" : "family")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

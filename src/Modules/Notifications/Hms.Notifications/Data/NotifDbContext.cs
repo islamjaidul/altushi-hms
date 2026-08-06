@@ -27,6 +27,14 @@ public static class SmsEvent
     /// <summary>§5 M22 [M] "end-of-day insights summary … optionally SMS'd to MD", fired by the
     /// background worker (spec 0039 WP6). Same template gate as DueReminder.</summary>
     public const string EodDigest = "eod_digest";
+
+    /// <summary>
+    /// Spec 0056: the M16 lifecycle alerts — probation due, contract ending, document or
+    /// professional licence expiring, birthday, work anniversary. <b>One</b> event rather than six,
+    /// because the employer already switches each kind on and off in HR's own settings; what they
+    /// edit here is the wording, and one wording covers all six.
+    /// </summary>
+    public const string HrAlert = "hr_alert";
 }
 
 public class SmsMessage

@@ -67,7 +67,9 @@ public static class DevSeed
              // §12: the MD approves the payroll lock and sees staff numbers, but does not run payroll.
              // US16.14 makes the board's question a report; spec 0055 adds the log a dispute needs.
              "hr.read", "hr.salary.read", "hr.payroll.approve",
-             "hr.reports.view", "hr.reports.salary", "hr.audit.view", "hr.self"],
+             "hr.reports.view", "hr.reports.salary", "hr.audit.view", "hr.self",
+             // Spec 0056: §12 makes the MD the second approver on a final settlement.
+             "hr.settlement.manage"],
         // §12 Pharmacist row: C on pharmacy, R on patient reg; counter open/close is the money
         // custody the pharmacy POS rides (spec 0016 / ADR-0021 #5).
         ["Pharmacist"] =
@@ -84,7 +86,9 @@ public static class DevSeed
              "hr.roster.manage", "hr.leave.apply", "hr.leave.approve", "hr.payroll.run",
              "hr.policy.manage",
              // Spec 0055: the report centre, and salary reports following the salary grant.
-             "hr.reports.view", "hr.reports.salary", "hr.self"],
+             "hr.reports.view", "hr.reports.salary", "hr.self",
+             // Spec 0056: §11 gives the HR officer the separation workflow and the letters.
+             "hr.settlement.manage", "hr.document.issue"],
         ["Department Head"] =
             ["hr.read", "hr.attendance.review", "hr.roster.manage", "hr.leave.apply",
              "hr.leave.recommend",

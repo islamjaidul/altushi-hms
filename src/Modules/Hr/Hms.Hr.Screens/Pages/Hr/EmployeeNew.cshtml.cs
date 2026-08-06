@@ -25,10 +25,23 @@ public class EmployeeNewModel(IHrTx tx, EmployeeService employees) : HmsPageMode
     [BindProperty] public long DesignationId { get; set; }
     [BindProperty] public long GradeId { get; set; }
 
+    // spec 0056 — the engagement is decided at hire, not inferred later (G12, G13).
+    [BindProperty] public string EmploymentTypeValue { get; set; } = EmploymentType.Permanent;
+    [BindProperty] public string? ContractEndsOn { get; set; }
+    [BindProperty] public string? ProbationDueOn { get; set; }
+
     public List<SelectListItem> Units { get; private set; } = [];
     public List<SelectListItem> Designations { get; private set; } = [];
     public List<SelectListItem> Grades { get; private set; } = [];
     public bool MastersMissing { get; private set; }
+
+    /// <summary>
+    /// The probation date the form offers, from the employer's configured probation length. Null
+    /// when they have configured none — the operator then types a date or leaves it blank, and the
+    /// product never invents a probation period (D2).
+    /// </summary>
+    public DateOnly? SuggestedProbationDue { get; private set; }
+    public int ProbationMonths { get; private set; }
 
     public async Task OnGetAsync() => await LoadAsync();
 
@@ -52,6 +65,8 @@ public class EmployeeNewModel(IHrTx tx, EmployeeService employees) : HmsPageMode
         }
 
         FlexibleDate.TryParse(DateOfBirth ?? "", out var dob);
+        FlexibleDate.TryParse(ContractEndsOn ?? "", out var contractEnds);
+        FlexibleDate.TryParse(ProbationDueOn ?? "", out var probationDue);
 
         try
         {
@@ -65,6 +80,9 @@ public class EmployeeNewModel(IHrTx tx, EmployeeService employees) : HmsPageMode
                     NationalId = string.IsNullOrWhiteSpace(NationalId) ? null : NationalId.Trim(),
                     JoinedOn = joined,
                     DateOfBirth = dob == default ? null : dob,
+                    EmploymentType = EmploymentTypeValue,
+                    ContractEndsOn = contractEnds == default ? null : contractEnds,
+                    ProbationDueOn = probationDue == default ? null : probationDue,
                 },
                 OrgUnitId, DesignationId, GradeId, ActorId, ActorName)).Id);
 
@@ -94,5 +112,10 @@ public class EmployeeNewModel(IHrTx tx, EmployeeService employees) : HmsPageMode
         // Hiring into an org structure that does not exist yet produces an unassignable employee,
         // so say so plainly rather than showing three empty dropdowns.
         MastersMissing = Units.Count == 0 || Designations.Count == 0 || Grades.Count == 0;
+
+        var today = Dhaka.Today(TimeProvider.System);
+        var policy = await SeparationService.EmploymentPolicyAsync(s.Hr, BranchId, today);
+        ProbationMonths = policy?.ProbationMonths ?? 0;
+        if (ProbationMonths > 0) SuggestedProbationDue = today.AddMonths(ProbationMonths);
     });
 }

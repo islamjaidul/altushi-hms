@@ -71,6 +71,40 @@
         </div>
     </div>
 
+    @* spec 0056 (G12, G13): what kind of engagement this is, decided now. Leaving the probation
+       date blank means no review is scheduled — the module says so on the record rather than
+       inventing a probation length nobody configured. *@
+    <div class="card">
+        <div class="card-head">Kind of employment</div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <label class="field">
+                <span class="field-label">Employment type</span>
+                <select class="input" name="EmploymentTypeValue">
+                    @foreach (var t in Hms.Hr.Data.EmploymentType.All)
+                    {
+                        <option value="@t" selected="@(t == Hms.Hr.Data.EmploymentType.Permanent)">
+                            @Hms.Hr.Data.EmploymentType.Label(t)
+                        </option>
+                    }
+                </select>
+            </label>
+            <label class="field">
+                <span class="field-label">Contract ends (contract engagements only)</span>
+                <input class="input" name="ContractEndsOn" hms-date value="@Model.ContractEndsOn" />
+            </label>
+            <label class="field">
+                <span class="field-label">Probation due</span>
+                <input class="input" name="ProbationDueOn" hms-date
+                       value="@(Model.ProbationDueOn ?? Model.SuggestedProbationDue?.ToString("dd/MM/yyyy"))" />
+                <span class="card-hint">
+                    @(Model.ProbationMonths > 0
+                        ? $"Suggested from the employer's {Model.ProbationMonths}-month probation policy."
+                        : "No probation period is configured. Type a date, or leave it blank for no scheduled review.")
+                </span>
+            </label>
+        </div>
+    </div>
+
     <div class="btn-row">
         <button type="submit" class="btn btn-primary" disabled="@Model.MastersMissing">
             <span class="icon icon-sm" aria-hidden="true">person_add</span> Add employee

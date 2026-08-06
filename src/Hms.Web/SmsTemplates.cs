@@ -27,6 +27,10 @@ public static class SmsTemplates
             "{hospital}: {patient}, serial {serial} with {doctor} is confirmed for today.",
         [SmsEvent.ReportReady] =
             "{hospital}: Dear {patient}, your report for order {order} is ready for collection.",
+        // Spec 0056: one wording for all six M16 lifecycle alerts. The employer chooses which kinds
+        // fire on Setup → Alerts; this is what they say when they do.
+        [SmsEvent.HrAlert] =
+            "{hospital}: Dear {employee}, {subject} on {date} ({when}). {detail} Please contact HR.",
     };
 
     public static readonly IReadOnlyDictionary<string, string[]> Variables = new Dictionary<string, string[]>
@@ -34,6 +38,7 @@ public static class SmsTemplates
         [SmsEvent.Registration] = ["hospital", "patient", "uhid"],
         [SmsEvent.Appointment] = ["hospital", "patient", "serial", "doctor"],
         [SmsEvent.ReportReady] = ["hospital", "patient", "order"],
+        [SmsEvent.HrAlert] = ["hospital", "employee", "subject", "detail", "date", "when"],
     };
 
     public static async Task<IReadOnlyList<SmsTemplate>> LoadAllAsync(

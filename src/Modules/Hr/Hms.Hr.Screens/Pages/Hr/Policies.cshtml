@@ -271,6 +271,59 @@
     </div>
 </div>
 
+@* spec 0056: the three numbers probation and settlement would otherwise have to invent. Zero
+   means "not configured", and every screen says so rather than guessing (ADR-0027, D2). *@
+<div class="card">
+    <div class="card-head">
+        Employment rules
+        @if (!Model.HasEmploymentPolicy)
+        {
+            <span class="pill warn">not configured</span>
+        }
+    </div>
+    <div class="card-body">
+        <form method="post" asp-page-handler="SaveEmploymentPolicy" class="filter-row">
+            @Html.AntiForgeryToken()
+            <label class="field" style="width:200px">
+                <span class="field-label">Probation (months)</span>
+                <input class="input num" name="ProbationMonths" inputmode="numeric"
+                       value="@Model.ProbationMonths" placeholder="0 = none" />
+            </label>
+            <label class="field" style="width:200px">
+                <span class="field-label">Notice period (days)</span>
+                <input class="input num" name="NoticePeriodDays" inputmode="numeric"
+                       value="@Model.NoticePeriodDays" placeholder="0 = none" />
+            </label>
+            <label class="check field" style="width:250px">
+                <input type="checkbox" name="AdjustNoticePay" value="true"
+                       checked="@Model.AdjustNoticePay" />
+                <span>Adjust unserved notice on settlement</span>
+            </label>
+            <label class="check field" style="width:220px">
+                <input type="checkbox" name="EncashLeaveOnSettlement" value="true"
+                       checked="@Model.EncashLeaveOnSettlement" />
+                <span>Encash leave on settlement</span>
+            </label>
+            <label class="field" style="width:220px">
+                <span class="field-label">Encashable leave type</span>
+                <select class="input" name="EncashableLeaveTypeId">
+                    <option value="">—</option>
+                    @foreach (var t in Model.LeaveTypes)
+                    {
+                        <option value="@t.Id" selected="@(t.Id == Model.EncashableLeaveTypeId)">@t.Name</option>
+                    }
+                </select>
+            </label>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+        <p class="card-hint">
+            The probation length pre-fills the due date on a new hire; the notice period is
+            snapshotted onto a separation when notice is served, so changing it later never rewrites
+            a settlement already computed.
+        </p>
+    </div>
+</div>
+
 <div class="card card-clip">
     <div class="card-head"><h2>Organisation structure</h2></div>
     <div class="table-wrap">

@@ -116,6 +116,13 @@ ROUTES = {
     "/hr/employees/new": "hr.employee.manage",
     "/hr/employees/1": "hr.read",
     "/hr/employees/1/timeline": "hr.read",
+    # Spec 0056. The personal file reads on hr.read and writes on hr.employee.manage, checked in
+    # the handlers; separation is a trust of its own (§11's hr.settlement.manage).
+    "/hr/employees/1/file": "hr.read",
+    "/hr/employees/1/separation": "hr.settlement.manage",
+    "/hr/letters": "hr.document.issue",
+    "/hr/letters/1": "hr.document.issue",
+    "/hr/notifications": "hr.policy.manage",
     "/hr/leave": "hr.read",
     "/hr/masters": "hr.policy.manage",
     # Spec 0055: "My space" is the employee dashboard, present for anyone with a linked

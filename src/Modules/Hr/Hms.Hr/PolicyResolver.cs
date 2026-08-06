@@ -293,6 +293,52 @@ public sealed class PolicyResolver(AuditWriter audit, TimeProvider clock)
     }
 
     /// <summary>
+    /// The employer's employment rules (spec 0056): probation length, notice period and what the
+    /// final settlement does about leave and unserved notice.
+    /// <para>
+    /// Every field means "not configured" at zero or false, and every screen says so rather than
+    /// filling in a Bangladeshi number this project has not verified (ADR-0027, D2, hard rule 3).
+    /// </para>
+    /// </summary>
+    public async Task<EmploymentPolicy> SetEmploymentPolicyAsync(
+        HrDbContext hr, KernelDbContext kernel, long branchId, DateOnly effectiveFrom,
+        int probationMonths, int noticePeriodDays, bool adjustNoticePay,
+        bool encashLeaveOnSettlement, long? encashableLeaveTypeId,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        if (probationMonths is < 0 or > 60)
+            throw new HrException("A probation period is 0 to 60 months. 0 means none is configured.");
+        if (noticePeriodDays is < 0 or > 365)
+            throw new HrException("A notice period is 0 to 365 days. 0 means none is configured.");
+        if (encashLeaveOnSettlement && encashableLeaveTypeId is null)
+            throw new HrException("Choose which leave type is encashed at settlement.");
+
+        var row = await OpenOrNewAsync(hr.EmploymentPolicies, r => r.BranchId == branchId,
+            r => r.EffectiveFrom, r => r.EffectiveTo, (r, d) => r.EffectiveTo = d, effectiveFrom,
+            () => new EmploymentPolicy
+            {
+                BranchId = branchId, EffectiveFrom = effectiveFrom,
+                CreatedAt = clock.GetUtcNow(), CreatedBy = actorId,
+            }, hr.EmploymentPolicies.Add, ct);
+
+        row.ProbationMonths = probationMonths;
+        row.NoticePeriodDays = noticePeriodDays;
+        row.AdjustNoticePay = adjustNoticePay;
+        row.EncashLeaveOnSettlement = encashLeaveOnSettlement;
+        row.EncashableLeaveTypeId = encashLeaveOnSettlement ? encashableLeaveTypeId : null;
+        await hr.SaveChangesAsync(ct);
+
+        audit.Append(kernel, branchId, actorId, actorName, "hr.policy.employment.set",
+            "hr.employment_policy", row.Id,
+            after: new
+            {
+                effectiveFrom, probationMonths, noticePeriodDays, adjustNoticePay,
+                encashLeaveOnSettlement, encashableLeaveTypeId,
+            }, tier: 1);
+        return row;
+    }
+
+    /// <summary>
     /// Replaces the whole progressive band set from a date. Bands are a set, not single rows —
     /// the resolver loads every band sharing the newest effective date, so a partial write would
     /// silently orphan the rest of the table. Ceilings must ascend; a final band with

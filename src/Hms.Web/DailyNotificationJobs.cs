@@ -172,3 +172,67 @@ public sealed class EodDigestHandler(
         }, ct), ct);
     }
 }
+
+/// <summary>
+/// Spec 0056 (module PRD §7.14, G57): the M16 lifecycle alerts — probation falling due, contracts
+/// ending, documents and professional licences expiring, birthdays and work anniversaries.
+/// <para>
+/// The computation lives in <see cref="Hms.Hr.HrAlertService"/>, in the module, so both SKUs raise
+/// the same alerts on their registers and dashboards. Only <b>delivery</b> lives here: the standalone
+/// HRM SKU ships no notifications module at all (ADR-0025), so this handler exists in the ERP host
+/// alone and its switches screen says as much rather than offering a switch that cannot fire.
+/// </para>
+/// <para>
+/// One message per employee per kind per business day, deduplicated against the tray so a restart or
+/// a re-run cannot text the same nurse twice about the same licence.
+/// </para>
+/// </summary>
+public sealed class HrAlertsHandler(
+    HmsTx tx, SmsQueue sms, OrgIdentity org, BusinessDayCalendar calendar) : IJobHandler
+{
+    public string Type => DailyJobScheduler.HrAlertsJobType;
+
+    public async Task ExecuteAsync(IServiceProvider services, string payloadJson, CancellationToken ct)
+    {
+        var day = DateOnly.Parse(JsonSerializer.Deserialize<DailyJobPayload>(payloadJson)!.Day);
+        var dayStartUtc = Ui.DhakaMidnightUtc(day).Add(calendar.Boundary.ToTimeSpan());
+
+        await BranchLoop.ForEachBranchAsync(tx, branch => tx.RunAsync(async s =>
+        {
+            var settings = await Hms.Hr.HrAlertService.SettingsAsync(s.Hr, branch.Id, ct);
+
+            // Nothing switched on is the normal state of a fresh install; do no work at all.
+            if (!settings.Values.Any(x => x.Enabled)) return;
+
+            var alerts = await Hms.Hr.HrAlertService.DueAsync(s.Hr, branch.Id, day, settings, ct);
+
+            var sentToday = (await s.Notif.Sms.AsNoTracking()
+                    .Where(m => m.Event == SmsEvent.HrAlert && m.QueuedAt >= dayStartUtc
+                                && m.Recipient != null)
+                    .Select(m => m.Recipient!)
+                    .ToListAsync(ct))
+                .ToHashSet();
+
+            foreach (var alert in alerts)
+            {
+                if (!settings.TryGetValue(alert.Kind, out var setting) || !setting.Enabled) continue;
+                if (string.IsNullOrWhiteSpace(alert.Phone)) continue;
+
+                // The tray only records a recipient, so one message per phone per day: an employee
+                // whose licence and passport both expire this week hears about the nearer one.
+                if (!sentToday.Add(alert.Phone)) continue;
+
+                await SmsSender.SendAsync(s, sms, branch.Id, SmsEvent.HrAlert, alert.Phone,
+                    new Dictionary<string, string?>
+                    {
+                        ["hospital"] = org.Name,
+                        ["employee"] = alert.EmployeeName,
+                        ["subject"] = alert.Subject.ToLowerInvariant(),
+                        ["detail"] = alert.Detail,
+                        ["date"] = alert.OnDate.ToString("dd MMM yyyy"),
+                        ["when"] = alert.When,
+                    }, ct);
+            }
+        }, ct), ct);
+    }
+}

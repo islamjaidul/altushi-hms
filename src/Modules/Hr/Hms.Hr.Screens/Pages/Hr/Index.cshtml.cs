@@ -192,14 +192,28 @@ public class IndexModel(IHrTx tx, IPeriodCalendarSource calendars, TimeProvider 
             OpenPayrollNextAction = NextAction(open.State);
         }
 
-        BuildActions(exceptions, pendingLeave, open);
+        // Spec 0056: the lifecycle rows §14.1 asks for — probations and contracts due, documents
+        // and licences expiring, clearances outstanding. Derived from the same service the
+        // registers and the alert job use, so the three cannot disagree about "soon".
+        var settings = await HrAlertService.SettingsAsync(s.Hr, BranchId, ct);
+        var alerts = await HrAlertService.DueAsync(s.Hr, BranchId, Today, settings, ct);
+
+        var outstandingClearance = await s.Hr.Separations.AsNoTracking()
+            .Where(x => x.BranchId == BranchId
+                        && x.State != SeparationState.Cancelled
+                        && x.State != SeparationState.DocumentsIssued)
+            .CountAsync(ct);
+
+        BuildActions(exceptions, pendingLeave, open, alerts, outstandingClearance);
     }
 
     /// <summary>
     /// §14.1 row 1 — the panel that decides whether the module is useful at 9am. Each item is a
     /// count, a severity and a link; when it is empty the screen says so rather than showing nothing.
     /// </summary>
-    private void BuildActions(int exceptions, List<DateTimeOffset> pendingLeave, PayrollRun? open)
+    private void BuildActions(
+        int exceptions, List<DateTimeOffset> pendingLeave, PayrollRun? open,
+        IReadOnlyList<HrAlert> alerts, int outstandingClearance)
     {
         var actions = new List<ActionRow>();
 
@@ -228,7 +242,43 @@ public class IndexModel(IHrTx tx, IPeriodCalendarSource calendars, TimeProvider 
                 "/hr/payroll", "warn"));
         }
 
+        // ---- spec 0056 --------------------------------------------------------------------------
+        AddAlertRow(actions, alerts, HrNotificationKind.ProbationDue, "probation-due",
+            "Probation due for a decision", "confirm or extend before the date passes");
+        AddAlertRow(actions, alerts, HrNotificationKind.ContractExpiring, "contract-expiry",
+            "Contracts ending", "renew, convert or let them run out — but decide");
+        AddAlertRow(actions, alerts, HrNotificationKind.LicenceExpiring, "licence-register",
+            "Professional licences expiring", "warns only; it never blocks anyone from working");
+        AddAlertRow(actions, alerts, HrNotificationKind.DocumentExpiring, "document-expiry",
+            "Documents expiring", "renew on the employee's personal file");
+
+        if (outstandingClearance > 0)
+        {
+            actions.Add(new ActionRow(
+                "Separations in progress", outstandingClearance,
+                "clearance, settlement or documents outstanding",
+                Report("separation-clearance"), "warn"));
+        }
+
         Actions = actions;
+    }
+
+    /// <summary>
+    /// One lifecycle row, or none. Overdue reads red — a licence that expired last month is a
+    /// different problem from one expiring next month, and the panel must not flatten the two.
+    /// </summary>
+    private void AddAlertRow(
+        List<ActionRow> actions, IReadOnlyList<HrAlert> alerts, string kind, string reportKey,
+        string label, string detail)
+    {
+        var mine = alerts.Where(a => a.Kind == kind).ToList();
+        if (mine.Count == 0) return;
+
+        var overdue = mine.Count(a => a.DaysAway < 0);
+        actions.Add(new ActionRow(
+            label, mine.Count,
+            overdue > 0 ? $"{overdue} already overdue · {detail}" : detail,
+            Report(reportKey), overdue > 0 ? "bad" : "warn"));
     }
 
     private static string NextAction(string state) => state switch
