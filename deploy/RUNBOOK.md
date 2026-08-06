@@ -15,8 +15,35 @@ Install the Caddy internal CA cert (script in S6 polish); set the browser print 
 suffix Enter. Verification page: /health then a test label (Spike B sign-off, spec 0005 notes).
 
 ## 4. Update & rollback
-`docker compose pull && docker compose up -d` off-peak (sub-minute swap, §8 N6).
-Rollback = pin previous image tag; schema is additive-only (03 §12) so old app runs on new schema.
+
+**Normal path is CI (spec 0053).** Push to `main` → `ci` runs every gate → the image is built on
+GitHub hardware and pushed to `ghcr.io/islamjaidul/altushi-hms/app:<sha>` → the `deploy` job waits
+in the **production** environment until a reviewer approves → `deploy/deploy-remote.sh` runs on the
+VM. Approve at the run's page; nothing reaches the VM before that click. Measured: 21 s from
+approval to healthy, ~40 s for the whole job.
+
+deploy-remote.sh, in order: records the running digest → `pg_dump` + sha256 into the backups volume
+(**aborts if the dump fails** — no restore point, no deploy, §8 N3) → `docker pull` → `up -d
+--no-deps app` (db and backup untouched) → polls `/health` for 120 s → **on failure re-runs `up`
+with the previous digest and reports the deploy failed while the site stays up** (§8 N6).
+
+The VM never compiles: the image arrives pre-built. Building on the box put a .NET SDK in
+contention with the running app for 3 GB shared across four products (§16).
+
+**Manual deploy** (CI down, or an emergency out-of-band build):
+```
+HMS_APP_IMAGE=ghcr.io/islamjaidul/altushi-hms/app:<sha> \
+  docker compose -f compose.yml -f compose.vm.yml up -d --no-deps app
+```
+`compose.yml` defaults `HMS_APP_IMAGE` to `hms-app:dev`, so the laptop/demo path is unchanged.
+
+**Rollback** is automatic on a failed health check. To roll back a *healthy* deploy that turned out
+bad, re-run the command above with the previous digest (the deploy log prints it as
+`Currently running:` before the swap). Schema is additive-only (03 §12), so the old app runs
+against the new schema — image-only rollback is safe and the database is never rolled back.
+
+**Gates.** `DEPLOY_ENABLED` (repo variable) must be `true`; unset it to stop all deploys without
+touching the workflow. The `production` environment's required reviewer is the second gate.
 
 ## 5. Backup & restore
 Nightly dump + sha256 (backup container, 7-day retention). Restore: `deploy/restore.sh latest`

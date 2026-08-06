@@ -1,6 +1,6 @@
 # 0053 — A CI/CD pipeline that is green when the product is good, and deploys when it is
 
-- **Status:** Draft
+- **Status:** Done
 - **Date:** 2026-08-06
 - **PRD ref:** §8 N6 (availability — maintenance must not block the counter), §8 N3 (data safety), §16 (single-VM constraint)
 - **Scope:** defect repair + engineering infrastructure. No §5 module requirement changes; this is the delivery pipeline that ships them.

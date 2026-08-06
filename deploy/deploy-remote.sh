@@ -45,12 +45,21 @@ log "Backing up the database before the swap"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 if "${COMPOSE[@]}" exec -T db pg_dump -U postgres -d hms --format=custom \
      > "/tmp/hms-predeploy-${STAMP}.dump" 2>/tmp/hms-predeploy-err; then
-  "${COMPOSE[@]}" cp "/tmp/hms-predeploy-${STAMP}.dump" \
-      "backup:/var/hms/backups/predeploy-${STAMP}.dump" 2>/dev/null \
-    || cp "/tmp/hms-predeploy-${STAMP}.dump" "${DEPLOY_DIR}/predeploy-${STAMP}.dump"
-  sha256sum "/tmp/hms-predeploy-${STAMP}.dump" | tee "/tmp/hms-predeploy-${STAMP}.sha256"
-  rm -f "/tmp/hms-predeploy-${STAMP}.dump"
-  log "Pre-deploy backup taken: predeploy-${STAMP}.dump"
+  # The checksum travels WITH the dump. Writing it to /tmp and then deleting the dump left an
+  # orphaned .sha256 beside nothing, and an archived dump no one could verify — every other file
+  # in that volume has its sidecar (RUNBOOK §5), and a restore point you cannot check is not one.
+  ( cd /tmp && sha256sum "hms-predeploy-${STAMP}.dump" > "hms-predeploy-${STAMP}.sha256" )
+  if "${COMPOSE[@]}" cp "/tmp/hms-predeploy-${STAMP}.dump" \
+        "backup:/var/hms/backups/predeploy-${STAMP}.dump" 2>/dev/null; then
+    "${COMPOSE[@]}" cp "/tmp/hms-predeploy-${STAMP}.sha256" \
+        "backup:/var/hms/backups/predeploy-${STAMP}.sha256" 2>/dev/null || true
+  else
+    cp "/tmp/hms-predeploy-${STAMP}.dump"   "${DEPLOY_DIR}/predeploy-${STAMP}.dump"
+    cp "/tmp/hms-predeploy-${STAMP}.sha256" "${DEPLOY_DIR}/predeploy-${STAMP}.sha256"
+  fi
+  cat "/tmp/hms-predeploy-${STAMP}.sha256"
+  rm -f "/tmp/hms-predeploy-${STAMP}.dump" "/tmp/hms-predeploy-${STAMP}.sha256"
+  log "Pre-deploy backup taken: predeploy-${STAMP}.dump (+ .sha256)"
 else
   echo "!! pg_dump failed — refusing to deploy without a restore point (§8 N3)" >&2
   cat /tmp/hms-predeploy-err >&2 || true
