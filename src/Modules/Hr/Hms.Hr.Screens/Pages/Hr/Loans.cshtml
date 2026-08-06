@@ -1,0 +1,176 @@
+@page "/hr/loans"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.LoansModel
+@{
+    ViewData["Title"] = "Loans & advances";
+    ViewData["Crumb"] = HrNav.Payroll;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">
+                Loans &amp; advances
+                <span class="spacer"></span>
+                <span class="card-hint">
+                    @Ui.Money(Model.TotalOutstanding) outstanding@(Model.DeferredThisYear > 0
+                        ? $" · {Model.DeferredThisYear} installment(s) deferred this year" : "")
+                </span>
+            </div>
+            @if (Model.Rows.Count == 0)
+            {
+                <div class="empty-state">
+                    Nothing lent. A loan recovers itself through payroll one installment at a time,
+                    and defers rather than pushing anyone's net pay below the employer's floor.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Number</th><th>Employee</th><th>Kind</th>
+                            <th class="num">Principal</th><th class="num">Recovered</th>
+                            <th class="num">Outstanding</th><th>State</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in Model.Rows)
+                        {
+                            <tr>
+                                <td class="tabular">@r.LoanNo</td>
+                                <td>
+                                    <a href="/hr/employees/@r.EmployeeId">@r.Name</a>
+                                    <div class="text-muted" style="font-size:0.6875rem">
+                                        @r.Code@(r.Purpose is { Length: > 0 } ? " · " + r.Purpose : "")
+                                    </div>
+                                </td>
+                                <td class="text-muted">@r.Kind</td>
+                                <td class="num">@Ui.Money(r.PrincipalTaka)</td>
+                                <td class="num">
+                                    @Ui.Money(r.RecoveredTaka)
+                                    <div class="text-muted" style="font-size:0.6875rem">
+                                        @r.PercentRecovered% · @Ui.Money(r.InstallmentTaka) × @r.InstallmentCount
+                                    </div>
+                                </td>
+                                <td class="num"><b>@Ui.Money(r.OutstandingTaka)</b></td>
+                                <td>
+                                    <span class="pill @(r.State == LoanState.Disbursed ? "warn"
+                                        : r.State is LoanState.Closed or LoanState.Foreclosed ? "good"
+                                        : r.State == LoanState.WrittenOff ? "bad" : "")">
+                                        @LoanState.Label(r.State)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (Model.CanManage)
+                                    {
+                                        if (r.State == LoanState.Requested && r.ApprovalRequestId is null)
+                                        {
+                                            <form method="post" asp-page-handler="SendForApproval"
+                                                  asp-route-id="@r.Id" class="inline-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-tint">Send for approval</button>
+                                            </form>
+                                        }
+                                        else if (r.State == LoanState.Requested)
+                                        {
+                                            <form method="post" asp-page-handler="ApplyApproval"
+                                                  asp-route-id="@r.Id" class="inline-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-tint">Apply decision</button>
+                                            </form>
+                                        }
+                                        else if (r.State == LoanState.Approved)
+                                        {
+                                            <form method="post" asp-page-handler="Disburse"
+                                                  asp-route-id="@r.Id" class="inline-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-tint">Disburse</button>
+                                            </form>
+                                        }
+                                        else if (r.State == LoanState.Disbursed)
+                                        {
+                                            <form method="post" asp-page-handler="Foreclose"
+                                                  asp-route-id="@r.Id" class="inline-form">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn-tint">Settle in full</button>
+                                            </form>
+                                            <form method="post" asp-page-handler="WriteOff"
+                                                  asp-route-id="@r.Id" class="inline-form">
+                                                @Html.AntiForgeryToken()
+                                                <input class="input" name="Reason" maxlength="200"
+                                                       placeholder="why write off?" style="max-width:11rem" />
+                                                <button type="submit" class="btn-tint">Write off</button>
+                                            </form>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="stack">
+        @if (Model.CanManage)
+        {
+            <div class="card">
+                <div class="card-head">New request</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Request">
+                        @Html.AntiForgeryToken()
+                        <label class="field">
+                            <span class="field-label">Employee</span>
+                            <select class="input" name="EmployeeId" asp-items="Model.People"></select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Kind</span>
+                            <select class="input" name="Kind">
+                                <option value="loan">Loan</option>
+                                <option value="advance">Advance</option>
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Amount (৳)</span>
+                            <input class="input num" name="PrincipalTaka" inputmode="numeric" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Installments</span>
+                            <input class="input num" name="InstallmentCount" inputmode="numeric" value="12" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Recovery starts</span>
+                            <input class="input" name="StartPeriod" hms-date placeholder="e.g. 01/10/2026" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Purpose</span>
+                            <input class="input" name="Purpose" maxlength="200" />
+                        </label>
+                        <div class="filter-row" style="margin-top:8px">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon icon-sm" aria-hidden="true">savings</span> Request
+                            </button>
+                        </div>
+                    </form>
+                    <p class="card-hint">
+                        Recovery begins with the first run on or after the start period. An
+                        installment that would take net pay below the employer's floor is deferred,
+                        not skipped — the outstanding statement says so.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>

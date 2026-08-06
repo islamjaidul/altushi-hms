@@ -35,6 +35,8 @@ public static class HrSeed
             HrPerm.Claim.ReportsView, HrPerm.Claim.ReportsSalary, HrPerm.Claim.Self,
             // Spec 0056: §11 gives the HR officer the separation workflow and the letters.
             HrPerm.Claim.SettlementManage, HrPerm.Claim.DocumentIssue,
+            // Spec 0057: §11 gives the HR officer loans and the compensation runs.
+            HrPerm.Claim.LoanManage, HrPerm.Claim.CompensationManage,
         ]),
         ("Department Head", [
             HrPerm.Claim.Read, HrPerm.Claim.AttendanceReview, HrPerm.Claim.RosterManage,

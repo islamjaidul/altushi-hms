@@ -24,11 +24,23 @@
             <div><span class="k">Month:</span> @run.Period.ToString("MMMM yyyy")</div>
             <div><span class="k">Code:</span> @line.EmployeeCode</div>
             <div><span class="k">Run:</span> @run.RunNo</div>
+            @* Spec 0057 (G49): who they are and where they sit, not just what they are owed. *@
+            <div><span class="k">Designation:</span> @Model.Assignment</div>
+            <div><span class="k">Paid by:</span> @Model.PaymentMethodLabel</div>
             <div><span class="k">Bank:</span> @(Model.Person?.BankName ?? "—")</div>
-            <div><span class="k">Account:</span> @(Model.Person?.BankAccountNo ?? "—")</div>
+            <div><span class="k">Account:</span> @(Model.BankAccount ?? "—")</div>
             <div><span class="k">Days payable:</span> @(line.PayableDaysBp / 10000m) of @line.PeriodDays</div>
             <div><span class="k">Overtime:</span> @(line.OvertimeMinutes == 0 ? "—" : $"{line.OvertimeMinutes} min")</div>
         </div>
+
+        @if (line.Held)
+        {
+            @* G46: a held person is on the sheet, marked, never silently absent. *@
+            <div class="alert bad">
+                <span class="icon icon-sm" aria-hidden="true">pause_circle</span>
+                <span>Salary held — @line.HoldReason</span>
+            </div>
+        }
 
         <table class="sheet-table">
             <thead>
@@ -91,6 +103,39 @@
         <div class="sheet-words">
             In words: <b>@Ui.Words(line.NetPayTaka)</b>
         </div>
+
+        @* Spec 0057 (G49): the two columns a payslip is asked for and this one did not have. The
+           year runs from the fiscal-year start, and reads only locked runs — a draft run's figures
+           are not a year-to-date of anything. *@
+        <table class="sheet-table">
+            <thead>
+            <tr>
+                <th>Year to date</th>
+                <th class="num" style="width:130px">Amount</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr><td>Gross earnings</td><td class="num">@Ui.Group(Model.YtdGrossTaka)</td></tr>
+            <tr><td>Deductions</td><td class="num">− @Ui.Group(Model.YtdDeductionTaka)</td></tr>
+            <tr><td>Tax deducted at source</td><td class="num">@Ui.Group(Model.YtdTaxTaka)</td></tr>
+            <tr><td><b>Net paid</b></td><td class="num"><b>@Ui.Group(Model.YtdNetTaka)</b></td></tr>
+            </tbody>
+        </table>
+
+        @if (Model.LeaveBalances.Count > 0)
+        {
+            <table class="sheet-table">
+                <thead>
+                <tr><th>Leave balance</th><th class="num" style="width:130px">Days left</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var (type, available) in Model.LeaveBalances)
+                {
+                    <tr><td>@type</td><td class="num">@available</td></tr>
+                }
+                </tbody>
+            </table>
+        }
 
         @if (!string.IsNullOrEmpty(line.Note))
         {

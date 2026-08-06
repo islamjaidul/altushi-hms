@@ -55,6 +55,9 @@ public static class HrNav
         // so maker-checker needs a surface they can reach without the ability to generate.
         new(HrModule.Name, "Payroll approvals", "/hr/payroll/approvals", HrPerm.Claim.PayrollApprove, "task_alt", Payroll),
         new(HrModule.Name, "Payslips", "/hr/payslips", HrPerm.Claim.SalaryRead, "receipt_long", Payroll),
+        // spec 0057: the money after the payslip — lent, raised, and finally handed over.
+        new(HrModule.Name, "Loans & advances", "/hr/loans", HrPerm.Claim.SalaryRead, "savings", Payroll),
+        new(HrModule.Name, "Bonus & increments", "/hr/compensation", HrPerm.Claim.CompensationManage, "trending_up", Payroll),
 
         new(HrModule.Name, "Reports", "/hr/reports", HrPerm.Claim.ReportsView, "bar_chart", Reports),
 

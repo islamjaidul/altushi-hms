@@ -1,0 +1,168 @@
+@page "/hr/payroll/{id:long}/disbursement"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.DisbursementModel
+@{
+    var run = Model.Run!;
+    var batch = Model.Batch;
+    ViewData["Title"] = "Disbursement — " + run.Period.ToString("MMMM yyyy");
+    ViewData["Crumb"] = HrNav.Payroll;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="row-end no-print" style="margin-bottom:14px">
+    <div>
+        <a class="btn" href="/hr/payroll">
+            <span class="icon icon-sm" aria-hidden="true">arrow_back</span> Payroll runs
+        </a>
+    </div>
+    <span class="card-hint">@run.RunNo</span>
+</div>
+
+@if (batch is null)
+{
+    <div class="card">
+        <div class="card-head">Prepare the batch</div>
+        <div class="card-body">
+            <form method="post" asp-page-handler="Prepare" asp-route-id="@run.Id">
+                @Html.AntiForgeryToken()
+                <div class="field-grid cols-3">
+                    <label class="field">
+                        <span class="field-label">Value date</span>
+                        <input class="input" name="ValueDate" hms-date placeholder="e.g. 01/09/2026" />
+                    </label>
+                    <div class="field" style="align-self:end">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="icon icon-sm" aria-hidden="true">account_balance</span>
+                            Prepare
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <p class="card-hint">
+                One line per person who is owed money, split by how they are paid. Anyone marked for
+                bank transfer with no account number is put on the cash sheet rather than into a bank
+                file the bank would reject for the whole batch.
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-head">
+            @batch.BatchNo
+            <span class="spacer"></span>
+            <span class="pill @(batch.State == DisbursementState.Paid ? "good" : "warn")">
+                @DisbursementState.Label(batch.State)
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="field-grid cols-4">
+                <div class="field"><span class="micro-label">Value date</span>@Ui.DateLong(batch.ValueDate)</div>
+                <div class="field"><span class="micro-label">People</span>@batch.LineCount</div>
+                <div class="field"><span class="micro-label">Total</span>@Ui.Money(batch.TotalTaka)</div>
+                <div class="field"><span class="micro-label">Outstanding</span>@Model.UnpaidCount</div>
+                <div class="field"><span class="micro-label">Bank</span>@Ui.Money(batch.BankTaka)</div>
+                <div class="field"><span class="micro-label">Cash</span>@Ui.Money(batch.CashTaka)</div>
+                <div class="field"><span class="micro-label">Cheque</span>@Ui.Money(batch.ChequeTaka)</div>
+            </div>
+            <div class="filter-row no-print" style="margin-top:10px">
+                <a class="btn" href="/hr/payroll/@run.Id/disbursement?handler=BankFile">
+                    <span class="icon icon-sm" aria-hidden="true">download</span> Bank file (CSV)
+                </a>
+                <button type="button" class="btn" onclick="window.print()">
+                    <span class="icon icon-sm" aria-hidden="true">print</span> Cash &amp; cheque sheets
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @foreach (var method in PaymentMethod.All)
+    {
+        var lines = Model.By(method);
+        if (lines.Count == 0) { continue; }
+
+        <div class="card card-clip">
+            <div class="card-head">
+                @PaymentMethod.Label(method)
+                <span class="spacer"></span>
+                <span class="card-hint">
+                    @lines.Count · @Ui.Money(lines.Sum(l => l.AmountTaka))
+                </span>
+                @if (lines.Any(l => l.PaidAt is null))
+                {
+                    <form method="post" asp-page-handler="PayMethod"
+                          asp-route-id="@run.Id" asp-route-method="@method" class="inline-form no-print">
+                        @Html.AntiForgeryToken()
+                        <input class="input" name="Reference" maxlength="60"
+                               placeholder="reference" style="max-width:11rem" />
+                        <button type="submit" class="btn-tint">Mark all paid</button>
+                    </form>
+                }
+            </div>
+            <div class="table-wrap">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Code</th><th>Name</th>
+                        @if (method == PaymentMethod.Bank)
+                        {
+                            <th>Bank</th><th>Account</th>
+                        }
+                        <th class="num">Amount</th><th>Paid</th>
+                        @if (method != PaymentMethod.Bank)
+                        {
+                            <th>Signature</th>
+                        }
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var l in lines)
+                    {
+                        <tr>
+                            <td class="tabular">@l.EmployeeCode</td>
+                            <td>@l.EmployeeName</td>
+                            @if (method == PaymentMethod.Bank)
+                            {
+                                <td class="text-muted">@(l.BankName ?? "—")</td>
+                                <td class="tabular">@(l.BankAccountNo ?? "—")</td>
+                            }
+                            <td class="num">@Ui.Money(l.AmountTaka)</td>
+                            <td>
+                                @if (l.PaidAt is not null)
+                                {
+                                    <span class="pill good">@(l.Reference ?? "paid")</span>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="PayLine"
+                                          asp-route-id="@run.Id" asp-route-lineId="@l.Id"
+                                          class="inline-form no-print">
+                                        @Html.AntiForgeryToken()
+                                        <input class="input" name="Reference" maxlength="60"
+                                               placeholder="ref" style="max-width:8rem" />
+                                        <button type="submit" class="btn-tint">Paid</button>
+                                    </form>
+                                }
+                            </td>
+                            @if (method != PaymentMethod.Bank)
+                            {
+                                @* The column a cash sheet exists for: the employee signs beside
+                                   their own amount, on paper, in front of the person paying. *@
+                                <td class="signature-cell"></td>
+                            }
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+}

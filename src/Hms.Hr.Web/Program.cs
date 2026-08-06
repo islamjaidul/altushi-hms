@@ -88,6 +88,10 @@ builder.Services.AddSingleton<EmployeeFileService>();
 builder.Services.AddSingleton<SeparationService>();
 builder.Services.AddSingleton<LetterService>();
 builder.Services.AddSingleton<HrAlertService>();
+// spec 0057 — the money after the payslip.
+builder.Services.AddSingleton<LoanService>();
+builder.Services.AddSingleton<CompensationService>();
+builder.Services.AddSingleton<DisbursementService>();
 // This SKU ships no notifications module at all (ADR-0025 — what the customer bought is what they
 // receive), so the alert registers work and nothing is sent. The switches screen says so.
 builder.Services.AddSingleton(HrNotificationChannel.None);

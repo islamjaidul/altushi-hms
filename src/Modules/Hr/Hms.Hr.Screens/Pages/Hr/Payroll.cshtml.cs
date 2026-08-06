@@ -54,6 +54,16 @@ public class PayrollModel(IHrTx tx, PayrollService payroll, IPayrollPosting post
         return "Exceptions reviewed — ready to send for approval";
     });
 
+    /// <summary>
+    /// §9's Variance Reviewed (spec 0057, G47). Refused while any change outside the employer's
+    /// tolerance is unexplained, and Approve is not offered until this has happened.
+    /// </summary>
+    public Task<IActionResult> OnPostReviewVarianceAsync(long id) => ActAsync(async s =>
+    {
+        await payroll.ReviewVarianceAsync(s.Hr, s.Kernel, BranchId, id, ActorId, ActorName);
+        return "Variance reviewed — the run can now be sent for approval";
+    });
+
     public Task<IActionResult> OnPostRequestApprovalAsync(long id) => ActAsync(async s =>
     {
         var raise = await payroll.RequestApprovalAsync(

@@ -1,0 +1,334 @@
+@page "/hr/compensation"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.CompensationModel
+@{
+    ViewData["Title"] = "Bonus & increments";
+    ViewData["Crumb"] = HrNav.Payroll;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        <div class="card card-clip">
+            <div class="card-head">Bonus sheets</div>
+            @if (Model.Sheets.Count == 0)
+            {
+                <div class="empty-state">
+                    No bonus has been run. A sheet lists everybody — including the people who do not
+                    qualify, each with a stated reason, so nobody is simply forgotten.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Number</th><th>Bonus</th><th>Period</th>
+                            <th class="num">Eligible</th><th class="num">Excluded</th>
+                            <th class="num">Total</th><th>State</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var b in Model.Sheets)
+                        {
+                            <tr>
+                                <td class="tabular">@b.SheetNo</td>
+                                <td>
+                                    @b.Title
+                                    <div class="text-muted" style="font-size:0.6875rem">
+                                        @Hms.Hr.Data.BonusKind.Label(b.Kind)
+                                    </div>
+                                </td>
+                                <td class="tabular">@b.Period.ToString("MMM yyyy")</td>
+                                <td class="num">@b.EligibleCount</td>
+                                <td class="num text-muted">@b.ExcludedCount</td>
+                                <td class="num">@(Model.CanSeeMoney ? Ui.Money(b.TotalTaka) : "—")</td>
+                                <td>
+                                    <span class="pill @(b.State == BonusState.Paid ? "good" : "warn")">
+                                        @BonusState.Label(b.State)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (b.State == BonusState.Drafted)
+                                    {
+                                        <form method="post" asp-page-handler="ReviewBonus"
+                                              asp-route-id="@b.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Reviewed</button>
+                                        </form>
+                                    }
+                                    else if (b.State == BonusState.Reviewed && b.ApprovalRequestId is null)
+                                    {
+                                        <form method="post" asp-page-handler="SendBonus"
+                                              asp-route-id="@b.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Send for approval</button>
+                                        </form>
+                                    }
+                                    else if (b.State == BonusState.Reviewed)
+                                    {
+                                        <form method="post" asp-page-handler="ApplyBonusApproval"
+                                              asp-route-id="@b.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Apply decision</button>
+                                        </form>
+                                    }
+                                    else if (b.State == BonusState.Approved && Model.PayRuns.Count > 0)
+                                    {
+                                        <form method="post" asp-page-handler="PayBonus"
+                                              asp-route-id="@b.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <select class="input" name="PayRunId" style="max-width:10rem">
+                                                @foreach (var r in Model.PayRuns)
+                                                {
+                                                    <option value="@r.Id">@r.RunNo</option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn-tint">Paid through</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card card-clip">
+            <div class="card-head">Increments &amp; promotions</div>
+            @if (Model.Runs.Count == 0)
+            {
+                <div class="empty-state">
+                    No increment has been run. Until now pay could only be changed one person at a
+                    time, on their own record, with nothing recording that it was one decision.
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>Number</th><th>Run</th><th>Effective</th>
+                            <th class="num">People</th><th class="num">Increase</th>
+                            <th>State</th><th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var r in Model.Runs)
+                        {
+                            <tr>
+                                <td class="tabular">@r.RunNo</td>
+                                <td>
+                                    @r.Title
+                                    <div class="text-muted" style="font-size:0.6875rem">
+                                        @CompensationRunKind.Label(r.Kind)
+                                        @(r.PercentBp > 0 ? $"· {r.PercentBp / 100m:0.##}%" : "")
+                                    </div>
+                                </td>
+                                <td class="tabular">@Ui.DateLong(r.EffectiveFrom)</td>
+                                <td class="num">@r.AffectedCount</td>
+                                <td class="num">@(Model.CanSeeMoney ? Ui.Money(r.TotalIncreaseTaka) : "—")</td>
+                                <td>
+                                    <span class="pill @(r.State == CompensationRunState.Applied ? "good" : "warn")">
+                                        @CompensationRunState.Label(r.State)
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (r.State is CompensationRunState.Proposed or CompensationRunState.Previewed
+                                         && r.ApprovalRequestId is null)
+                                    {
+                                        <form method="post" asp-page-handler="PreviewRun"
+                                              asp-route-id="@r.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Preview</button>
+                                        </form>
+                                    }
+                                    @if (r.State == CompensationRunState.Previewed && r.ApprovalRequestId is null)
+                                    {
+                                        <form method="post" asp-page-handler="SendRun"
+                                              asp-route-id="@r.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Send for approval</button>
+                                        </form>
+                                    }
+                                    else if (r.State == CompensationRunState.Previewed)
+                                    {
+                                        <form method="post" asp-page-handler="ApplyRunApproval"
+                                              asp-route-id="@r.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Apply decision</button>
+                                        </form>
+                                    }
+                                    else if (r.State == CompensationRunState.Approved)
+                                    {
+                                        <form method="post" asp-page-handler="ApplyRun"
+                                              asp-route-id="@r.Id" class="inline-form">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-tint">Apply</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <div class="card-head">New bonus sheet</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="DraftBonus">
+                    @Html.AntiForgeryToken()
+                    <label class="field">
+                        <span class="field-label">Kind</span>
+                        <select class="input" name="BonusKindValue">
+                            @foreach (var k in Hms.Hr.Data.BonusKind.All)
+                            {
+                                <option value="@k">@Hms.Hr.Data.BonusKind.Label(k)</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Name</span>
+                        <input class="input" name="BonusTitle" maxlength="120"
+                               placeholder="e.g. Eid-ul-Fitr 2026" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Period</span>
+                        <input class="input" name="BonusPeriod" hms-date placeholder="e.g. 01/09/2026" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Percentage of</span>
+                        <select class="input" name="BasedOnComponentId">
+                            <option value="">— a flat amount instead —</option>
+                            @foreach (var c in Model.EarningComponents)
+                            {
+                                <option value="@c.Value">@c.Text</option>
+                            }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Percent (%)</span>
+                        <input class="input num" name="BonusPercent" inputmode="numeric" value="100" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Flat amount (৳)</span>
+                        <input class="input num" name="FlatAmountTaka" inputmode="numeric" value="0" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Minimum service (months)</span>
+                        <input class="input num" name="BonusMinimumServiceMonths" inputmode="numeric" value="0" />
+                    </label>
+                    <div class="field">
+                        <span class="field-label">Eligible kinds (none ticked = all)</span>
+                        @foreach (var t in EmploymentType.All)
+                        {
+                            <label class="check">
+                                <input type="checkbox" name="BonusEligibleTypes" value="@t" />
+                                <span>@EmploymentType.Label(t)</span>
+                            </label>
+                        }
+                    </div>
+                    <div class="filter-row" style="margin-top:8px">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="icon icon-sm" aria-hidden="true">redeem</span> Draft sheet
+                        </button>
+                    </div>
+                </form>
+                <p class="card-hint">
+                    The basis and the eligibility rule are yours. Nothing is defaulted — this product
+                    ships no opinion about what a Bangladeshi festival bonus customarily is.
+                </p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">New increment or promotion</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="ProposeRun">
+                    @Html.AntiForgeryToken()
+                    <label class="field">
+                        <span class="field-label">Kind</span>
+                        <select class="input" name="RunKind">
+                            <option value="increment">Increment</option>
+                            <option value="promotion">Promotion</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Name</span>
+                        <input class="input" name="RunTitle" maxlength="120"
+                               placeholder="e.g. Annual increment 2026" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Effective from</span>
+                        <input class="input" name="EffectiveFrom" hms-date placeholder="e.g. 01/07/2026" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Unit (blank = all)</span>
+                        <select class="input" name="OrgUnitId">
+                            <option value="">— every unit —</option>
+                            @foreach (var u in Model.Units) { <option value="@u.Value">@u.Text</option> }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Grade (blank = all)</span>
+                        <select class="input" name="GradeId">
+                            <option value="">— every grade —</option>
+                            @foreach (var g in Model.Grades) { <option value="@g.Value">@g.Text</option> }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Minimum service (months)</span>
+                        <input class="input num" name="RunMinimumServiceMonths" inputmode="numeric" value="0" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Rise (%)</span>
+                        <input class="input num" name="RunPercent" inputmode="numeric" value="0" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">or a flat rise (৳)</span>
+                        <input class="input num" name="RunFlatTaka" inputmode="numeric" value="0" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Promotion: new designation</span>
+                        <select class="input" name="NewDesignationId">
+                            <option value="">— unchanged —</option>
+                            @foreach (var d in Model.Designations) { <option value="@d.Value">@d.Text</option> }
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Promotion: new grade</span>
+                        <select class="input" name="NewGradeId">
+                            <option value="">— unchanged —</option>
+                            @foreach (var g in Model.Grades) { <option value="@g.Value">@g.Text</option> }
+                        </select>
+                    </label>
+                    <div class="filter-row" style="margin-top:8px">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="icon icon-sm" aria-hidden="true">trending_up</span> Propose
+                        </button>
+                    </div>
+                </form>
+                <p class="card-hint">
+                    A promotion moves designation, grade and pay together on one date, so it is one
+                    action rather than three an operator has to remember to do.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

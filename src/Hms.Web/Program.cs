@@ -156,6 +156,10 @@ builder.Services.AddSingleton<Hms.Hr.EmployeeFileService>();
 builder.Services.AddSingleton<Hms.Hr.SeparationService>();
 builder.Services.AddSingleton<Hms.Hr.LetterService>();
 builder.Services.AddSingleton<Hms.Hr.HrAlertService>();
+// spec 0057 — the money after the payslip.
+builder.Services.AddSingleton<Hms.Hr.LoanService>();
+builder.Services.AddSingleton<Hms.Hr.CompensationService>();
+builder.Services.AddSingleton<Hms.Hr.DisbursementService>();
 // This SKU ships M20, so a lifecycle alert can actually be sent.
 builder.Services.AddSingleton(new Hms.Hr.HrNotificationChannel(true, "SMS"));
 builder.Services.AddSingleton<Hms.Registration.RegistrationService>();

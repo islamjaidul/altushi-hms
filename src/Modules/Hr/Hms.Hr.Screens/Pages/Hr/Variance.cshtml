@@ -1,0 +1,117 @@
+@page "/hr/payroll/{id:long}/variance"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.VarianceModel
+@{
+    var run = Model.Run!;
+    ViewData["Title"] = "Variance — " + run.Period.ToString("MMMM yyyy");
+    ViewData["Crumb"] = HrNav.Payroll;
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="row-end" style="margin-bottom:14px">
+    <div>
+        <a class="btn" href="/hr/payroll">
+            <span class="icon icon-sm" aria-hidden="true">arrow_back</span> Payroll runs
+        </a>
+    </div>
+    <span class="card-hint">@run.RunNo · tolerance @(Model.ToleranceBp / 100m)%</span>
+</div>
+
+<div class="card card-clip">
+    <div class="card-head">
+        This month against last
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Rows.Count employee(s)</span>
+    </div>
+
+    @if (Model.OutstandingCount > 0)
+    {
+        <div class="card-body">
+            <div class="alert warn">
+                <span class="icon icon-sm" aria-hidden="true">warning</span>
+                <span>
+                    @Model.OutstandingCount change(s) moved by more than @(Model.ToleranceBp / 100m)%
+                    and still need a reason. The run cannot be approved until they have one.
+                </span>
+            </div>
+        </div>
+    }
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="empty-state">
+            Nothing to compare — this run has no lines, or the exceptions have not been reviewed yet.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Code</th><th>Name</th>
+                    <th class="num">Last month</th><th class="num">This month</th>
+                    <th>Change</th><th>Reason</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td class="tabular"><a href="/hr/employees/@r.EmployeeId">@r.Code</a></td>
+                        <td>@r.Name</td>
+                        <td class="num">@(r.PreviousTaka == 0 ? "—" : Ui.Money(r.PreviousTaka))</td>
+                        <td class="num">@Ui.Money(r.CurrentTaka)</td>
+                        <td><span class="pill @r.Tone">@r.Words</span></td>
+                        <td>
+                            @if (r.Reason is { Length: > 0 })
+                            {
+                                <span>@r.Reason</span>
+                                <div class="text-muted" style="font-size:0.6875rem">@r.ReviewedByName</div>
+                            }
+                            else if (Model.NeedsReason(r))
+                            {
+                                <form method="post" asp-page-handler="Explain"
+                                      asp-route-id="@run.Id" asp-route-noteId="@r.Id" class="inline-form">
+                                    @Html.AntiForgeryToken()
+                                    <input class="input" name="Reason" maxlength="200"
+                                           placeholder="why did this move?" style="max-width:16rem" />
+                                    <button type="submit" class="btn-tint">Save</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted">within tolerance</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (run.State == PayrollRunState.ExceptionsReviewed)
+    {
+        <div class="card-body">
+            <form method="post" asp-page-handler="Accept" asp-route-id="@run.Id">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary" disabled="@(Model.OutstandingCount > 0)">
+                    <span class="icon icon-sm" aria-hidden="true">fact_check</span>
+                    Variance reviewed
+                </button>
+            </form>
+            <p class="card-hint">
+                A first appearance shows as "new this month" rather than an infinite rise — a joiner
+                is not a variance, and treating them as one would drown this list every month.
+            </p>
+        </div>
+    }
+</div>

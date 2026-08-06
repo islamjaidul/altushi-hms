@@ -11,10 +11,10 @@ namespace Hms.Hr.Screens.Reports;
 /// them to kebab-case and to uniqueness.
 /// </para>
 /// <para>
-/// Reports whose data has no writer yet are deliberately absent rather than shipped empty: loans,
-/// PF, welfare and tax ledgers arrive with the screens that capture them (spec 0057), and bonus,
-/// increment and settlement registers with theirs. A permanently blank report is worse than a
-/// missing one, because it reads as "nothing happened" rather than "not built".
+/// Reports whose data has no writer yet are deliberately absent rather than shipped empty. That
+/// rule is why loans, PF, welfare, tax, bonus and increment registers were missing from Phase 1 and
+/// arrive here with spec 0057, alongside the writers that make them true. A permanently blank report
+/// is worse than a missing one, because it reads as "nothing happened" rather than "not built".
 /// </para>
 /// </summary>
 public static class ReportCatalog
@@ -62,6 +62,20 @@ public static class ReportCatalog
         new EmployerCostReport(),
         new PayrollRunAuditReport(),
         new SettlementRegisterReport(),
+        // spec 0057 — the registers 0055 deferred because their tables had no writer.
+        new LoanRegisterReport(),
+        new DeferredRecoveryReport(),
+        new BonusRegisterReport(),
+        new IncrementRegisterReport(),
+        new DisbursementRegisterReport(),
+        new SalaryHoldReport(),
+
+        // Statutory & ledgers — all salary-bearing, all fed by the ledger the run now writes.
+        new ProvidentFundStatementReport(),
+        new WelfareStatementReport(),
+        new AdvanceLedgerReport(),
+        new TaxDeductedReport(),
+        new AnnualTaxStatementReport(),
 
         // Governance
         new ActivityLogReport(),

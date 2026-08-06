@@ -88,7 +88,9 @@ public static class DevSeed
              // Spec 0055: the report centre, and salary reports following the salary grant.
              "hr.reports.view", "hr.reports.salary", "hr.self",
              // Spec 0056: §11 gives the HR officer the separation workflow and the letters.
-             "hr.settlement.manage", "hr.document.issue"],
+             "hr.settlement.manage", "hr.document.issue",
+             // Spec 0057: §11 gives the HR officer loans and the member ledgers.
+             "hr.loan.manage", "hr.compensation.manage"],
         ["Department Head"] =
             ["hr.read", "hr.attendance.review", "hr.roster.manage", "hr.leave.apply",
              "hr.leave.recommend",

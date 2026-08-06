@@ -9,9 +9,17 @@ public static class PayrollRunState
 {
     public const string Generated = "generated";
     public const string ExceptionsReviewed = "exceptions_reviewed";
+    /// <summary>
+    /// Spec 0057 (§9). Between exceptions and approval: this period against last, per employee.
+    /// The module used to go straight from one to the other, so a run where somebody's pay tripled
+    /// was approved exactly as fast as a run where nothing moved.
+    /// </summary>
+    public const string VarianceReviewed = "variance_reviewed";
     public const string Approved = "approved";
     public const string Locked = "locked";
     public const string Posted = "posted";
+    /// <summary>Spec 0057: §9's terminal state. The money has actually left the employer.</summary>
+    public const string Disbursed = "disbursed";
     public const string Cancelled = "cancelled";
 }
 
@@ -63,6 +71,13 @@ public class PayrollRun
     public long? LockedBy { get; set; }
     public DateTimeOffset? PostedAt { get; set; }
     public long? PostedBy { get; set; }
+    // ---- spec 0057
+    /// <summary>Set when every out-of-tolerance line has been explained (§9, G47).</summary>
+    public DateTimeOffset? VarianceReviewedAt { get; set; }
+    public long? VarianceReviewedBy { get; set; }
+    /// <summary>Set when the disbursement batch is fully paid.</summary>
+    public DateTimeOffset? DisbursedAt { get; set; }
+
     /// <summary>The journal handed to M15, stored even when no ledger exists to receive it yet.</summary>
     public string? JournalJson { get; set; }
 }
@@ -106,6 +121,14 @@ public class PayrollLine
     public long TotalDeductionsTaka { get; set; }
     public long NetPayTaka { get; set; }
     public long EmployerCostTaka { get; set; }
+    /// <summary>
+    /// Spec 0057 (G46): this person's salary is withheld. The line is still computed and still
+    /// carries its gross — it is marked held with a zero net, never silently dropped, or the
+    /// sheet's headcount would lie and the reason nobody was paid would be invisible.
+    /// </summary>
+    public bool Held { get; set; }
+    public string? HoldReason { get; set; }
+
     /// <summary>Set when deductions would have driven net below the floor; carried on the loan ledger.</summary>
     public long CarriedShortfallTaka { get; set; }
     public string? Note { get; set; }
@@ -153,7 +176,20 @@ public static class LoanState
     public const string Approved = "approved";
     public const string Disbursed = "disbursed";
     public const string Closed = "closed";
+    /// <summary>Spec 0057: settled early in one movement rather than by installments.</summary>
+    public const string Foreclosed = "foreclosed";
     public const string WrittenOff = "written_off";
+
+    public static string Label(string state) => state switch
+    {
+        Requested => "Requested",
+        Approved => "Approved",
+        Disbursed => "Recovering",
+        Closed => "Closed",
+        Foreclosed => "Foreclosed",
+        WrittenOff => "Written off",
+        _ => state,
+    };
 }
 
 public class Loan
@@ -172,8 +208,23 @@ public class Loan
     /// <summary>Unrecovered installments deferred by the negative-net-pay floor.</summary>
     public long CarriedTaka { get; set; }
     public long? ApprovalRequestId { get; set; }
+
+    // ---- spec 0057: the lifecycle §7.9 asks for. Until now this table had no writer at all.
+    public string? Purpose { get; set; }
+    public DateTimeOffset? ApprovedAt { get; set; }
+    public long? ApprovedBy { get; set; }
+    public DateTimeOffset? DisbursedAt { get; set; }
+    public long? DisbursedBy { get; set; }
+    public DateTimeOffset? ClosedAt { get; set; }
+    /// <summary>Set on a write-off. Hard rule 4: the debt is forgiven on the record, never deleted.</summary>
+    public string? WriteOffReason { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public long CreatedBy { get; set; }
+    public required string CreatedByName { get; set; }
+
+    /// <summary>What is still owed. Derived, so it can never disagree with the installments.</summary>
+    public long OutstandingTaka => PrincipalTaka - RecoveredTaka;
 }
 
 public class LoanInstallment

@@ -37,6 +37,14 @@ public class PayrollPolicy
     public long? RoundingResidueComponentId { get; set; }
     /// <summary>Month the leave year starts (1–12). Employers differ; the fiscal default is July here.</summary>
     public int LeaveYearStartMonth { get; set; } = 7;
+
+    /// <summary>
+    /// Spec 0057 (G47): how far a person's net pay may move from last month before the change has
+    /// to be explained, in basis points. 2000 = 20%. Zero means every change needs a reason, which
+    /// is a defensible choice for a small employer and a punishing one for a large one — so it is
+    /// theirs to set, not ours.
+    /// </summary>
+    public int VarianceTolerationBp { get; set; } = 2_000;
     public DateTimeOffset CreatedAt { get; set; }
     public long CreatedBy { get; set; }
 }

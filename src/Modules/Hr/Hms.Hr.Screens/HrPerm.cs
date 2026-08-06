@@ -82,6 +82,20 @@ public static class HrPerm
     /// </summary>
     public const string DocumentIssue = P + "hr.document.issue";
 
+    // ---- spec 0057 (module PRD §11) --------------------------------------------------------------
+
+    /// <summary>Loan and advance lifecycle: request, approve, disburse, foreclose, write off.</summary>
+    public const string LoanManage = P + "hr.loan.manage";
+
+    /// <summary>Bonus sheets, increment runs and promotions — compensation changed in bulk.</summary>
+    public const string CompensationManage = P + "hr.compensation.manage";
+
+    // §11 also names hr.ledger.manage, for "PF, welfare and tax ledger operations and
+    // withdrawals". Spec 0057 delivers the member STATEMENTS — which are reports, gated by
+    // hr.reports.salary like every other salary-bearing register — and not the withdrawal and
+    // adjustment operations. The permission arrives with the capability it guards; declaring it
+    // now would be a grant that protects nothing, and check-lifecycle-traceability.sh says so.
+
     /// <summary>The bare claim strings — what nav entries and <c>Can(...)</c> take.</summary>
     public static class Claim
     {
@@ -103,6 +117,8 @@ public static class HrPerm
         public const string Self = "hr.self";
         public const string SettlementManage = "hr.settlement.manage";
         public const string DocumentIssue = "hr.document.issue";
+        public const string LoanManage = "hr.loan.manage";
+        public const string CompensationManage = "hr.compensation.manage";
 
         public static readonly string[] All =
         [
@@ -110,6 +126,7 @@ public static class HrPerm
             LeaveApply, LeaveRecommend, LeaveApprove, PayrollRun, PayrollApprove, PolicyManage,
             ReportsView, ReportsSalary, TeamView, AuditView, Self,
             SettlementManage, DocumentIssue,
+            LoanManage, CompensationManage,
         ];
     }
 }

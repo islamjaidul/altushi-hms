@@ -51,6 +51,16 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
     public DbSet<NotificationSetting> NotificationSettings => Set<NotificationSetting>();
     public DbSet<EmploymentPolicy> EmploymentPolicies => Set<EmploymentPolicy>();
 
+    // money (spec 0057)
+    public DbSet<SalaryHold> SalaryHolds => Set<SalaryHold>();
+    public DbSet<VarianceNote> VarianceNotes => Set<VarianceNote>();
+    public DbSet<BonusSheet> BonusSheets => Set<BonusSheet>();
+    public DbSet<BonusLine> BonusLines => Set<BonusLine>();
+    public DbSet<CompensationRun> CompensationRuns => Set<CompensationRun>();
+    public DbSet<CompensationLine> CompensationLines => Set<CompensationLine>();
+    public DbSet<Disbursement> Disbursements => Set<Disbursement>();
+    public DbSet<DisbursementLine> DisbursementLines => Set<DisbursementLine>();
+
     // time
     public DbSet<Roster> Rosters => Set<Roster>();
     public DbSet<RosterEntry> RosterEntries => Set<RosterEntry>();
@@ -146,7 +156,11 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
         b.Entity<Employee>(e =>
         {
             e.ToTable("employee");
-            e.HasIndex(x => x.EmployeeCode).IsUnique();
+            // Unique per BRANCH (spec 0057). NumberSeriesService is keyed
+            // (branch_id, doc_type, fiscal_year), so every branch issues EMP-00001 — a global
+            // index rejected the second employer's first hire. Same defect, same shape, on
+            // payroll_run, payslip and leave_application below.
+            e.HasIndex(x => new { x.BranchId, x.EmployeeCode }).IsUnique();
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.PersonRef);
             // Self-service reads its own row through the identity link; must be fast and unique.
@@ -315,7 +329,7 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
         b.Entity<LeaveApplication>(e =>
         {
             e.ToTable("leave_application");
-            e.HasIndex(x => x.ApplicationNo).IsUnique();
+            e.HasIndex(x => new { x.BranchId, x.ApplicationNo }).IsUnique();
             e.HasIndex(x => new { x.EmployeeId, x.FromDate });
             e.HasIndex(x => x.State);
         });
@@ -329,7 +343,7 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
         b.Entity<PayrollRun>(e =>
         {
             e.ToTable("payroll_run");
-            e.HasIndex(x => x.RunNo).IsUnique();
+            e.HasIndex(x => new { x.BranchId, x.RunNo }).IsUnique();
             // One regular run per branch per month — the constraint, not a check in code, is what
             // stops two officers generating March twice.
             e.HasIndex(x => new { x.BranchId, x.Period, x.Kind, x.Sequence }).IsUnique();
@@ -368,7 +382,7 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
         b.Entity<Payslip>(e =>
         {
             e.ToTable("payslip");
-            e.HasIndex(x => x.PayslipNo).IsUnique();
+            e.HasIndex(x => new { x.BranchId, x.PayslipNo }).IsUnique();
             e.HasIndex(x => x.PayrollLineId).IsUnique();
             e.HasIndex(x => x.EmployeeId);
             e.HasOne<PayrollLine>().WithMany().HasForeignKey(x => x.PayrollLineId)
@@ -379,8 +393,14 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
         b.Entity<Loan>(e =>
         {
             e.ToTable("loan");
-            e.HasIndex(x => x.LoanNo).IsUnique();
+            // Per branch, not globally: the number series is keyed (branch, doc_type, fiscal_year),
+            // so a second branch's first loan would collide on a global index (spec 0056's finding).
+            e.HasIndex(x => new { x.BranchId, x.LoanNo }).IsUnique();
             e.HasIndex(x => new { x.EmployeeId, x.State });
+            // Derived from principal and recovered, so it can never disagree with the installments.
+            e.Ignore(x => x.OutstandingTaka);
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<LoanInstallment>(e =>
         {
@@ -435,6 +455,70 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
             e.ToTable("deduction_rule");
             e.HasIndex(x => new { x.BranchId, x.EffectiveFrom });
         });
+        // ---- money (spec 0057). RESTRICT everywhere: hard rule 4 forbids the delete a cascade
+        // would amplify, and a disbursement line orphaned from its run is money nobody can explain.
+        b.Entity<SalaryHold>(e =>
+        {
+            e.ToTable("salary_hold");
+            // One live hold per person. A second would make "is she held" ambiguous.
+            e.HasIndex(x => x.EmployeeId).IsUnique().HasFilter("released_at IS NULL");
+            e.HasIndex(x => new { x.BranchId, x.ReleasedAt });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<VarianceNote>(e =>
+        {
+            e.ToTable("variance_note");
+            e.HasIndex(x => new { x.RunId, x.EmployeeId }).IsUnique();
+            e.HasOne<PayrollRun>().WithMany().HasForeignKey(x => x.RunId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<BonusSheet>(e =>
+        {
+            e.ToTable("bonus_sheet");
+            e.HasIndex(x => new { x.BranchId, x.SheetNo }).IsUnique();
+            e.HasIndex(x => new { x.BranchId, x.Period, x.State });
+        });
+        b.Entity<BonusLine>(e =>
+        {
+            e.ToTable("bonus_line");
+            e.HasIndex(x => new { x.SheetId, x.EmployeeId }).IsUnique();
+            e.HasOne<BonusSheet>().WithMany().HasForeignKey(x => x.SheetId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<CompensationRun>(e =>
+        {
+            e.ToTable("compensation_run");
+            e.HasIndex(x => new { x.BranchId, x.RunNo }).IsUnique();
+            e.HasIndex(x => new { x.BranchId, x.EffectiveFrom, x.State });
+        });
+        b.Entity<CompensationLine>(e =>
+        {
+            e.ToTable("compensation_line");
+            e.HasIndex(x => new { x.RunId, x.EmployeeId }).IsUnique();
+            e.HasOne<CompensationRun>().WithMany().HasForeignKey(x => x.RunId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Disbursement>(e =>
+        {
+            e.ToTable("disbursement");
+            e.HasIndex(x => new { x.BranchId, x.BatchNo }).IsUnique();
+            // One batch per run: "has March been paid" must have exactly one answer.
+            e.HasIndex(x => x.RunId).IsUnique();
+            e.HasOne<PayrollRun>().WithMany().HasForeignKey(x => x.RunId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<DisbursementLine>(e =>
+        {
+            e.ToTable("disbursement_line");
+            e.HasIndex(x => new { x.DisbursementId, x.EmployeeId }).IsUnique();
+            e.HasIndex(x => x.PayrollLineId).IsUnique();
+            e.HasOne<Disbursement>().WithMany().HasForeignKey(x => x.DisbursementId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<PayrollLine>().WithMany().HasForeignKey(x => x.PayrollLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)
     }
 }

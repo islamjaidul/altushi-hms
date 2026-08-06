@@ -76,6 +76,13 @@ public class Employee
     public string? BankRoutingNo { get; set; }
     public string? Tin { get; set; }
 
+    /// <summary>
+    /// How this person is actually paid (spec 0057, G45). Defaults to bank, which is what the
+    /// existing bank columns already assume; cash and cheque are the other two rows a Bangladeshi
+    /// employer's disbursement sheet has.
+    /// </summary>
+    public string PaymentMethod { get; set; } = Data.PaymentMethod.Bank;
+
     /// <summary>Links to adm.app_user.employee_ref for self-service (§12 "U (own leave)").</summary>
     public string? UserRef { get; set; }
     /// <summary>Scanned documents as [{name,path,uploadedAt}] — jsonb, per §5 M16 "document attachments".</summary>

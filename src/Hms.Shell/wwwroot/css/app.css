@@ -1065,6 +1065,13 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
   background: var(--warning-bg); color: var(--ink-2); font-size: 0.8125rem;
 }
 
+/* Spec 0057: the column a cash sheet exists for. The employee signs beside their own amount, on
+   paper, in front of the person paying — so it needs a printable rule and enough room for a hand. */
+.signature-cell {
+  min-width: 9rem; border-bottom: 1px solid var(--ink-1);
+  height: 2.2rem; padding: 0;
+}
+
 /* Spec 0056: an issued letter's frozen body. The employer's paragraphs and line breaks are the
    document, so whitespace is preserved rather than collapsed — a relieving letter that reflows
    into one paragraph is not the letter that was signed. Measure is capped at the reading width a

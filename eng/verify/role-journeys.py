@@ -129,6 +129,12 @@ ROUTES = {
     # employment (§11 scoping rule 2), so it gates on hr.self rather than on leave-apply.
     "/hr/me": "hr.self",
     "/hr/payroll": "hr.payroll.run",
+    # Spec 0057. Variance and disbursement hang off a run; both check hr.salary.read inside the
+    # page on top of the route policy, because both are entirely money.
+    "/hr/payroll/1/variance": "hr.payroll.run",
+    "/hr/payroll/1/disbursement": "hr.payroll.run",
+    "/hr/loans": "hr.salary.read",
+    "/hr/compensation": "hr.compensation.manage",
     "/hr/payroll/approvals": "hr.payroll.approve",
     "/hr/payslip/1": "hr.salary.read",
     "/hr/payslips": "hr.salary.read",

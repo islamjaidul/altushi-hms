@@ -94,6 +94,12 @@
                             }
                             else if (r.State == PayrollRunState.ExceptionsReviewed)
                             {
+                                @* Spec 0057: §9 puts variance between exceptions and approval, so
+                                   nobody can approve a month they have not compared with the last. *@
+                                <a class="btn-tint" href="/hr/payroll/@r.Id/variance">Review variance</a>
+                            }
+                            else if (r.State == PayrollRunState.VarianceReviewed)
+                            {
                                 <form method="post" asp-page-handler="RequestApproval" class="inline-form">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@r.Id" />
@@ -118,11 +124,14 @@
                                 if (Model.CanSeeMoney)
                                 {
                                     <a class="btn-tint" href="/hr/payslips?RunId=@r.Id">Payslips</a>
+                                    <a class="btn-tint" href="/hr/payroll/@r.Id/disbursement">Disburse</a>
                                 }
                             }
-                            else if (r.State == PayrollRunState.Posted && Model.CanSeeMoney)
+                            else if (r.State is PayrollRunState.Posted or PayrollRunState.Disbursed
+                                     && Model.CanSeeMoney)
                             {
                                 <a class="btn-tint" href="/hr/payslips?RunId=@r.Id">Payslips</a>
+                                <a class="btn-tint" href="/hr/payroll/@r.Id/disbursement">Disbursement</a>
                             }
                             else
                             {

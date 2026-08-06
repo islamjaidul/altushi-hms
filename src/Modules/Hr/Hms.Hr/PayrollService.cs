@@ -103,14 +103,20 @@ public sealed class PayrollService(
             .Select(g => new { EmployeeId = g.Key, Days = g.Count() })
             .ToDictionaryAsync(x => x.EmployeeId, x => x.Days, ct);
 
+        // Spec 0057 (G46): who is held this month. One query for the run rather than one per person.
+        var holds = (await DisbursementService.LiveHoldsAsync(hr, branchId, ct))
+            .ToDictionary(h => h.EmployeeId);
+
         long totalGross = 0, totalDeduction = 0, totalNet = 0, totalEmployerCost = 0;
         var exceptionCount = 0;
+        var heldCount = 0;
 
         foreach (var employee in employees)
         {
             var line = await BuildLineAsync(
                 hr, branchId, run, employee, period, periodEnd, policy, components,
-                unpaidLeaveDays.GetValueOrDefault(employee.Id), ct);
+                unpaidLeaveDays.GetValueOrDefault(employee.Id),
+                holds.GetValueOrDefault(employee.Id), ct);
             hr.PayrollLines.Add(line.Line);
             await hr.SaveChangesAsync(ct);
 
@@ -120,6 +126,15 @@ public sealed class PayrollService(
                 cl.RunId = run.Id;
                 hr.PayrollComponentLines.Add(cl);
             }
+
+            // Spec 0057: the installments and the member-ledger movements this line produced.
+            LoanService.Apply(hr, line.Recoveries, period, run.Id, clock.GetUtcNow());
+            foreach (var entry in line.Ledger)
+            {
+                entry.PayrollRunId = run.Id;
+                hr.LedgerEntries.Add(entry);
+            }
+            if (line.Line.Held) heldCount++;
 
             totalGross += line.Line.GrossEarningsTaka;
             totalDeduction += line.Line.TotalDeductionsTaka;
@@ -136,17 +151,27 @@ public sealed class PayrollService(
         run.ExceptionCount = exceptionCount;
 
         audit.Append(kernel, branchId, actorId, actorName, "hr.payroll.generate", "hr.payroll_run",
-            run.Id, after: new { runNo, period, employees.Count, totalNet, exceptionCount }, tier: 1);
+            run.Id, after: new { runNo, period, employees.Count, totalNet, exceptionCount, heldCount },
+            tier: 1);
 
         return run;
     }
 
-    private sealed record BuiltLine(PayrollLine Line, List<PayrollComponentLine> Components, int Exceptions);
+    /// <summary>
+    /// What one employee's line produced. Spec 0057 adds two things the engine used to compute and
+    /// then throw away: the loan installments it recovered, and the member-ledger movements behind
+    /// the provident-fund and income-tax deductions it had always been putting on the payslip.
+    /// </summary>
+    private sealed record BuiltLine(
+        PayrollLine Line, List<PayrollComponentLine> Components, int Exceptions,
+        IReadOnlyList<LoanService.Recovery> Recoveries,
+        IReadOnlyList<EmployeeLedgerEntry> Ledger);
 
     private async Task<BuiltLine> BuildLineAsync(
         HrDbContext hr, long branchId, PayrollRun run, Employee employee,
         DateOnly period, DateOnly periodEnd, PayrollPolicy policy,
-        IReadOnlyList<PayComponent> components, int unpaidLeaveDays, CancellationToken ct)
+        IReadOnlyList<PayComponent> components, int unpaidLeaveDays, SalaryHold? hold,
+        CancellationToken ct)
     {
         var assignment = await policies.AssignmentAsync(hr, employee.Id, periodEnd, ct);
         var structure = await policies.PayStructureAsync(hr, employee.Id, periodEnd, ct);
@@ -169,7 +194,7 @@ public sealed class PayrollService(
         if (structure is null)
         {
             line.Note = "No pay structure is effective for this period — nothing was computed.";
-            return new BuiltLine(line, lines, 1);
+            return new BuiltLine(line, lines, 1, [], []);
         }
 
         // --- how much of the period this person was actually employed for (mid-month join/exit)
@@ -384,12 +409,91 @@ public sealed class PayrollService(
         var totalDeductions = deductions.Sum(d => d.Amount);
         var net = gross - totalDeductions;
 
+        // --- loan recovery (spec 0057, G41). Computed against the room above the employer's floor,
+        // so an installment that would breach it is DEFERRED rather than skipped: a skipped
+        // installment is invisible, a deferred one is a row the outstanding statement explains.
+        var loans = await LoanService.LiveLoansAsync(hr, employee.Id, ct);
+        var recoveries = LoanService.Plan(loans, period, net, policy.MinimumNetPayTaka);
+
+        foreach (var recovery in recoveries.Where(r => !r.Deferred && r.AmountTaka > 0))
+        {
+            var def = components.FirstOrDefault(c => c.ComputedKind == ComputedComponent.LoanInstallment);
+            if (def is null) break;                 // no component configured: nothing to show it on
+            deductions.Add((def, recovery.AmountTaka, recovery.Basis));
+            totalDeductions += recovery.AmountTaka;
+            net -= recovery.AmountTaka;
+            lines.Add(Component(def, recovery.AmountTaka, recovery.Basis));
+        }
+
+        foreach (var deferred in recoveries.Where(r => r.Deferred))
+            line.Note = Append(line.Note, deferred.Basis + ".");
+
+        // --- the member ledgers (spec 0057, G42/G43/G44). The engine has always computed the PF and
+        // tax deductions and put them on the payslip; it never told the member's balance, so the
+        // money was taken every month and the balance it was taken into did not exist.
+        var ledger = new List<EmployeeLedgerEntry>();
+
+        if (pf is not null)
+        {
+            var employeeShare = deductions
+                .Where(d => d.Def.ComputedKind == ComputedComponent.ProvidentFund)
+                .Sum(d => d.Amount);
+            var employerShare = employerCost;
+            if (employeeShare > 0 || employerShare > 0)
+            {
+                ledger.Add(new EmployeeLedgerEntry
+                {
+                    BranchId = branchId,
+                    EmployeeId = employee.Id,
+                    Kind = LedgerKind.ProvidentFund,
+                    OnDate = periodEnd,
+                    Narration = $"Contribution for {period:MMMM yyyy}",
+                    EmployeeShareTaka = employeeShare,
+                    EmployerShareTaka = employerShare,
+                    RecordedAt = clock.GetUtcNow(),
+                    RecordedBy = run.GeneratedBy,
+                });
+            }
+        }
+
+        var withheld = deductions
+            .Where(d => d.Def.ComputedKind == ComputedComponent.IncomeTax)
+            .Sum(d => d.Amount);
+        if (withheld > 0)
+        {
+            ledger.Add(new EmployeeLedgerEntry
+            {
+                BranchId = branchId,
+                EmployeeId = employee.Id,
+                Kind = LedgerKind.Tax,
+                OnDate = periodEnd,
+                Narration = $"Tax deducted at source for {period:MMMM yyyy}",
+                EmployeeShareTaka = withheld,
+                RecordedAt = clock.GetUtcNow(),
+                RecordedBy = run.GeneratedBy,
+            });
+        }
+
         // The negative-net floor: never hand someone a payslip that owes money. The shortfall is
-        // carried, not forgiven, and Wave C's loan ledger is where it lands.
+        // carried, not forgiven, and the loan ledger is where it lands.
         if (net < policy.MinimumNetPayTaka)
         {
             line.CarriedShortfallTaka = policy.MinimumNetPayTaka - net;
             net = policy.MinimumNetPayTaka;
+        }
+
+        // --- salary hold (spec 0057, G46). The line is computed in full and MARKED; the money is
+        // simply not disbursed.
+        //
+        // Zeroing the net was the first attempt and it was wrong twice over. It breaks
+        // ck_payroll_line_net, which requires the arithmetic to add up — and the constraint is
+        // right, because the person did earn it. A hold withholds payment; it does not un-earn a
+        // month's work, and a payslip showing zero would tell the employee something false about
+        // what they are owed. The disbursement batch skips held lines instead.
+        if (hold is not null)
+        {
+            line.Held = true;
+            line.HoldReason = hold.Reason;
         }
 
         line.GrossEarningsTaka = gross;
@@ -409,7 +513,7 @@ public sealed class PayrollService(
             denominator,
         });
 
-        return new BuiltLine(line, lines, exceptions);
+        return new BuiltLine(line, lines, exceptions, recoveries, ledger);
 
         PayrollComponentLine Component(PayComponent def, long amount, string? basis) => new()
         {
@@ -452,8 +556,51 @@ public sealed class PayrollService(
         run.ReviewedAt = clock.GetUtcNow();
         run.ReviewedBy = actorId;
 
+        // Spec 0057: the comparison is built here rather than on demand, so the variance tab opens
+        // on a fixed set of figures. Rebuilding it later against a run that has since moved would
+        // quietly change what an approver had already looked at.
+        await DisbursementService.BuildVarianceAsync(hr, branchId, runId, ct);
+
         audit.Append(kernel, branchId, actorId, actorName, "hr.payroll.review", "hr.payroll_run",
             run.Id, after: new { run.RunNo, run.ExceptionCount }, tier: 1);
+    }
+
+    /// <summary>
+    /// §9's Variance Reviewed, between exceptions and approval (spec 0057, G47). The module used to
+    /// go straight from one to the other, so a run where somebody's pay tripled was approved exactly
+    /// as fast as a run where nothing moved.
+    /// <para>
+    /// Refused while any line outside the employer's tolerance is still unexplained. The tolerance
+    /// is the employer's — a small employer may reasonably want every change explained, a large one
+    /// would drown.
+    /// </para>
+    /// </summary>
+    public async Task ReviewVarianceAsync(
+        HrDbContext hr, KernelDbContext kernel, long branchId, long runId,
+        long actorId, string actorName, CancellationToken ct = default)
+    {
+        var run = await LoadAsync(hr, runId, ct);
+        Require(run, PayrollRunState.ExceptionsReviewed, "variance-reviewed");
+
+        var periodEnd = run.Period.AddMonths(1).AddDays(-1);
+        var policy = await policies.PayrollAsync(hr, branchId, periodEnd, ct);
+        var tolerance = policy?.VarianceTolerationBp ?? 2_000;
+
+        var outstanding = await DisbursementService.OutstandingAsync(hr, runId, tolerance, ct);
+        if (outstanding.Count > 0)
+        {
+            throw new HrException(
+                $"{outstanding.Count} pay change{(outstanding.Count == 1 ? "" : "s")} outside the "
+                + $"{tolerance / 100m:0.##}% tolerance still needs a reason. Explain them on the "
+                + "variance tab before approving.");
+        }
+
+        run.State = PayrollRunState.VarianceReviewed;
+        run.VarianceReviewedAt = clock.GetUtcNow();
+        run.VarianceReviewedBy = actorId;
+
+        audit.Append(kernel, branchId, actorId, actorName, "hr.payroll.variance_review",
+            "hr.payroll_run", run.Id, after: new { run.RunNo, tolerance }, tier: 1);
     }
 
     /// <summary>§12: the lock is approved by Accounts Manager / MD, through the kernel engine.</summary>
@@ -462,7 +609,9 @@ public sealed class PayrollService(
         long actorId, string actorName, string requesterRole, CancellationToken ct = default)
     {
         var run = await LoadAsync(hr, runId, ct);
-        Require(run, PayrollRunState.ExceptionsReviewed, "sent for approval");
+        // Spec 0057: variance comes first. §9 puts it between exceptions and approval precisely so
+        // that nobody can approve a month they have not compared with the last one.
+        Require(run, PayrollRunState.VarianceReviewed, "sent for approval");
 
         var raise = await approvals.RaiseAsync(
             kernel, branchId, "payroll-lock", "hr.payroll_run", run.Id, actorId, requesterRole,
@@ -487,7 +636,7 @@ public sealed class PayrollService(
         long actorId, string actorName, CancellationToken ct = default)
     {
         var run = await LoadAsync(hr, runId, ct);
-        Require(run, PayrollRunState.ExceptionsReviewed, "approved");
+        Require(run, PayrollRunState.VarianceReviewed, "approved");
 
         run.State = PayrollRunState.Approved;
         run.ApprovedAt = clock.GetUtcNow();

@@ -3,6 +3,7 @@ using System;
 using Hms.Hr.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Hms.Hr.Data.Migrations
 {
     [DbContext(typeof(HrDbContext))]
-    partial class HrDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260806135902_HrMoney0057")]
+    partial class HrMoney0057
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -990,6 +993,10 @@ namespace Hms.Hr.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_employee");
 
+                    b.HasIndex("EmployeeCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_employee_employee_code");
+
                     b.HasIndex("PersonRef")
                         .HasDatabaseName("ix_employee_person_ref");
 
@@ -1004,10 +1011,6 @@ namespace Hms.Hr.Data.Migrations
                     b.HasIndex("BranchId", "ContractEndsOn")
                         .HasDatabaseName("ix_employee_branch_id_contract_ends_on")
                         .HasFilter("contract_ends_on IS NOT NULL AND separated_on IS NULL");
-
-                    b.HasIndex("BranchId", "EmployeeCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_employee_branch_id_employee_code");
 
                     b.HasIndex("BranchId", "ProbationDueOn")
                         .HasDatabaseName("ix_employee_branch_id_probation_due_on")
@@ -1947,12 +1950,12 @@ namespace Hms.Hr.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_leave_application");
 
+                    b.HasIndex("ApplicationNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_leave_application_application_no");
+
                     b.HasIndex("State")
                         .HasDatabaseName("ix_leave_application_state");
-
-                    b.HasIndex("BranchId", "ApplicationNo")
-                        .IsUnique()
-                        .HasDatabaseName("ix_leave_application_branch_id_application_no");
 
                     b.HasIndex("EmployeeId", "FromDate")
                         .HasDatabaseName("ix_leave_application_employee_id_from_date");
@@ -3081,12 +3084,12 @@ namespace Hms.Hr.Data.Migrations
                         .HasDatabaseName("ix_payroll_run_reversal_of_run_id")
                         .HasFilter("reversal_of_run_id IS NOT NULL");
 
+                    b.HasIndex("RunNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payroll_run_run_no");
+
                     b.HasIndex("State")
                         .HasDatabaseName("ix_payroll_run_state");
-
-                    b.HasIndex("BranchId", "RunNo")
-                        .IsUnique()
-                        .HasDatabaseName("ix_payroll_run_branch_id_run_no");
 
                     b.HasIndex("BranchId", "Period", "Kind", "Sequence")
                         .IsUnique()
@@ -3139,9 +3142,9 @@ namespace Hms.Hr.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_payslip_payroll_line_id");
 
-                    b.HasIndex("BranchId", "PayslipNo")
+                    b.HasIndex("PayslipNo")
                         .IsUnique()
-                        .HasDatabaseName("ix_payslip_branch_id_payslip_no");
+                        .HasDatabaseName("ix_payslip_payslip_no");
 
                     b.ToTable("payslip", "hr");
                 });

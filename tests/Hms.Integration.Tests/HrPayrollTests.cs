@@ -65,6 +65,7 @@ public sealed class HrPayrollTests(PostgresFixture pg)
         // The whole point of AUD-M16-04: this Lock refused the entire run before the fix,
         // because the journal credited gross − shortfall against a debit of gross.
         await tx.RunAsync(s => payroll.ReviewAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
+        await ReviewVarianceAsync(tx, branch, runId);
         await tx.RunAsync(s => payroll.ApproveAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
         var journal = await tx.RunAsync(s => payroll.LockAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
 
@@ -383,6 +384,7 @@ public sealed class HrPayrollTests(PostgresFixture pg)
         var runId = await tx.RunAsync(async s =>
             (await payroll.GenerateAsync(s.Hr, s.Kernel, branch, period, 1, "test")).Id);
         await tx.RunAsync(s => payroll.ReviewAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
+        await ReviewVarianceAsync(tx, branch, runId);
         await tx.RunAsync(s => payroll.ApproveAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
         await tx.RunAsync(s => payroll.LockAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
 
@@ -427,6 +429,7 @@ public sealed class HrPayrollTests(PostgresFixture pg)
         var runId = await tx.RunAsync(async s =>
             (await payroll.GenerateAsync(s.Hr, s.Kernel, branch, period, 1, "test")).Id);
         await tx.RunAsync(s => payroll.ReviewAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
+        await ReviewVarianceAsync(tx, branch, runId);
         await tx.RunAsync(s => payroll.ApproveAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
 
         await using (var hr = HrContext())
@@ -481,6 +484,7 @@ public sealed class HrPayrollTests(PostgresFixture pg)
         var runId = await tx.RunAsync(async s =>
             (await payroll.GenerateAsync(s.Hr, s.Kernel, branch, period, 1, "test")).Id);
         await tx.RunAsync(s => payroll.ReviewAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
+        await ReviewVarianceAsync(tx, branch, runId);
         await tx.RunAsync(s => payroll.ApproveAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
 
         // Two operators, two connections, both starting from `approved` — the house shape for this
@@ -731,4 +735,29 @@ public sealed class HrPayrollTests(PostgresFixture pg)
         await using var hr = new HrDbContext(Options<HrDbContext>("hr"));
         await hr.Database.MigrateAsync();
     }
+
+    /// <summary>
+    /// §9's Variance Reviewed, inserted between exceptions and approval by spec 0057. Every line in
+    /// a branch's first run is "new this month" and therefore outside any tolerance, so a test that
+    /// walks a run to approval has to explain them exactly as an operator would.
+    /// </summary>
+    private async Task ReviewVarianceAsync(HrTx tx, long branch, long runId)
+    {
+        var payroll = Payroll();
+        var money = new DisbursementService(
+            new NumberSeriesService(), new AuditWriter(TimeProvider.System),
+            new FiscalCalendar(7), TimeProvider.System);
+
+        await using (var read = HrContext())
+        {
+            foreach (var note in await read.VarianceNotes.Where(v => v.RunId == runId).ToListAsync())
+            {
+                await tx.RunAsync(s => money.ExplainAsync(
+                    s.Hr, s.Kernel, branch, note.Id, "first run for this branch", 1, "test"));
+            }
+        }
+
+        await tx.RunAsync(s => payroll.ReviewVarianceAsync(s.Hr, s.Kernel, branch, runId, 1, "test"));
+    }
+
 }
