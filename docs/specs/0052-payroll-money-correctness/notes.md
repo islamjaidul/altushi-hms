@@ -119,3 +119,63 @@ From the same review, in the order it recommended, none of them started here:
    `payroll_component_line` carrying no `BranchId` and so escaping branch isolation. Both become
    live the day a second branch is provisioned. The assumption deserves an ADR rather than a line in
    a spec's notes.
+
+---
+
+## Deployment record — 2026-08-06
+
+Deployed `ccb9d4b` to the shared demo box (103.132.96.250) via RUNBOOK §4 and §10. **Both SKUs**,
+because HR screens ship in both and leaving one behind means two products disagreeing about the
+same payslip.
+
+### Pre-flight
+
+The migration creates a **unique** partial index on `payroll_run.reversal_of_run_id`. If either
+database already held two reversals of one run, `CREATE UNIQUE INDEX` would abort the startup
+migration and the container would not come up — so that was checked first, on both databases, and
+both were empty. (Had it not been, it would also have meant the double-reversal this index exists to
+prevent had already happened in production.)
+
+**Disk was at 96%, 1.9 GB free** — not enough to build a .NET image, on a box that also carries
+three unrelated production stacks. `docker builder prune -af` reclaimed 23 GB of build cache (zero
+active) and took it to 65%. Cache only; no image or volume was removed.
+
+**`hrm` was dumped first** (`/root/pre-0052/hrm-pre0052.dump`, 296 KB). RUNBOOK §10 records that
+`hms-backup-1` dumps only `hms`, so this is the one database a migration reaches with no backup
+behind it.
+
+### Result
+
+| | ERP (`hms`) | HRM (`hrm`) |
+|---|---|---|
+| Container | `hms-app-1` healthy | `hrm-app-1` healthy |
+| Migration | `20260806062101_HrPayrollGuards0052` applied | same, applied |
+| Index | `CREATE UNIQUE INDEX … WHERE (reversal_of_run_id IS NOT NULL)` | present |
+| Public | `https://hms.specshipper.com/health` 200 | `https://hrm.specshipper.com/health` 200 |
+| Payroll data | 0 runs, 5 employees | 2 runs intact, **net ৳43,06,000 unchanged** |
+
+The HRM figure is the same one spec 0036's deployment record captured on 2026-08-02. **Hard rule 5
+held across the migration**: locked runs still reproduce their historical numbers.
+
+Box after: 1412 MB available (was 1247 before), disk 68%.
+
+### A production finding this deploy did not cause
+
+`lifecycle-suite --tier t0` against `https://hms.specshipper.com` is **RED**, and was already red
+before this deploy:
+
+- **Admin holds 32 permissions the code does not grant**, and **Billing Operator holds
+  `radiology.report.write`** — a billing clerk who can write a radiology report.
+- The last permission write in `kernel.audit_event` is **2026-08-03 09:22 by System Admin**, three
+  days before this deploy (container start `2026-08-06T07:12:26Z`). Nothing in spec 0052 touches
+  permissions, and no migration here writes to `adm.permission`.
+
+So it is live configuration drift from a human using the §12 matrix editor, not a regression. It is
+recorded here because it was found here, and `Billing Operator → radiology.report.write` is worth
+someone's attention on its own. It belongs to whoever owns the deployment's role configuration,
+not to this spec.
+
+`hrm-thread.py` was **not** run against production: it is a mutating suite, and the QA interlock
+requires the environment named and agreed in chat first. Read-only checks were used instead —
+`/hr` and `/hr/policies` both 302 to login, which also exercises the `Policies.cshtml` repair on
+the live HRM host.
