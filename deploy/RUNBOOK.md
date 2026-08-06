@@ -140,3 +140,21 @@ sensitive artifact in the product and keep an offline copy.
 A licence past expiry does not stop the product: 30 days of grace with a banner, then read-only —
 GETs still work, mutations refuse (P6). Customers get their data back regardless of the commercial
 relationship.
+
+## 11. The HRM SKU through CI (spec 0053)
+
+Same pipeline, second image and second environment. `image-hrm` builds
+`ghcr.io/islamjaidul/altushi-hms/hrm:<sha>` from `deploy/hrm.Dockerfile`; `deploy-hrm` waits on
+the **production-hrm** environment, which has its own required reviewer — approving an ERP deploy
+must never imply approving an HRM one, because only one of them holds patient records.
+
+The forced command on the VM reads the *repository name* out of the image reference and selects
+the stack itself (`app` → ERP, `hrm` → HRM). The caller names a product, never a command or a
+compose file, so a leaked CI key still cannot choose what runs.
+
+Gated by `DEPLOY_HRM_ENABLED`, separately from the ERP's `DEPLOY_ENABLED`.
+
+**This closes a real gap.** `compose.hrm.vm.yml` notes that `hms-backup-1` dumps only the `hms`
+database, so `hrm` was backed up by nothing. Every HRM deploy now takes a `pg_dump` of `hrm` from
+`hms-db-1` into the shared backups volume before it swaps. That is a pre-deploy restore point, not
+a backup schedule — the nightly gap is still open and still needs closing.

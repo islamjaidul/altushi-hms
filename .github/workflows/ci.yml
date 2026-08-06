@@ -365,3 +365,85 @@ jobs:
           echo "### Deploy" >> "$GITHUB_STEP_SUMMARY"
           echo "Image: \`${{ needs.image.outputs.image }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "Result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------- the second SKU (ADR-0025)
+  # Same source tree, different composition root: Hms.Hr.Web, three schemas, no clinical code.
+  # It was still deployed by hand with a compile on the VM — the exact thing this spec removed
+  # for the ERP, on the same 3 GB box.
+  image-hrm:
+    needs: [changes, build-test, upgrade-path, deploy-drill]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: ref
+        run: echo "image=ghcr.io/${{ github.repository }}/hrm:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: deploy/hrm.Dockerfile
+          push: true
+          tags: ${{ steps.ref.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: echo "Pushed \`${{ steps.ref.outputs.image }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # A separate environment from the ERP on purpose: this is the demo HRM box, the ERP holds the
+  # hospital's records, and one approval must never imply the other.
+  deploy-hrm:
+    needs: image-hrm
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_HRM_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: production-hrm
+    concurrency:
+      group: deploy-production-hrm
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - name: Open an SSH session to the VM
+        env:
+          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VM_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+      - name: Deploy HRM, health-check, roll back on failure
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
+          IMAGE: ${{ needs.image-hrm.outputs.image }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          # Identical protocol to the ERP. The gate reads the repository name out of the image ref
+          # and picks the compose files itself — the caller names a product, never a command.
+          printf '%s' "$REGISTRY_TOKEN" | ssh -i ~/.ssh/id_deploy -p "$VM_PORT" \
+            -o StrictHostKeyChecking=yes \
+            "${VM_USER}@${VM_HOST}" "${REGISTRY_USER} ${IMAGE}"
+      - name: Record what is now running
+        if: always()
+        run: |
+          echo "### HRM deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: \`${{ needs.image-hrm.outputs.image }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Result: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"

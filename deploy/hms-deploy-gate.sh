@@ -14,7 +14,7 @@
 set -euo pipefail
 
 REGISTRY="ghcr.io"
-ALLOWED_PREFIX="ghcr.io/islamjaidul/altushi-hms/app:"
+REPO_BASE="ghcr.io/islamjaidul/altushi-hms"
 DEPLOYER="/opt/altushi-hms/deploy/deploy-remote.sh"
 
 deny() { echo "refused: $1" >&2; exit 1; }
@@ -31,14 +31,32 @@ read -r REG_USER IMAGE EXTRA <<<"${SSH_ORIGINAL_COMMAND:-}"
 case "$REG_USER" in *[!A-Za-z0-9_-]*) deny "registry user has illegal characters";; esac
 case "$IMAGE"    in *[!A-Za-z0-9./:_-]*) deny "image ref has illegal characters";; esac
 
-# Our registry, our repository, and a tag that looks like a commit sha. A deploy is only ever a
-# commit that passed the gate — not `:latest`, which is a moving target, and not someone else's
+# Our registry, one of our two SKUs, and a tag that looks like a commit sha. A deploy is only ever
+# a commit that passed the gate — not `:latest`, which is a moving target, and not someone else's
 # image, which is how a leaked key would run arbitrary code as root via the docker socket.
+#
+# The repository name selects the stack. Nothing about which compose files to touch comes off the
+# wire; the caller picks a product, not a command.
 case "$IMAGE" in
-  "$ALLOWED_PREFIX"*) ;;
-  *) deny "image must start with $ALLOWED_PREFIX";;
+  "$REPO_BASE/app:"*)
+    TAG="${IMAGE#"$REPO_BASE/app:"}"
+    export HMS_COMPOSE_FILES="compose.yml compose.vm.yml"
+    export HMS_HEALTH_URL="http://127.0.0.1:8090/health"
+    export HMS_DB_NAME="hms"
+    ;;
+  "$REPO_BASE/hrm:"*)
+    TAG="${IMAGE#"$REPO_BASE/hrm:"}"
+    export HMS_COMPOSE_FILES="compose.hrm.yml compose.hrm.vm.yml"
+    export HMS_HEALTH_URL="http://127.0.0.1:8091/health"
+    # This SKU has no database or backup container of its own on the shared box — it uses the
+    # ERP's Postgres against a separate `hrm` database (ADR-0025, compose.hrm.vm.yml), and rides
+    # the ERP's backup volume. Before this, nothing dumped `hrm` at all.
+    export HMS_DB_CONTAINER="hms-db-1"
+    export HMS_DB_NAME="hrm"
+    export HMS_BACKUP_CONTAINER="hms-backup-1"
+    ;;
+  *) deny "image must be $REPO_BASE/{app,hrm}:<sha>";;
 esac
-TAG="${IMAGE#"$ALLOWED_PREFIX"}"
 case "$TAG" in
   [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
   *) deny "tag must be a commit sha (got '$TAG')";;

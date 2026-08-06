@@ -18,9 +18,20 @@ DEPLOY_DIR="${HMS_DEPLOY_DIR:-/opt/altushi-hms/deploy}"
 HEALTH_URL="${HMS_HEALTH_URL:-http://127.0.0.1:8090/health}"
 HEALTH_TIMEOUT="${HMS_HEALTH_TIMEOUT:-120}"
 
-# The ERP stack only. compose.yml sets `name: hms`; naming both files explicitly keeps this
-# off the other three products sharing this box (spec 0053, risk 2). Never a bare `down`.
-COMPOSE=(docker compose -f "${DEPLOY_DIR}/compose.yml" -f "${DEPLOY_DIR}/compose.vm.yml")
+# Which stack. Defaults are the ERP; hms-deploy-gate sets these for the HRM SKU, which shares this
+# box and the ERP's Postgres server but is a different compose project (ADR-0025).
+COMPOSE_FILES="${HMS_COMPOSE_FILES:-compose.yml compose.vm.yml}"
+# Where the database lives. The ERP has `db` inside its own project; the HRM SKU on this box has
+# no db of its own — it uses the ERP's container against a separate `hrm` database, so the dump
+# has to be taken by container name rather than by compose service.
+DB_CONTAINER="${HMS_DB_CONTAINER:-}"       # empty → use the compose `db` service
+DB_NAME="${HMS_DB_NAME:-hms}"
+BACKUP_CONTAINER="${HMS_BACKUP_CONTAINER:-}"   # empty → use the compose `backup` service
+
+# Naming every file explicitly keeps this off the other products sharing this box (spec 0053,
+# risk 2). Never a bare `down`.
+COMPOSE=(docker compose)
+for _f in $COMPOSE_FILES; do COMPOSE+=(-f "${DEPLOY_DIR}/${_f}"); done
 
 log() { printf '\n=== %s\n' "$*"; }
 
@@ -52,19 +63,34 @@ fi
 # ---------------------------------------------------------------- 2. backup before we touch it
 # §8 N3. Insurance only: the swap itself does not migrate destructively, but a deploy is the
 # moment we most want a restore point that predates it.
-log "Backing up the database before the swap"
+log "Backing up database '${DB_NAME}' before the swap"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-if "${COMPOSE[@]}" exec -T db pg_dump -U postgres -d hms --format=custom \
-     > "/tmp/hms-predeploy-${STAMP}.dump" 2>/tmp/hms-predeploy-err; then
+if [ -n "$DB_CONTAINER" ]; then
+  DUMP=(docker exec -i "$DB_CONTAINER" pg_dump -U postgres -d "$DB_NAME" --format=custom)
+else
+  DUMP=("${COMPOSE[@]}" exec -T db pg_dump -U postgres -d "$DB_NAME" --format=custom)
+fi
+if "${DUMP[@]}" > "/tmp/hms-predeploy-${STAMP}.dump" 2>/tmp/hms-predeploy-err; then
   # The checksum travels WITH the dump. Writing it to /tmp and then deleting the dump left an
   # orphaned .sha256 beside nothing, and an archived dump no one could verify — every other file
   # in that volume has its sidecar (RUNBOOK §5), and a restore point you cannot check is not one.
   ( cd /tmp && sha256sum "hms-predeploy-${STAMP}.dump" > "hms-predeploy-${STAMP}.sha256" )
-  if "${COMPOSE[@]}" cp "/tmp/hms-predeploy-${STAMP}.dump" \
+  ARCHIVED=0
+  if [ -n "$BACKUP_CONTAINER" ]; then
+    # By container name: the HRM SKU has no backup service of its own on this box and rides the
+    # ERP's volume. Its database is otherwise dumped by nothing at all (compose.hrm.vm.yml).
+    docker cp "/tmp/hms-predeploy-${STAMP}.dump" \
+      "${BACKUP_CONTAINER}:/var/hms/backups/predeploy-${DB_NAME}-${STAMP}.dump" 2>/dev/null \
+      && docker cp "/tmp/hms-predeploy-${STAMP}.sha256" \
+         "${BACKUP_CONTAINER}:/var/hms/backups/predeploy-${DB_NAME}-${STAMP}.sha256" 2>/dev/null \
+      && ARCHIVED=1
+  elif "${COMPOSE[@]}" cp "/tmp/hms-predeploy-${STAMP}.dump" \
         "backup:/var/hms/backups/predeploy-${STAMP}.dump" 2>/dev/null; then
     "${COMPOSE[@]}" cp "/tmp/hms-predeploy-${STAMP}.sha256" \
         "backup:/var/hms/backups/predeploy-${STAMP}.sha256" 2>/dev/null || true
-  else
+    ARCHIVED=1
+  fi
+  if [ "$ARCHIVED" -ne 1 ]; then
     cp "/tmp/hms-predeploy-${STAMP}.dump"   "${DEPLOY_DIR}/predeploy-${STAMP}.dump"
     cp "/tmp/hms-predeploy-${STAMP}.sha256" "${DEPLOY_DIR}/predeploy-${STAMP}.sha256"
   fi

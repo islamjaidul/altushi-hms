@@ -3,9 +3,11 @@
 # Same source tree as the ERP image, a different composition root. What ships here is the kernel,
 # the shared shell and HR: no clinical code, and a database with three schemas instead of fourteen.
 # That is the point of the two-host decision — a customer receives the product they bought.
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Same pinned toolchain as the ERP image (spec 0053 AC7) - both SKUs come off one source tree,
+# so they must come off one compiler.
+FROM mcr.microsoft.com/dotnet/sdk:10.0.302 AS build
 WORKDIR /src
-COPY hms-erp.slnx Directory.Build.props nuget.config* ./
+COPY global.json hms-erp.slnx Directory.Build.props nuget.config* ./
 COPY src/ src/
 RUN dotnet publish src/Hms.Hr.Web -c Release -o /out /p:TreatWarningsAsErrors=true
 
