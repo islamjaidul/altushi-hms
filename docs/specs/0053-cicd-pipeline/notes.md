@@ -36,13 +36,15 @@ that stops at the first failure cannot tell you it is the only one running.
    `docker inspect hms-app-1` on the VM reports `sha256:eea88ec1…` for that ref.
 4. **Deploy waits, VM unchanged while waiting** — job status `waiting`, and the VM was confirmed
    still on `sha256:3e4dd6d0…`/`hms-app:dev` during the wait.
-5. **Rollback on an unhealthy deploy** — **NOT verified.** The path is written and reviewed, and
-   the happy path proved the health probe works, but no deploy has been made to fail deliberately.
-   See follow-ups.
+5. **Rollback on an unhealthy deploy** — **verified, after the drill proved it was broken.**
+   `eng/verify/deploy-rollback-drill.sh`: 11 assertions, now green, and in CI as `deploy-drill`.
+   See "What the drill found" below.
 6. **No key material in the workflow** — secrets only; the registry token goes to the VM over
    stdin, never as an argv element that `ps` would expose on a box with four tenants.
-7. **SDK pinned** — **NOT done.** `10.0.x` still floats. The run summary now records the resolved
-   SDK so drift is visible, which was the cheaper half. See follow-ups.
+7. **SDK pinned** — **done.** `global.json` names 10.0.302 with `rollForward: latestPatch`;
+   `setup-dotnet` installs from it rather than resolving "latest 10.0"; both Dockerfiles build on
+   the same version. Before this, CI proved one binary and shipped another compiled by a floating
+   `sdk:10.0` tag.
 
 ## First production deploy
 
@@ -51,11 +53,39 @@ job took 40 s. `/health` 200 locally and `https://hms.specshipper.com` 200. The 
 containers on the box (HRM, four DMS, POS, MySQL, pharmacy, and two strays) were confirmed
 untouched by uptime. Payroll migrations from 0052 applied to the live database as part of it.
 
-## Follow-ups
+## What the drill found
 
-- **The rollback path has never fired.** Rehearse it: deploy an image whose `/health` fails, on the
-  demo/HRM stack rather than the ERP, and confirm the previous digest comes back. Until that is
-  done, §8 N6's guarantee is a claim about code that has not been run.
+Writing `eng/verify/deploy-rollback-drill.sh` was supposed to confirm the rollback. It failed on
+the first honest run, with exit 2 — *rollback also failed*.
+
+`deploy-remote.sh` recorded the rollback point with `docker inspect --format '{{.Image}}'`, which
+returns the image **ID**, then handed that `sha256:…` back to compose as `image:`. Compose reads
+that as an image *name*, cannot resolve it, and leaves the broken container in place. **The
+recovery step that exists to keep the counter up would itself have failed, in exactly the
+situation it was written for** — and it had already been through review and one production deploy.
+
+The fix keeps the two apart: `.Config.Image` is the reference to redeploy; `.Image` is the ID to
+verify against afterwards, because a tag can be moved and a rollback that silently lands somewhere
+else is worse than one that fails loudly.
+
+A second lesson, cheaper but the same shape: the drill's first version used local image tags, so
+`docker pull` failed and all four rollback assertions passed **for the wrong reason**. Testing a
+recovery path against a weakened version of the production contract proves nothing. The drill now
+runs a throwaway registry and pulls, exactly as the real deploy does.
+
+## The concurrency deadlock
+
+One concurrency group per ref with `cancel-in-progress: false` on main meant a run parked in
+`waiting` for its deploy approval **held the group**. Every later push queued behind a human
+decision that might never come: two runs cancelled, a third pending ten minutes with no jobs and
+nothing in the UI explaining why. Cancelling the parked run released the queue instantly.
+
+Serialising deploys is correct — two deploys must not race onto one box — but that belongs on the
+deploy jobs, which carry their own `concurrency: deploy-production`. Builds are independent of
+each other; deploys are not. One group over both turned the safe rule for deploys into an outage
+for builds.
+
+## Follow-ups
 - ~~**The CI key is root-equivalent.**~~ **Done** — `hms-deploy-gate.sh` is a forced command
   (`no-pty`, no forwarding) that accepts one thing: `<registry-user> <image>`, where the image must
   start with our own GHCR prefix and carry a 40-character sha tag. `:latest` is refused because a
@@ -72,8 +102,22 @@ untouched by uptime. Payroll migrations from 0052 applied to the live database a
 - **`VM_USER` is the secret `deploy`**, so GitHub masks the word "deploy" everywhere in the run
   log — "Pre-*** backup taken". Harmless but it degrades the log. Make it a variable, not a secret;
   a username on a host that already exposes SSH is not the sensitive part.
-- **Pin the SDK** once a known-good version has held for a few runs (AC 7).
-- **The HRM SKU has no CD.** `compose.hrm.vm.yml` is still a manual `git pull && build` on the VM —
-  the exact thing this spec removed for the ERP, and on the same 3 GB box.
-- **`main` has no branch protection**, so "merged or pushed" is always a direct push and the gate
-  reports rather than blocks. Adding a protection rule would make it a gate in fact.
+- ~~**Pin the SDK**~~ **Done** — see AC 7.
+- ~~**The HRM SKU has no CD.**~~ **Done** — `image-hrm` + `deploy-hrm`, its own `production-hrm`
+  environment and reviewer, gated by `DEPLOY_HRM_ENABLED`. `deploy-remote.sh` is parameterised
+  rather than forked; the gate reads the SKU off the image repository name.
+- ~~**`main` has no branch protection.**~~ **Done** — `gate` is the single required check, with
+  force-push, deletion and non-linear history refused. Admin enforcement is deliberately **off**
+  so the owner can still push directly; turn it on when the team is bigger than one.
+- **The `hrm` database still has no nightly backup.** Every HRM deploy now takes a pre-deploy dump
+  (which is new — it previously had none at all), but `hms-backup-1` still dumps only `hms`. A
+  restore point that only exists when someone deploys is not a backup schedule. Teach the backup
+  loop a second `PGDATABASE`.
+- **Nothing scans the built image.** The package scan covers NuGet; the base image's OS packages
+  are unexamined. A Trivy/Grype step on the pushed image is the standard next gate.
+- **No supply-chain attestation.** Consider build provenance and image signing so the VM can
+  verify the image came from this pipeline, not merely from a registry it can reach.
+- **The runtime base image floats** on `aspnet:10.0` while the SDK is pinned. That is deliberate —
+  runtime patches are security fixes — but it means the image is not bit-reproducible.
+- **`.env` is readable by the `deploy` group.** Required for the stack to start, and narrower than
+  world-readable, but it is still the database passwords on a box with four tenants.
