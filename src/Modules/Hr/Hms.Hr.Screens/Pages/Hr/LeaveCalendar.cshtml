@@ -1,0 +1,41 @@
+@page "/hr/leave-calendar"
+@model Hms.Hr.Screens.Pages.Hr.LeaveCalendarModel
+@{
+    ViewData["Title"] = "Leave calendar";
+    ViewData["Crumb"] = HrNav.Leave;
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        Who is out
+        <span class="spacer"></span>
+        <span class="card-hint">
+            @Model.Month.ToString("MMMM yyyy")@(Model.OutToday > 0 ? $" · {Model.OutToday} out today" : "")
+        </span>
+        <a class="btn" href="@Model.MonthHref(-1)">
+            <span class="icon icon-sm" aria-hidden="true">chevron_left</span>
+        </a>
+        <a class="btn" href="@Model.MonthHref(1)">
+            <span class="icon icon-sm" aria-hidden="true">chevron_right</span>
+        </a>
+    </div>
+
+    <div class="card-body">
+        <form method="get" class="filter-row">
+            <input type="hidden" name="month" value="@Model.Month.ToString("dd/MM/yyyy")" />
+            <label class="field" style="max-width:16rem">
+                <span class="field-label">Unit</span>
+                <select class="input" name="unit" data-submit>
+                    <option value="">— every unit —</option>
+                    @foreach (var u in Model.Units)
+                    {
+                        <option value="@u.Value" selected="@(u.Value == Model.UnitId?.ToString())">@u.Text</option>
+                    }
+                </select>
+            </label>
+        </form>
+    </div>
+
+    @* The clash an approver needs to see before they approve: L is decided, ? is still waiting. *@
+    <partial name="_MonthGrid" model="Model.Grid" />
+</div>

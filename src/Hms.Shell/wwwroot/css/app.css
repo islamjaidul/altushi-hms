@@ -1065,6 +1065,60 @@ table.sheet-table .num { text-align: right; font-variant-numeric: tabular-nums; 
   background: var(--warning-bg); color: var(--ink-2); font-size: 0.8125rem;
 }
 
+/* Spec 0059: a notice board entry. Also used by the period bar's own notice line, which had
+   been carrying the class without a rule since spec 0055 — check-css-classes.sh found it here. */
+.notice {
+  border: 1px solid var(--border-1); border-radius: var(--radius);
+  padding: 10px 12px; margin-bottom: 10px; background: var(--paper);
+}
+.notice-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.notice-head .card-hint { margin-left: auto; }
+
+/* ====================================================================== */
+/* Spec 0059 — the one month grid                                         */
+/* Three specs deferred this component; it exists once, and the leave,     */
+/* attendance and holiday calendars differ only in what fills a cell.      */
+/* ====================================================================== */
+
+.cal-month {
+  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px; padding: 12px 16px 16px;
+}
+.cal-weekday {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted-2);
+  text-align: center; padding-bottom: 4px;
+}
+.cal-day {
+  position: relative; min-height: 58px;
+  border: 1px solid var(--border-1); border-radius: var(--radius);
+  background: var(--paper); padding: 4px 6px;
+  display: flex; flex-direction: column; gap: 2px;
+  color: var(--ink); text-decoration: none;
+}
+a.cal-day:hover { border-color: var(--primary); text-decoration: none; }
+.cal-day.blank { background: transparent; border-color: transparent; }
+.cal-date { font-size: 0.6875rem; color: var(--muted-2); }
+.cal-mark { font-size: 1.05rem; font-weight: 700; line-height: 1.1; }
+/* The tones the three views share. Colour is never the sole carrier (§7 U12): every cell
+   also has its letter and its title. */
+.cal-day.good { background: var(--success-bg); border-color: var(--success-bg); }
+.cal-day.warn { background: var(--warning-bg); border-color: var(--warning-bg); }
+.cal-day.bad { background: var(--danger-bg); border-color: var(--danger-bg); }
+.cal-day.muted { background: var(--app-bg); }
+
+/* Employee × day — the muster-roll shape a Bangladeshi HR office already uses on paper. */
+.grid-matrix .grid-label { min-width: 11rem; position: sticky; left: 0; background: var(--paper); }
+.grid-matrix .grid-col { width: 1.6rem; text-align: center; font-size: 0.6875rem; }
+.grid-matrix .grid-cell {
+  width: 1.6rem; text-align: center; font-size: 0.75rem; font-weight: 600;
+  padding: 3px 0;
+}
+.grid-matrix .grid-cell.good { background: var(--success-bg); }
+.grid-matrix .grid-cell.warn { background: var(--warning-bg); }
+.grid-matrix .grid-cell.bad { background: var(--danger-bg); }
+.grid-matrix .grid-cell.muted { color: var(--muted-2); }
+
 /* Spec 0057: the column a cash sheet exists for. The employee signs beside their own amount, on
    paper, in front of the person paying — so it needs a printable rule and enough room for a hand. */
 .signature-cell {

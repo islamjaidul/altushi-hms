@@ -1,0 +1,100 @@
+@model Hms.Shell.MonthGrid
+@*
+    The one month grid (spec 0059). Three specs deferred building this — the leave calendar, the
+    attendance calendar and the holiday calendar are one component looked at three ways, and the
+    views differ only in what fills a cell.
+
+    A matrix when there are many subjects (employee × day, the muster-roll shape a Bangladeshi HR
+    office already uses on paper); a wall calendar when there is one.
+*@
+
+@if (Model.IsEmpty)
+{
+    <div class="empty-state">@(Model.EmptyReason ?? "Nothing to show for this month.")</div>
+}
+else if (Model.Rows.Count == 1)
+{
+    <div class="cal-month">
+        @foreach (var weekday in Model.Weekdays)
+        {
+            <div class="cal-weekday">@weekday.ToString()[..3]</div>
+        }
+        @foreach (var week in Hms.Shell.MonthGrid.WeeksOf(Model.Month, Model.WeekStartsOn))
+        {
+            foreach (var day in week)
+            {
+                if (!Model.InMonth(day))
+                {
+                    <div class="cal-day blank"></div>
+                    continue;
+                }
+
+                var cell = Model.Rows[0].Cells.FirstOrDefault(c => c.OnDate == day);
+                if (cell is null)
+                {
+                    <div class="cal-day"><span class="cal-date">@day.Day</span></div>
+                }
+                else if (cell.Href is { Length: > 0 })
+                {
+                    <a class="cal-day @cell.Tone" href="@cell.Href" title="@cell.Title">
+                        <span class="cal-date">@day.Day</span>
+                        <span class="cal-mark">@cell.Letter</span>
+                    </a>
+                }
+                else
+                {
+                    <div class="cal-day @cell.Tone" title="@cell.Title">
+                        <span class="cal-date">@day.Day</span>
+                        <span class="cal-mark">@cell.Letter</span>
+                    </div>
+                }
+            }
+        }
+    </div>
+}
+else
+{
+    @* Employee × day. The letter carries the meaning and the tone reinforces it — colour is never
+       the sole carrier (§7 U12), which is also why every cell has a title. *@
+    <div class="table-wrap">
+        <table class="data grid-matrix">
+            <thead>
+            <tr>
+                <th class="grid-label">Employee</th>
+                @foreach (var day in Model.Days)
+                {
+                    <th class="grid-col" title="@day.ToString("dddd, dd MMM")">@day.Day</th>
+                }
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="grid-label">
+                        @if (row.Href is { Length: > 0 })
+                        {
+                            <a href="@row.Href">@row.Label</a>
+                        }
+                        else
+                        {
+                            <text>@row.Label</text>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(row.Sub))
+                        {
+                            <div class="text-muted" style="font-size:0.6875rem">@row.Sub</div>
+                        }
+                    </td>
+                    @foreach (var day in Model.Days)
+                    {
+                        var cell = row.Cells.FirstOrDefault(c => c.OnDate == day);
+                        <td class="grid-cell @(cell?.Tone ?? "")" title="@(cell?.Title ?? "")">
+                            @(cell?.Letter ?? "")
+                        </td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

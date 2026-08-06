@@ -124,6 +124,9 @@ ROUTES = {
     "/hr/letters/1": "hr.document.issue",
     "/hr/notifications": "hr.policy.manage",
     "/hr/leave": "hr.read",
+    # Spec 0059. The calendar reads on hr.read; closing a year is an approver's act.
+    "/hr/leave-calendar": "hr.read",
+    "/hr/leave-year": "hr.leave.approve",
     "/hr/masters": "hr.policy.manage",
     # Spec 0055: "My space" is the employee dashboard, present for anyone with a linked
     # employment (§11 scoping rule 2), so it gates on hr.self rather than on leave-apply.

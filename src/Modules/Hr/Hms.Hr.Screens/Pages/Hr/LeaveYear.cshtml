@@ -1,0 +1,207 @@
+@page "/hr/leave-year"
+@using Hms.Hr.Data
+@model Hms.Hr.Screens.Pages.Hr.LeaveYearModel
+@{
+    ViewData["Title"] = "Leave year";
+    ViewData["Crumb"] = HrNav.Leave;
+    static string Days(int bp) => bp == 0 ? "—" : (bp / 10000m).ToString("0.##");
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert bad">
+        <span class="icon icon-sm" aria-hidden="true">error</span>
+        <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="grid grid-main-side">
+    <div class="stack">
+        @if (Model.Selected is { } close)
+        {
+            <div class="card">
+                <div class="card-head">
+                    Closing @close.ClosingYear.ToString("MMM yyyy") → opening @close.OpeningYear.ToString("MMM yyyy")
+                    <span class="spacer"></span>
+                    <span class="pill @(close.State == LeaveCloseState.Committed ? "good" : "warn")">
+                        @LeaveCloseState.Label(close.State)
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="field-grid cols-5">
+                        <div class="field"><span class="micro-label">Employees</span>@close.EmployeeCount</div>
+                        <div class="field"><span class="micro-label">Accruing</span>@Days(close.AccruedBp)</div>
+                        <div class="field"><span class="micro-label">Carrying</span>@Days(close.CarriedBp)</div>
+                        <div class="field"><span class="micro-label">Lapsing</span>@Days(close.LapsedBp)</div>
+                        <div class="field"><span class="micro-label">Encashing</span>@Days(close.EncashedBp)</div>
+                    </div>
+                    <div class="filter-row" style="margin-top:10px">
+                        @if (close.State is LeaveCloseState.Proposed or LeaveCloseState.Previewed)
+                        {
+                            <form method="post" asp-page-handler="Preview" asp-route-id="@close.Id"
+                                  class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn">
+                                    <span class="icon icon-sm" aria-hidden="true">preview</span> Preview
+                                </button>
+                            </form>
+                        }
+                        @if (close.State == LeaveCloseState.Previewed)
+                        {
+                            <form method="post" asp-page-handler="Commit" asp-route-id="@close.Id"
+                                  class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="icon icon-sm" aria-hidden="true">task_alt</span> Commit
+                                </button>
+                            </form>
+                        }
+                    </div>
+                    <p class="card-hint">
+                        The commit is one act: every line or none. A close that half-ran would leave
+                        some people with next year's entitlement and some without, and nothing to
+                        say which.
+                    </p>
+                </div>
+            </div>
+
+            <div class="card card-clip">
+                <div class="card-head">
+                    What the close will do
+                    <span class="spacer"></span>
+                    <span class="card-hint">@Model.Lines.Count line(s)</span>
+                </div>
+                @if (Model.Lines.Count == 0)
+                {
+                    <div class="empty-state">
+                        Nothing previewed yet. Preview reads every balance for the closing year and
+                        works out what carries, what lapses and what is encashed.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-wrap">
+                        <table class="data">
+                            <thead>
+                            <tr>
+                                <th>Code</th><th>Employee</th><th>Leave type</th>
+                                <th class="num">At year end</th><th class="num">Carry</th>
+                                <th class="num">Lapse</th><th class="num">Encash</th>
+                                <th class="num">New year</th><th>Why</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var l in Model.Lines)
+                            {
+                                <tr>
+                                    <td class="tabular">@l.Code</td>
+                                    <td>@l.Name</td>
+                                    <td class="text-muted">@l.LeaveType</td>
+                                    <td class="num">@Days(l.ClosingBp)</td>
+                                    <td class="num">@Days(l.CarryBp)</td>
+                                    <td class="num @(l.LapseBp > 0 ? "text-danger" : "")">@Days(l.LapseBp)</td>
+                                    <td class="num">@Days(l.EncashBp)</td>
+                                    <td class="num">@Days(l.AccrueBp)</td>
+                                    <td class="text-muted">@(l.Basis ?? "—")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body">
+                    <div class="empty-state">
+                        No leave year has been closed. Balances have opening, accrued and carried
+                        columns and, until this screen, nothing ever rolled them.
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="stack">
+        <div class="card">
+            <div class="card-head">Close a leave year</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Propose">
+                    @Html.AntiForgeryToken()
+                    <label class="field">
+                        <span class="field-label">Year starting</span>
+                        <input class="input" name="ClosingYear" hms-date
+                               value="@Model.SuggestedYear.ToString("dd/MM/yyyy")" />
+                    </label>
+                    <button type="submit" class="btn btn-primary" style="margin-top:8px">
+                        <span class="icon icon-sm" aria-hidden="true">event_repeat</span> Propose
+                    </button>
+                </form>
+                <p class="card-hint">
+                    Suggested from the employer's own leave-year start month, never assumed.
+                </p>
+            </div>
+        </div>
+
+        @if (Model.Closes.Count > 1)
+        {
+            <div class="card card-clip">
+                <div class="card-head">Earlier closes</div>
+                <table class="data">
+                    <tbody>
+                    @foreach (var c in Model.Closes)
+                    {
+                        <tr>
+                            <td><a href="/hr/leave-year?id=@c.Id">@c.ClosingYear.ToString("MMM yyyy")</a></td>
+                            <td><span class="pill">@LeaveCloseState.Label(c.State)</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (Model.CanAdjust)
+        {
+            <div class="card">
+                <div class="card-head">Adjust a balance</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Adjust">
+                        @Html.AntiForgeryToken()
+                        <label class="field">
+                            <span class="field-label">Employee</span>
+                            <select class="input" name="AdjustEmployeeId" asp-items="Model.People"></select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Leave type</span>
+                            <select class="input" name="AdjustLeaveTypeId" asp-items="Model.Types"></select>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Leave year</span>
+                            <input class="input num" name="AdjustYear" inputmode="numeric"
+                                   value="@Model.AdjustYear" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Days (negative to take away)</span>
+                            <input class="input num" name="AdjustDays" placeholder="e.g. 2 or -1.5" />
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Reason</span>
+                            <input class="input" name="AdjustReason" maxlength="200" />
+                        </label>
+                        <button type="submit" class="btn" style="margin-top:8px">
+                            <span class="icon icon-sm" aria-hidden="true">edit_note</span> Adjust
+                        </button>
+                    </form>
+                    <p class="card-hint">
+                        The reason is mandatory: an adjustment without one is a balance that changed
+                        and nobody can say why. A balance cannot be adjusted below zero — the
+                        database refuses it too.
+                    </p>
+                </div>
+            </div>
+        }
+    </div>
+</div>

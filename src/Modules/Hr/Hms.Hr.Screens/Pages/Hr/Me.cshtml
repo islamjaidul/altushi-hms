@@ -1,7 +1,8 @@
 @page "/hr/me"
+@using Hms.Hr.Data
 @model Hms.Hr.Screens.Pages.Hr.MeModel
 @{
-    ViewData["Title"] = "My leave";
+    ViewData["Title"] = "My space";
     ViewData["Crumb"] = HrNav.Group;
 }
 
@@ -107,3 +108,251 @@ else
         }
     </div>
 }
+
+@* ---- spec 0059 (§7.10, G52): the rest of my own relationship with HR. Everything here is scoped
+   by the identity link, so there is no id in the URL and nothing to tamper with. ---- *@
+
+@if (Model.Notices.Count > 0)
+{
+    <div class="card card-clip">
+        <div class="card-head">Notice board</div>
+        <div class="card-body">
+            @foreach (var n in Model.Notices)
+            {
+                <div class="notice">
+                    <div class="notice-head">
+                        <b>@n.Title</b>
+                        <span class="card-hint">@Ui.DateLong(n.PublishFrom)</span>
+                    </div>
+                    <div class="letter-body">@n.Body</div>
+                    @if (n.RequiresAcknowledgement)
+                    {
+                        if (n.Acknowledged)
+                        {
+                            <span class="pill good">acknowledged</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="Acknowledge"
+                                  asp-route-noticeId="@n.Id" class="inline-form">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn-tint">I have read this</button>
+                            </form>
+                        }
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="card card-clip">
+    <div class="card-head">
+        My attendance
+        <span class="spacer"></span>
+        <span class="card-hint">@Model.Today.ToString("MMMM yyyy")</span>
+    </div>
+    @if (Model.Attendance is not null)
+    {
+        <partial name="_MonthGrid" model="Model.Attendance" />
+    }
+</div>
+
+<div class="grid grid-2col">
+    <div class="card card-clip">
+        <div class="card-head">
+            My payslips
+            <span class="spacer"></span>
+            <span class="card-hint">PF @Ui.Money(Model.PfBalanceTaka) · tax @Ui.Money(Model.TaxWithheldTaka) this year</span>
+        </div>
+        @if (Model.Payslips.Count == 0)
+        {
+            <div class="empty-state">
+                No payslip yet. One appears here once a run is locked — a draft run's figures are
+                not a payslip, because they are still going to change.
+            </div>
+        }
+        else
+        {
+            <table class="data">
+                <thead><tr><th>Month</th><th>Run</th><th class="num">Net</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Payslips)
+                {
+                    <tr>
+                        <td class="tabular">@p.Period.ToString("MMM yyyy")</td>
+                        <td class="text-muted">@p.RunNo</td>
+                        <td class="num">@Ui.Money(p.NetTaka)</td>
+                        <td>
+                            @if (p.Held)
+                            {
+                                <span class="pill bad">held</span>
+                            }
+                            else
+                            {
+                                <a class="btn-tint" href="/hr/payslip/@p.LineId">Payslip</a>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">
+            My requests
+            @if (Model.BankedMinutes > 0)
+            {
+                <span class="spacer"></span>
+                <span class="card-hint">@(Model.BankedMinutes / 60)h @(Model.BankedMinutes % 60)m banked</span>
+            }
+        </div>
+        @if (Model.Requests.Count == 0)
+        {
+            <div class="empty-state">Nothing raised. Ask HR or your manager to raise one for you.</div>
+        }
+        else
+        {
+            <table class="data">
+                <thead><tr><th>Kind</th><th>Date</th><th>What</th><th>State</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Requests)
+                {
+                    <tr>
+                        <td class="text-muted">@r.Kind</td>
+                        <td class="tabular">@Ui.DateLong(r.OnDate)</td>
+                        <td>@r.What</td>
+                        <td><span class="pill @RequestState.Tone(r.State)">@RequestState.Label(r.State)</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="grid grid-2col">
+    <div class="card card-clip">
+        <div class="card-head">My loans &amp; advances</div>
+        @if (Model.Loans.Count == 0)
+        {
+            <div class="empty-state">Nothing outstanding.</div>
+        }
+        else
+        {
+            <table class="data">
+                <thead>
+                <tr><th>Number</th><th class="num">Borrowed</th><th class="num">Outstanding</th>
+                    <th class="num">Per month</th><th>State</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var l in Model.Loans)
+                {
+                    <tr>
+                        <td class="tabular">@l.LoanNo</td>
+                        <td class="num">@Ui.Money(l.PrincipalTaka)</td>
+                        <td class="num"><b>@Ui.Money(l.OutstandingTaka)</b></td>
+                        <td class="num">@Ui.Money(l.InstallmentTaka)</td>
+                        <td><span class="pill">@LoanState.Label(l.State)</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="card card-clip">
+        <div class="card-head">My documents &amp; letters</div>
+        @if (Model.Documents.Count == 0 && Model.Letters.Count == 0)
+        {
+            <div class="empty-state">HR holds nothing on file for you yet.</div>
+        }
+        else
+        {
+            <table class="data">
+                <thead><tr><th>Kind</th><th>What</th><th>Number</th><th>Status</th></tr></thead>
+                <tbody>
+                @foreach (var d in Model.Documents)
+                {
+                    <tr>
+                        <td class="text-muted">@d.Kind</td>
+                        <td>@d.Title</td>
+                        <td class="tabular">@(d.Number ?? "—")</td>
+                        <td><span class="pill @d.Tone">@d.Words</span></td>
+                    </tr>
+                }
+                @foreach (var l in Model.Letters)
+                {
+                    <tr>
+                        <td class="text-muted">Letter</td>
+                        <td>@l.Kind</td>
+                        <td class="tabular">@l.LetterNo</td>
+                        <td class="text-muted">@Ui.DateLong(l.IssuedOn)</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-head">Something on my record is wrong</div>
+    <div class="card-body">
+        @if (Model.OpenProfileChange is not null)
+        {
+            <div class="alert warn">
+                <span class="icon icon-sm" aria-hidden="true">hourglass_top</span>
+                <span>
+                    You have a change waiting for HR. Nothing on your record has moved yet — it
+                    will not until they approve it.
+                </span>
+            </div>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="ProposeChange">
+                @Html.AntiForgeryToken()
+                <div class="field-grid cols-3">
+                    <label class="field">
+                        <span class="field-label">Phone</span>
+                        <input class="input" name="NewPhone" maxlength="20"
+                               placeholder="@(Model.Me!.Phone ?? "not on record")" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Email</span>
+                        <input class="input" name="NewEmail" maxlength="120"
+                               placeholder="@(Model.Me.Email ?? "not on record")" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Emergency contact</span>
+                        <input class="input" name="NewEmergencyContact" maxlength="60"
+                               placeholder="@(Model.Me.EmergencyContact ?? "not on record")" />
+                    </label>
+                    <label class="field span-2">
+                        <span class="field-label">Present address</span>
+                        <input class="input" name="NewAddress" maxlength="200"
+                               placeholder="@(Model.Me.PresentAddress ?? "not on record")" />
+                    </label>
+                    <label class="field">
+                        <span class="field-label">Bank account</span>
+                        <input class="input" name="NewBankAccountNo" maxlength="30"
+                               placeholder="@(Model.Me.BankAccountNo ?? "not on record")" />
+                    </label>
+                </div>
+                <div class="filter-row" style="margin-top:8px">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="icon icon-sm" aria-hidden="true">edit_note</span>
+                        Ask HR to change it
+                    </button>
+                </div>
+            </form>
+            <p class="card-hint">
+                Fill in only what has changed. Nothing on your record moves until HR approves it, and
+                the change is recorded naming both of you.
+            </p>
+        }
+    </div>
+</div>

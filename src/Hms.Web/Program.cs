@@ -165,6 +165,8 @@ builder.Services.AddSingleton<Hms.Hr.TimeRequestService>();
 builder.Services.AddSingleton<Hms.Hr.RosterPlanService>();
 builder.Services.AddSingleton<Hms.Hr.DeviceService>();
 builder.Services.AddSingleton<Hms.Hr.DevicePushEndpoint>();
+// spec 0059 — the leave year nothing had ever rolled.
+builder.Services.AddSingleton<Hms.Hr.LeaveYearService>();
 // This SKU ships M20, so a lifecycle alert can actually be sent.
 builder.Services.AddSingleton(new Hms.Hr.HrNotificationChannel(true, "SMS"));
 builder.Services.AddSingleton<Hms.Registration.RegistrationService>();

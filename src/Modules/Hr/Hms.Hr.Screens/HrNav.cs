@@ -51,6 +51,10 @@ public static class HrNav
         new(HrModule.Name, "Time requests", "/hr/time-desk", HrPerm.Claim.RequestDecide, "pending_actions", Time),
 
         new(HrModule.Name, "Leave desk", "/hr/leave", HrPerm.Claim.Read, "event_busy", Leave),
+        // spec 0059: who is out, on the one month grid three specs deferred; and the year that
+        // nothing had ever rolled.
+        new(HrModule.Name, "Leave calendar", "/hr/leave-calendar", HrPerm.Claim.Read, "calendar_month", Leave),
+        new(HrModule.Name, "Leave year", "/hr/leave-year", HrPerm.Claim.LeaveApprove, "event_repeat", Leave),
 
         new(HrModule.Name, "Payroll runs", "/hr/payroll", HrPerm.Claim.PayrollRun, "payments", Payroll),
         // The approver's door (AUD-AUZ-01): §12's Accounts Manager / MD hold approve and NOT run,

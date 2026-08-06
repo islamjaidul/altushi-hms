@@ -97,6 +97,8 @@ builder.Services.AddSingleton<TimeRequestService>();
 builder.Services.AddSingleton<RosterPlanService>();
 builder.Services.AddSingleton<DeviceService>();
 builder.Services.AddSingleton<DevicePushEndpoint>();
+// spec 0059 — the leave year nothing had ever rolled.
+builder.Services.AddSingleton<LeaveYearService>();
 // This SKU ships no notifications module at all (ADR-0025 — what the customer bought is what they
 // receive), so the alert registers work and nothing is sent. The switches screen says so.
 builder.Services.AddSingleton(HrNotificationChannel.None);

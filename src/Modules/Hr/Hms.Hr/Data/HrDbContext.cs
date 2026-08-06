@@ -81,6 +81,21 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
     public DbSet<RosterPatternStep> RosterPatternSteps => Set<RosterPatternStep>();
     public DbSet<ShiftRequirement> ShiftRequirements => Set<ShiftRequirement>();
 
+    // self-service and the rest (spec 0059)
+    public DbSet<ProfileChangeRequest> ProfileChangeRequests => Set<ProfileChangeRequest>();
+    public DbSet<LeaveYearClose> LeaveYearCloses => Set<LeaveYearClose>();
+    public DbSet<LeaveCloseLine> LeaveCloseLines => Set<LeaveCloseLine>();
+    public DbSet<Appraisal> Appraisals => Set<Appraisal>();
+    public DbSet<TrainingRecord> TrainingRecords => Set<TrainingRecord>();
+    public DbSet<DisciplinaryAction> DisciplinaryActions => Set<DisciplinaryAction>();
+    public DbSet<Asset> Assets => Set<Asset>();
+    public DbSet<AssetIssue> AssetIssues => Set<AssetIssue>();
+    public DbSet<Notice> Notices => Set<Notice>();
+    public DbSet<NoticeAcknowledgement> NoticeAcknowledgements => Set<NoticeAcknowledgement>();
+    public DbSet<ExpenseClaim> ExpenseClaims => Set<ExpenseClaim>();
+    public DbSet<ApproverDelegation> ApproverDelegations => Set<ApproverDelegation>();
+    public DbSet<SavedReportView> SavedReportViews => Set<SavedReportView>();
+
     // leave
     public DbSet<LeavePolicy> LeavePolicies => Set<LeavePolicy>();
     public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
@@ -606,6 +621,99 @@ public class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(opti
         {
             e.ToTable("shift_requirement");
             e.HasIndex(x => new { x.OrgUnitId, x.ShiftId, x.Weekday }).IsUnique();
+        });
+
+        // ---- self-service and the rest (spec 0059).
+        b.Entity<ProfileChangeRequest>(e =>
+        {
+            e.ToTable("profile_change_request");
+            // One open proposal per person: two competing versions of somebody's own phone number
+            // is not a queue, it is a bug.
+            e.HasIndex(x => x.EmployeeId).IsUnique()
+                .HasFilter("state IN ('raised', 'recommended')");
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<LeaveYearClose>(e =>
+        {
+            e.ToTable("leave_year_close");
+            // One live close per leave year. Two would each think they were the one that ran.
+            e.HasIndex(x => new { x.BranchId, x.ClosingYear }).IsUnique()
+                .HasFilter("state <> 'cancelled'");
+        });
+        b.Entity<LeaveCloseLine>(e =>
+        {
+            e.ToTable("leave_close_line");
+            e.HasIndex(x => new { x.CloseId, x.EmployeeId, x.LeaveTypeId }).IsUnique();
+            e.HasOne<LeaveYearClose>().WithMany().HasForeignKey(x => x.CloseId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Appraisal>(e =>
+        {
+            e.ToTable("appraisal");
+            e.HasIndex(x => new { x.EmployeeId, x.Cycle }).IsUnique();
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<TrainingRecord>(e =>
+        {
+            e.ToTable("training_record");
+            e.HasIndex(x => x.EmployeeId);
+            // The compliance question — who is out of date — is this index.
+            e.HasIndex(x => new { x.BranchId, x.ExpiresOn }).HasFilter("expires_on IS NOT NULL");
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<DisciplinaryAction>(e =>
+        {
+            e.ToTable("disciplinary_action");
+            e.HasIndex(x => new { x.EmployeeId, x.OnDate });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Asset>(e =>
+        {
+            e.ToTable("asset");
+            e.HasIndex(x => new { x.BranchId, x.Code }).IsUnique();
+        });
+        b.Entity<AssetIssue>(e =>
+        {
+            e.ToTable("asset_issue");
+            // One asset is in one person's hands at a time.
+            e.HasIndex(x => x.AssetId).IsUnique().HasFilter("returned_on IS NULL");
+            e.HasIndex(x => new { x.EmployeeId, x.ReturnedOn });
+            e.HasOne<Asset>().WithMany().HasForeignKey(x => x.AssetId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Notice>(e =>
+        {
+            e.ToTable("notice");
+            e.HasIndex(x => new { x.BranchId, x.Active, x.PublishFrom });
+        });
+        b.Entity<NoticeAcknowledgement>(e =>
+        {
+            e.ToTable("notice_ack");
+            e.HasIndex(x => new { x.NoticeId, x.EmployeeId }).IsUnique();
+            e.HasOne<Notice>().WithMany().HasForeignKey(x => x.NoticeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ExpenseClaim>(e =>
+        {
+            e.ToTable("expense_claim");
+            e.HasIndex(x => new { x.BranchId, x.ClaimNo }).IsUnique();
+            e.HasIndex(x => new { x.EmployeeId, x.State });
+            e.HasOne<Employee>().WithMany().HasForeignKey(x => x.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ApproverDelegation>(e =>
+        {
+            e.ToTable("approver_delegation");
+            e.HasIndex(x => new { x.FromEmployeeId, x.FromDate, x.ToDate });
+        });
+        b.Entity<SavedReportView>(e =>
+        {
+            e.ToTable("saved_report_view");
+            e.HasIndex(x => new { x.BranchId, x.ReportKey, x.OwnerUserId, x.Name }).IsUnique();
         });
 
         b.ApplyBranchIsolation(this);   // WP5: branch predicate as structure (AUD-ARCH-01)

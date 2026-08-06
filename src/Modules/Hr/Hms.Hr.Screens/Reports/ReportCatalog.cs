@@ -37,6 +37,9 @@ public static class ReportCatalog
         new NomineeRegisterReport(),
         new SeparationClearanceReport(),
         new AnniversariesReport(),
+        // spec 0059 — the [S]/[C] set.
+        new TrainingComplianceReport(),
+        new AssetRegisterReport(),
 
         // Time & attendance
         new AttendanceRegisterReport(),
@@ -74,6 +77,8 @@ public static class ReportCatalog
         new IncrementRegisterReport(),
         new DisbursementRegisterReport(),
         new SalaryHoldReport(),
+        new ExpenseClaimReport(),
+        new LeaveLiabilityReport(),
 
         // Statutory & ledgers — all salary-bearing, all fed by the ledger the run now writes.
         new ProvidentFundStatementReport(),
@@ -82,10 +87,14 @@ public static class ReportCatalog
         new TaxDeductedReport(),
         new AnnualTaxStatementReport(),
 
+        // Management & analytics (spec 0059)
+        new AppraisalReport(),
+
         // Governance
         new ActivityLogReport(),
         new EmployeeAuditReport(),
         new LettersIssuedReport(),
+        new ProfileChangeReport(),
     ];
 
     public static IReadOnlyList<IHrReport> All => Reports;
