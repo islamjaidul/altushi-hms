@@ -124,8 +124,23 @@ wait_healthy() {
 # is already local from step 3, so `up` cannot fall back to building it.
 log "Swapping app to $IMAGE"
 if HMS_APP_IMAGE="$IMAGE" "${COMPOSE[@]}" up -d --no-deps app && wait_healthy; then
+  # Healthy is NOT the same as deployed, and conflating them hid a broken deploy for weeks.
+  # If the app service's `image:` does not interpolate HMS_APP_IMAGE, compose sees nothing to
+  # change, leaves the old container running, and reports success — then wait_healthy gets its
+  # 200 from the very container we were trying to replace. That is exactly how the HRM SKU
+  # reported green deploys while never moving off hrm-app:dev. The rollback path below has
+  # always compared digests; the success path only printed one. Assert it.
+  EXPECTED="$(docker inspect --format '{{.Id}}' "$IMAGE" 2>/dev/null || true)"
+  RUNNING="$(docker inspect --format '{{.Image}}' "$("${COMPOSE[@]}" ps -q app)" 2>/dev/null || true)"
+  if [ -n "$EXPECTED" ] && [ "$RUNNING" != "$EXPECTED" ]; then
+    echo "!! Health check passed but the running container is $RUNNING," >&2
+    echo "   not the $EXPECTED of $IMAGE. The swap did not happen and the" >&2
+    echo "   previous container is still serving. Check that the app service's image: reads" >&2
+    echo "   \${HMS_APP_IMAGE} — a hardcoded tag makes every deploy a silent no-op." >&2
+    exit 1
+  fi
   log "Healthy on $IMAGE"
-  docker inspect --format 'running digest: {{.Image}}' "$("${COMPOSE[@]}" ps -q app)"
+  echo "running digest: $RUNNING"
   # Dangling layers older than a week. Opt-out exists so the rollback drill cannot touch images
   # on whatever machine it runs on (eng/verify/deploy-rollback-drill.sh).
   [ "${HMS_SKIP_PRUNE:-0}" = "1" ] \

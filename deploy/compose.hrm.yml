@@ -27,7 +27,12 @@ services:
     build:
       context: ..
       dockerfile: deploy/hrm.Dockerfile
-    image: hrm-app:dev
+    # Same contract as the ERP's compose.yml: laptop/demo builds locally, the VM sets
+    # HMS_APP_IMAGE to the registry ref deploy-remote.sh just pulled. This was a bare
+    # `hrm-app:dev` until 2026-08-06, so HMS_APP_IMAGE was never read and every deploy of
+    # this SKU was a no-op — compose saw the running container already matched the tag and
+    # left it alone, while the health probe got its 200 from the old container.
+    image: "${HMS_APP_IMAGE:-hrm-app:dev}"
     mem_limit: 600m
     restart: unless-stopped
     environment:
