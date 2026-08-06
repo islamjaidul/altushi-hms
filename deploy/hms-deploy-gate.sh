@@ -76,7 +76,13 @@ else
 fi
 
 [ -x "$DEPLOYER" ] || deny "deployer missing at $DEPLOYER"
-[ ! -w "$DEPLOYER" ] && echo "WARNING: $DEPLOYER is writable by $(id -un)" >&2
+# Spelled as an `if`, not `[ ... ] && echo`: that form returns 1 when the condition is false, and
+# under `set -e` the gate would abort silently in exactly the case where the file IS locked down
+# correctly. An earlier edit also had the sense inverted, so it warned whenever things were fine —
+# a warning that fires on the healthy path is worse than none, because it trains you to ignore it.
+if [ -w "$DEPLOYER" ]; then
+  echo "WARNING: $DEPLOYER is writable by $(id -un) — the forced command is not protecting much" >&2
+fi
 docker login "$REGISTRY" -u "$REG_USER" --password-stdin >/dev/null \
   || deny "registry login failed"
 
